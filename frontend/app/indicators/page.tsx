@@ -1,0 +1,171 @@
+'use client';
+
+import { FormEvent, useEffect, useState } from 'react';
+import { Button, Card, Table } from '@gravity-ui/uikit';
+import { useRouter } from 'next/navigation';
+import Sidebar from '../../components/dashboard/Sidebar';
+
+const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+type Role = 'SUPER_ADMIN' | 'ADMIN' | 'USER';
+type Indicator = {
+  id: string; value: string; type: string; severity: string; confidence: number; status: string;
+  tags: string[]; source: string | null; description: string | null; expiresAt: string | null;
+  tenant: { id: string; name: string };
+};
+type Tenant = { id: string; name: string };
+type CurrentUser = { role: Role; name: string; email: string };
+
+const emptyForm = { value: '', type: 'DOMAIN', severity: 'MEDIUM', status: 'ACTIVE', confidence: '50', tags: '', source: '', description: '', expiresAt: '', tenantId: '' };
+
+export default function IndicatorsPage() {
+  const router = useRouter();
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+  const [items, setItems] = useState<Indicator[]>([]);
+  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [form, setForm] = useState(emptyForm);
+  const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState<Indicator | null>(null);
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState({ type: '', severity: '', status: 'ACTIVE' });
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(true);
+  const canManage = currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN';
+
+  async function loadIndicators() {
+    const params = new URLSearchParams({ limit: '100' });
+    if (search.trim()) params.set('search', search.trim());
+    Object.entries(filter).forEach(([key, value]) => value && params.set(key, value));
+    const res = await fetch(`${API}/indicators?${params}`, { credentials: 'include', cache: 'no-store' });
+    if (res.status === 401) return router.replace('/');
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message || 'Gagal memuat indicators.');
+    setItems(data.items || []);
+  }
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const me = await fetch(`${API}/auth/me`, { credentials: 'include' });
+        if (!me.ok) return router.replace('/');
+        const user = await me.json();
+        setCurrentUser(user);
+        if (user.role === 'SUPER_ADMIN') {
+          const tenantRes = await fetch(`${API}/users/tenants`, { credentials: 'include' });
+          if (tenantRes.ok) setTenants(await tenantRes.json());
+        }
+        await loadIndicators();
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : 'Gagal memuat halaman.');
+      } finally { setLoading(false); }
+    })();
+  }, []);
+
+  async function logout() {
+    await fetch(`${API}/auth/logout`, { method: 'POST', credentials: 'include' });
+    router.replace('/');
+  }
+
+  function setField(key: keyof typeof emptyForm, value: string) { setForm(current => ({ ...current, [key]: value })); }
+  function openCreate() { setEditing(null); setForm(emptyForm); setShowForm(true); setError(''); setSuccess(''); }
+  function openEdit(item: Indicator) {
+    setEditing(item);
+    setForm({ value: item.value, type: item.type, severity: item.severity, status: item.status, confidence: String(item.confidence), tags: item.tags.join(', '), source: item.source || '', description: item.description || '', expiresAt: item.expiresAt ? item.expiresAt.slice(0, 10) : '', tenantId: item.tenant.id });
+    setShowForm(true); setError(''); setSuccess('');
+  }
+  async function submit(event: FormEvent) {
+    event.preventDefault(); setError('');
+    if (currentUser?.role === 'SUPER_ADMIN' && !form.tenantId) return setError('Tenant wajib dipilih.');
+    const body = { ...form, confidence: Number(form.confidence), tags: form.tags.split(',').map(tag => tag.trim()).filter(Boolean), expiresAt: form.expiresAt || null };
+    const res = await fetch(`${API}/indicators${editing ? `/${editing.id}` : ''}`, { method: editing ? 'PATCH' : 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return setError(data.message || 'Gagal menyimpan indicator.');
+    setSuccess(editing ? 'Indicator berhasil diperbarui.' : 'Indicator berhasil ditambahkan.');
+    setShowForm(false); await loadIndicators();
+  }
+  async function deactivate(item: Indicator) {
+    if (!window.confirm(`Nonaktifkan ${item.value}?`)) return;
+    const res = await fetch(`${API}/indicators/${item.id}/deactivate`, { method: 'PATCH', credentials: 'include' });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return setError(data.message || 'Gagal menonaktifkan indicator.');
+    setSuccess('Indicator dinonaktifkan.'); await loadIndicators();
+  }
+
+  if (loading) {
+    return (
+      <div className="app">
+        <aside className="sidebar"><div className="brand">CTI Platform</div></aside>
+        <section className="main"><div className="content" style={{ paddingTop: 60, textAlign: 'center', color: '#687386' }}>Memuat indicators…</div></section>
+      </div>
+    );
+  }
+
+  return (
+    <div className="app">
+      <Sidebar role={currentUser?.role} onLogout={logout} />
+
+      <section className="main">
+        <header className="topbar">
+          <div style={{ fontWeight: 600 }}>🔍 Indicators / IOC</div>
+          <span style={{ fontSize: 13, color: '#687386' }}>{currentUser?.email} · <strong>{currentUser?.role}</strong></span>
+        </header>
+
+        <main className="content">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
+            <div>
+              <h1 style={{ margin: '0 0 6px' }}>Indicators / IOC</h1>
+              <p style={{ margin: 0, color: '#687386', fontSize: 15 }}>Kelola indikator ancaman untuk tenant Anda.</p>
+            </div>
+            {canManage && <Button view="action" size="l" onClick={openCreate}>+ Add Indicator</Button>}
+          </div>
+
+          {error && <div className="error" style={{ marginBottom: 16 }}>{error}</div>}
+          {success && <div className="success" style={{ marginBottom: 16 }}>{success}</div>}
+
+          {showForm && (
+            <Card view="outlined" style={{ padding: 28, marginBottom: 24 }}>
+              <h2 style={{ margin: '0 0 20px' }}>{editing ? 'Edit Indicator' : 'Add Indicator'}</h2>
+              <form onSubmit={submit} className="ioc-form">
+                <label>Value<input value={form.value} onChange={e => setField('value', e.target.value)} required placeholder="example.com / 1.2.3.4" /></label>
+                <label>Type<select value={form.type} onChange={e => setField('type', e.target.value)}><option value="DOMAIN">Domain</option><option value="IP_ADDRESS">IP Address</option><option value="URL">URL</option><option value="FILE_HASH">File Hash</option><option value="EMAIL">Email</option></select></label>
+                <label>Severity<select value={form.severity} onChange={e => setField('severity', e.target.value)}><option value="LOW">Low</option><option value="MEDIUM">Medium</option><option value="HIGH">High</option><option value="CRITICAL">Critical</option></select></label>
+                <label>Status<select value={form.status} onChange={e => setField('status', e.target.value)}><option value="ACTIVE">Active</option><option value="INACTIVE">Inactive</option><option value="EXPIRED">Expired</option></select></label>
+                <label>Confidence (0-100)<input type="number" min="0" max="100" value={form.confidence} onChange={e => setField('confidence', e.target.value)} required /></label>
+                {currentUser?.role === 'SUPER_ADMIN' && <label>Tenant<select value={form.tenantId} onChange={e => setField('tenantId', e.target.value)} required><option value="">Pilih tenant</option>{tenants.map(tenant => <option key={tenant.id} value={tenant.id}>{tenant.name}</option>)}</select></label>}
+                <label>Tags (pisahkan koma)<input value={form.tags} onChange={e => setField('tags', e.target.value)} placeholder="phishing, malware" /></label>
+                <label>Source<input value={form.source} onChange={e => setField('source', e.target.value)} placeholder="MISP, analyst, feed" /></label>
+                <label>Expires at<input type="date" value={form.expiresAt} onChange={e => setField('expiresAt', e.target.value)} /></label>
+                <label className="ioc-wide">Description<textarea value={form.description} onChange={e => setField('description', e.target.value)} /></label>
+                <div className="ioc-actions"><Button view="action" type="submit">Save</Button><Button view="outlined" type="button" onClick={() => setShowForm(false)}>Cancel</Button></div>
+              </form>
+            </Card>
+          )}
+
+          <Card view="outlined" style={{ padding: 24 }}>
+            <div className="ioc-filters">
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search value, source, tag" />
+              <select value={filter.type} onChange={e => setFilter({ ...filter, type: e.target.value })}><option value="">All types</option><option value="DOMAIN">Domain</option><option value="IP_ADDRESS">IP</option><option value="URL">URL</option><option value="FILE_HASH">Hash</option><option value="EMAIL">Email</option></select>
+              <select value={filter.severity} onChange={e => setFilter({ ...filter, severity: e.target.value })}><option value="">All severity</option><option value="LOW">Low</option><option value="MEDIUM">Medium</option><option value="HIGH">High</option><option value="CRITICAL">Critical</option></select>
+              <select value={filter.status} onChange={e => setFilter({ ...filter, status: e.target.value })}><option value="">All status</option><option value="ACTIVE">Active</option><option value="INACTIVE">Inactive</option><option value="EXPIRED">Expired</option></select>
+              <Button view="normal" onClick={() => loadIndicators()}>Apply</Button>
+            </div>
+            <Table
+              data={items}
+              columns={[
+                { id: 'value', name: 'Indicator', template: (item: Indicator) => item.value },
+                { id: 'type', name: 'Type', template: (item: Indicator) => item.type },
+                { id: 'severity', name: 'Severity', template: (item: Indicator) => item.severity },
+                { id: 'confidence', name: 'Confidence', template: (item: Indicator) => `${item.confidence}%` },
+                { id: 'status', name: 'Status', template: (item: Indicator) => item.status },
+                { id: 'tags', name: 'Tags', template: (item: Indicator) => item.tags.join(', ') || '-' },
+                { id: 'tenant', name: 'Tenant', template: (item: Indicator) => item.tenant.name },
+                { id: 'actions', name: 'Actions', template: (item: Indicator) => canManage ? <div className="ioc-actions"><Button view="flat" size="s" onClick={() => openEdit(item)}>Edit</Button>{item.status === 'ACTIVE' && <Button view="flat-danger" size="s" onClick={() => deactivate(item)}>Deactivate</Button>}</div> : '-' },
+              ]}
+            />
+          </Card>
+        </main>
+      </section>
+    </div>
+  );
+}
+

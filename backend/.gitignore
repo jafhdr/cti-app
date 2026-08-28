@@ -1,0 +1,30 @@
+# Environment and secrets
+.env
+.env.local
+
+# Dependencies
+node_modules/
+
+# Build
+dist/
+build/
+.next/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Logs
+logs/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Prisma generated client (optional - uncomment if not committed)
+# node_modules/.prisma/
+
+# Coverage
+coverage/

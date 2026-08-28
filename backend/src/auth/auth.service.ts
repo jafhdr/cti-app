@@ -1,0 +1,160 @@
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { PrismaService } from '../prisma.service';
+import * as bcrypt from 'bcrypt';
+import { randomBytes, createHash } from 'crypto';
+
+@Injectable()
+export class AuthService {
+  constructor(private prisma: PrismaService, private jwt: JwtService) {}
+
+  async login(email: string, password: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { email: email.toLowerCase().trim() },
+      include: { tenant: true },
+    });
+
+    if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
+      throw new UnauthorizedException('Email atau password salah');
+    }
+    if (!user.isActive) {
+      throw new UnauthorizedException('Akun ini sudah dinonaktifkan');
+    }
+
+    return this.issueSession(user);
+  }
+
+  async signup(name: string, email: string, password: string, organization: string, organizationSlug: string) {
+    const normalizedEmail = email.toLowerCase().trim();
+    const slug = organizationSlug.toLowerCase().trim();
+
+    const existing = await this.prisma.user.findUnique({ where: { email: normalizedEmail } });
+    if (existing) throw new ConflictException('Email sudah terdaftar');
+
+    const existingTenant = await this.prisma.tenant.findUnique({ where: { slug } });
+    if (existingTenant) throw new ConflictException('Slug organisasi sudah digunakan');
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    const user = await this.prisma.$transaction(async (tx) => {
+      const tenant = await tx.tenant.create({ data: { name: organization.trim(), slug } });
+      return tx.user.create({
+        data: {
+          name: name.trim(),
+          email: normalizedEmail,
+          passwordHash,
+          // The creator of an organisation owns its workspace and can invite
+          // regular users. Additional admins remain a SUPER_ADMIN action.
+          role: 'ADMIN',
+          tenantId: tenant.id,
+        },
+        include: { tenant: true },
+      });
+    }); 
+
+    await this.prisma.auditLog.create({ data: { userId: user.id, tenantId: user.tenantId, action: 'SIGNUP' } });
+    return this.issueSession(user);
+  }
+
+  async me(userId: string) {
+    return this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        tenant: { select: { id: true, name: true, slug: true } },
+      },
+    });
+  }
+
+  async refresh(refreshToken: string) {
+    try {
+      if (!refreshToken) throw new Error('missing token');
+      const payload = await this.jwt.verifyAsync(refreshToken, {
+        secret: process.env.JWT_REFRESH_SECRET,
+      });
+      return this.jwt.signAsync(
+        { sub: payload.sub, tenantId: payload.tenantId, role: payload.role },
+        { secret: process.env.JWT_ACCESS_SECRET, expiresIn: '15m' },
+      );
+    } catch {
+      throw new UnauthorizedException('Refresh token tidak valid');
+    }
+  }
+
+  async forgotPassword(email: string) {
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await this.prisma.user.findUnique({ where: { email: normalizedEmail } });
+
+    // Always return the same response to avoid account enumeration.
+    if (!user) return { message: 'Jika email terdaftar, instruksi reset password telah dibuat.' };
+
+    await this.prisma.passwordResetToken.deleteMany({ where: { userId: user.id, usedAt: null } });
+    const rawToken = randomBytes(32).toString('hex');
+    const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+    const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+    await this.prisma.passwordResetToken.create({ data: { tokenHash, userId: user.id, expiresAt } });
+
+    // MVP: without an email provider, expose the reset link in the server console only.
+    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${rawToken}`;
+    console.log(`[DEV] Password reset link for ${normalizedEmail}: ${resetUrl}`);
+
+    return { message: 'Jika email terdaftar, instruksi reset password telah dibuat.' };
+  }
+
+  async resetPassword(token: string, password: string) {
+    const tokenHash = createHash('sha256').update(token).digest('hex');
+    const reset = await this.prisma.passwordResetToken.findUnique({ where: { tokenHash } });
+    if (!reset || reset.usedAt || reset.expiresAt.getTime() < Date.now()) {
+      throw new BadRequestException('Token reset password tidak valid atau sudah kedaluwarsa');
+    }
+
+    const account = await this.prisma.user.findUnique({
+      where: { id: reset.userId },
+      select: { tenantId: true },
+    });
+    if (!account) throw new BadRequestException('Akun untuk token reset tidak ditemukan');
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    await this.prisma.$transaction([
+      this.prisma.user.update({ where: { id: reset.userId }, data: { passwordHash } }),
+      this.prisma.passwordResetToken.update({ where: { id: reset.id }, data: { usedAt: new Date() } }),
+      this.prisma.auditLog.create({
+        data: { userId: reset.userId, tenantId: account.tenantId, action: 'PASSWORD_RESET' },
+      }),
+    ]);
+
+    return { message: 'Password berhasil diubah. Silakan login kembali.' };
+  }
+
+  private async issueSession(user: any) {
+    const payload = { sub: user.id, tenantId: user.tenantId, role: user.role };
+    const accessToken = await this.jwt.signAsync(payload, {
+      secret: process.env.JWT_ACCESS_SECRET,
+      expiresIn: '15m',
+    });
+    const refreshToken = await this.jwt.signAsync(payload, {
+      secret: process.env.JWT_REFRESH_SECRET,
+      expiresIn: '7d',
+    });
+
+    await this.prisma.auditLog.create({ data: { userId: user.id, tenantId: user.tenantId, action: 'LOGIN' } });
+    return {
+      accessToken,
+      refreshToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        tenant: user.tenant,
+      },
+    };
+  }
+}

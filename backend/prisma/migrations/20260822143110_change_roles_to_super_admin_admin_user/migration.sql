@@ -1,0 +1,34 @@
+BEGIN;
+
+ALTER TABLE "User"
+ALTER COLUMN "role" DROP DEFAULT;
+
+CREATE TYPE "Role_new" AS ENUM (
+  'SUPER_ADMIN',
+  'ADMIN',
+  'USER'
+);
+
+ALTER TABLE "User"
+ALTER COLUMN "role" TYPE "Role_new"
+USING (
+  CASE
+    WHEN "role"::text = 'ADMIN' THEN 'ADMIN'
+    WHEN "role"::text IN ('ANALYST', 'VIEWER') THEN 'USER'
+    ELSE 'USER'
+  END
+)::"Role_new";
+
+ALTER TYPE "Role" RENAME TO "Role_old";
+
+ALTER TYPE "Role_new" RENAME TO "Role";
+
+DROP TYPE "Role_old";
+
+ALTER TABLE "User"
+ALTER COLUMN "role" SET DEFAULT 'USER';
+
+ALTER TABLE "User"
+ALTER COLUMN "tenantId" DROP NOT NULL;
+
+COMMIT;

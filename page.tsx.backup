@@ -1,0 +1,121 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+
+const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+type User = {
+  name: string; email: string; role: string;
+  tenant: { id: string; name: string; slug: string };
+};
+type Summary = {
+  indicators: number; highRiskIndicators: number; activeAlerts: number;
+  openCases: number; users: number; sources: number; campaigns: number;
+  subscription: { plan: string; status: string };
+};
+
+export default function DashboardPage() {
+  const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
+  const [summary, setSummary] = useState<Summary | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const me = await fetch(`${API}/auth/me`, { credentials: 'include' });
+      if (!me.ok) {
+        router.replace('/');
+        return;
+      }
+      const userData = await me.json();
+      setUser(userData);
+
+      const dashboard = await fetch(`${API}/dashboard/summary`, { credentials: 'include' });
+      if (dashboard.ok) setSummary(await dashboard.json());
+      setLoading(false);
+    })();
+  }, [router]);
+
+  async function logout() {
+    await fetch(`${API}/auth/logout`, { method: 'POST', credentials: 'include' });
+    router.replace('/');
+  }
+
+  if (loading || !user || !summary) return <main className="auth-page"><div>Loading dashboard...</div></main>;
+
+  const cards = [
+    ['Total Indicators', summary.indicators],
+    ['High Risk', summary.highRiskIndicators],
+    ['Active Alerts', summary.activeAlerts],
+    ['Open Cases', summary.openCases],
+  ];
+
+  return (
+    <div className="app">
+      <aside className="sidebar">
+        <div className="brand">CTI Platform</div>
+        <nav className="nav">
+          <div className="nav-item active">Dashboard</div>
+          <div className="nav-item">Indicators</div>
+          <div className="nav-item">Threat Actors</div>
+          <div className="nav-item">Campaigns</div>
+          <div className="nav-item">Cases</div>
+          <div className="nav-item">Reports</div>
+          <div className="nav-item">Sources</div>
+          <div className="nav-item">Alerts</div>
+        </nav>
+      </aside>
+
+      <section className="main">
+        <header className="topbar">
+          <div>Threat Intelligence Overview</div>
+          <button className="logout" onClick={logout}>Logout</button>
+        </header>
+
+        <main className="content">
+          <div className="header">
+            <div>
+              <h1>Dashboard</h1>
+              <div className="tenant">{user.tenant.name} · {user.role}</div>
+            </div>
+            <span className="badge">{summary.subscription.status}</span>
+          </div>
+
+          <div className="grid">
+            {cards.map(([title, value]) => (
+              <div className="card" key={title as string}>
+                <div className="card-title">{title}</div>
+                <div className="metric">{value}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="section grid">
+            <div className="card">
+              <div className="card-title">Intelligence Sources</div>
+              <div className="metric">{summary.sources}</div>
+            </div>
+            <div className="card">
+              <div className="card-title">Campaigns</div>
+              <div className="metric">{summary.campaigns}</div>
+            </div>
+            <div className="card">
+              <div className="card-title">Tenant Users</div>
+              <div className="metric">{summary.users}</div>
+            </div>
+            <div className="card">
+              <div className="card-title">Subscription</div>
+              <div className="metric" style={{fontSize: 18}}>{summary.subscription.plan}</div>
+            </div>
+          </div>
+
+          <div className="section card">
+            <h3>Recent Activity</h3>
+            <p className="muted">Belum ada aktivitas CTI. Modul indicator, alert, case, dan ingestion dapat ditambahkan pada sprint berikutnya.</p>
+          </div>
+        </main>
+      </section>
+    </div>
+  );
+}

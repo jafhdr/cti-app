@@ -1,53 +1,56 @@
-# Environment and secrets
-.env
-.env.local
-.env.*.local
-*.env
-
-# Node
+```
+# Dependencies
 node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
 
 # Build outputs
 dist/
 build/
-.next/
-.out/
-.cache/
-.eslintcache
+target/
 
-# OS files
+# Logs
+*.log
+
+# Environment variables
+.env
+.env.local
+*.env.*
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.tmp
+
+# Python specific
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+.venv/
+.env
+
+# Coverage reports
+coverage/
+htmlcov/
+.coverage
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# OS generated files
 .DS_Store
 Thumbs.db
 
-# IDE
-.idea/
-.vscode/*
-*.swp
-*.swo
-
-# Logs
-logs/
-*.log
-*.log.*
-output.log
-
 # Prisma
-# Keep prisma/ but ignore generated client if not committed
-# node_modules/.prisma/
-# *.db
-# *.db-journal
+prisma/migrations/
+prisma/schema.prisma.bak
 
-# Coverage
-coverage/
-.nyc_output/
-
-# Temporary
-tmp/
-temp/
-
-# Secrets/redacted files
-*.secret
-secrets/
+# TypeScript/JavaScript build outputs
+*.js.map
+*.tsbuildinfo
+```

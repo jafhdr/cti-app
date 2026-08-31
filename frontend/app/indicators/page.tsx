@@ -1,7 +1,9 @@
 'use client';
 
 import { FormEvent, useEffect, useState } from 'react';
-import { Button, Card, Table } from '@gravity-ui/uikit';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Table } from '@/components/ui/table';
 import { useRouter } from 'next/navigation';
 import Sidebar from '../../components/dashboard/Sidebar';
 
@@ -168,4 +170,3 @@ export default function IndicatorsPage() {
     </div>
   );
 }
-

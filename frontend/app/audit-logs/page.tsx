@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Card, Table } from '@gravity-ui/uikit';
+import { Card } from '@/components/ui/card';
+import { Table } from '@/components/ui/table';
 import { useRouter } from 'next/navigation';
 import Sidebar from '../../components/dashboard/Sidebar';
 
@@ -103,4 +104,3 @@ export default function AuditLogsPage() {
     </div>
   );
 }
-

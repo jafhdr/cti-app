@@ -7,6 +7,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { AuditModule } from './audit/audit.module';
 import { IndicatorsModule } from './indicators/indicators.module';
 import { TenantsModule } from './tenants/tenants.module';
+import { ModulesModule } from './modules/modules.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { TenantsModule } from './tenants/tenants.module';
     AuditModule,
     IndicatorsModule,
     TenantsModule,
+    ModulesModule,
     UsersModule,
   ],
   providers: [PrismaService],

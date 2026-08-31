@@ -3,7 +3,10 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Button, Card, Table } from '@gravity-ui/uikit';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Table } from '@/components/ui/table';
+import SharedSidebar from '../../components/dashboard/Sidebar';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -23,7 +26,7 @@ type CurrentUser = {
   tenant: { id: string; name: string } | null;
 };
 
-function Sidebar({ role, onLogout }: { role: string; onLogout: () => void }) {
+function LegacySidebar({ role, onLogout }: { role: string; onLogout: () => void }) {
   const items = [
     { label: 'Dashboard', href: '/dashboard' },
     { label: 'Indicators', href: '/indicators' },
@@ -167,7 +170,7 @@ export default function TenantsPage() {
 
   return (
     <div className="app">
-      <Sidebar role={currentUser?.role ?? 'USER'} onLogout={logout} />
+      <SharedSidebar role={currentUser?.role ?? 'USER'} onLogout={logout} />
       <section className="main">
         <header className="topbar">
           <div style={{ fontWeight: 600 }}>🏢 Tenant Management</div>

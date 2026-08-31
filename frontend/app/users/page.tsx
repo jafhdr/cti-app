@@ -1,9 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Button, Card, Table } from '@gravity-ui/uikit';
+import { Suspense, useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Table } from '@/components/ui/table';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import SharedSidebar from '../../components/dashboard/Sidebar';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -34,7 +37,7 @@ type CurrentUser = {
 };
 
 /* ── Sidebar ── */
-function Sidebar({ role, onLogout }: { role: Role; onLogout: () => void }) {
+function LegacySidebar({ role, onLogout }: { role: Role; onLogout: () => void }) {
   const base = [
     { label: 'Dashboard', href: '/dashboard' },
     { label: 'Indicators', href: '/indicators' },
@@ -78,7 +81,7 @@ function Sidebar({ role, onLogout }: { role: Role; onLogout: () => void }) {
 }
 
 /* ── Main Page ── */
-export default function UsersPage() {
+function UsersPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const filterTenantId = searchParams.get('tenantId');
@@ -256,7 +259,7 @@ export default function UsersPage() {
 
   return (
     <div className="app">
-      <Sidebar role={currentUser?.role ?? 'USER'} onLogout={logout} />
+      <SharedSidebar role={currentUser?.role ?? 'USER'} onLogout={logout} />
 
       <section className="main">
         <header className="topbar">
@@ -404,5 +407,13 @@ export default function UsersPage() {
         </main>
       </section>
     </div>
+  );
+}
+
+export default function UsersPage() {
+  return (
+    <Suspense fallback={<main className="module-loading">Memuat User Management…</main>}>
+      <UsersPageContent />
+    </Suspense>
   );
 }

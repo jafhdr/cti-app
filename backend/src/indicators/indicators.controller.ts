@@ -2,12 +2,15 @@ import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from
 import { AuthGuard } from '../auth/auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
+import { ModuleAccessGuard } from '../auth/module-access.guard';
+import { RequiresModule } from '../auth/module-access.decorator';
 import { AuthUser } from '../users/users.types';
 import { IndicatorInput } from './indicators.types';
 import { IndicatorsService } from './indicators.service';
 
 @Controller('indicators')
-@UseGuards(AuthGuard, RolesGuard)
+@UseGuards(AuthGuard, RolesGuard, ModuleAccessGuard)
+@RequiresModule('threat-intelligence')
 export class IndicatorsController {
   constructor(private readonly indicators: IndicatorsService) {}
 

@@ -1,4 +1,4 @@
-import { Card } from '@gravity-ui/uikit';
+import { Card } from '@/components/ui/card';
 
 interface StatCardProps {
   title: string;

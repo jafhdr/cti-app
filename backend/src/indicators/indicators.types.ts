@@ -13,4 +13,5 @@ export type IndicatorInput = {
   description?: string;
   expiresAt?: string | null;
   tenantId?: string;
+  intelligenceEntityId?: string | null;
 };

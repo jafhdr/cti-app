@@ -304,8 +304,22 @@ body { background: var(--color-background); color: var(--color-foreground); }
 .cti-table tbody tr:hover { background: #f8fafc; }
 .field input, .field select, .ioc-form input, .ioc-form select, .ioc-form textarea, .ioc-filters input, .ioc-filters select { border-color: #cbd5e1; box-shadow: none; }
 .field input:focus, .field select:focus, .ioc-form input:focus, .ioc-form select:focus, .ioc-form textarea:focus, .ioc-filters input:focus, .ioc-filters select:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.14); outline: 0; }
-@media (max-width: 900px) { .sidebar { display: flex; min-height: auto; padding: 12px; } .sidebar-navigation { flex-direction: row; gap: 8px; overflow-x: auto; } .sidebar-group { flex: 0 0 auto; flex-direction: row; gap: 4px; } .sidebar-group-label { display: none; } .sidebar-link { flex: 0 0 auto; } .logout { margin: 0; } .sidebar .brand { padding: 6px 8px; } }
-@media (max-width: 600px) { .topbar { padding: 0 18px; } .content { padding: 20px 16px; } .header, .cti-title-row { flex-direction: column; } }
+@media (max-width: 900px) {
+  .app { grid-template-columns: minmax(0, 1fr); }
+  .sidebar { display: flex; min-width: 0; min-height: auto; padding: 12px; border-right: 0; border-bottom: 1px solid #1e293b; }
+  .sidebar-navigation { flex: none; flex-direction: row; gap: 8px; overflow-x: auto; scrollbar-width: thin; }
+  .sidebar-group { flex: 0 0 auto; flex-direction: row; gap: 4px; }
+  .sidebar-group-label { display: none; }
+  .sidebar-link { flex: 0 0 auto; }
+  .sidebar .brand { padding: 6px 8px 12px; }
+  .sidebar-footer { display: flex; margin-top: 10px; }
+  .sidebar-footer > * { flex: 1; margin: 0; }
+}
+@media (max-width: 600px) {
+  .topbar { height: auto; min-height: 64px; flex-wrap: wrap; gap: 8px; padding: 12px 18px; }
+  .content { padding: 20px 16px; }
+  .header, .cti-title-row { align-items: stretch; flex-direction: column; }
+}
 .sidebar-footer { display: grid; gap: 8px; margin-top: auto; }
 .theme-toggle { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 36px; border: 1px solid #334155; border-radius: 8px; background: transparent; color: #cbd5e1; cursor: pointer; font-size: 13px; }
 .theme-toggle:hover { background: #1e293b; color: #fff; }

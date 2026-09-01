@@ -8,6 +8,7 @@ import { AuditModule } from './audit/audit.module';
 import { IndicatorsModule } from './indicators/indicators.module';
 import { TenantsModule } from './tenants/tenants.module';
 import { ModulesModule } from './modules/modules.module';
+import { IntelligenceModule } from './intelligence/intelligence.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { ModulesModule } from './modules/modules.module';
     IndicatorsModule,
     TenantsModule,
     ModulesModule,
+    IntelligenceModule,
     UsersModule,
   ],
   providers: [PrismaService],

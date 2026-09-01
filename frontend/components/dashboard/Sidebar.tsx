@@ -1,6 +1,6 @@
 'use client';
 
-import { Activity, Building2, ClipboardList, LayoutDashboard, LogOut, Moon, Radar, ShieldAlert, Sun, Users, type LucideIcon } from 'lucide-react';
+import { Activity, Building2, ClipboardList, GitFork, LayoutDashboard, LogOut, Moon, Radar, ShieldAlert, Sun, Users, type LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -21,6 +21,7 @@ type SidebarProps = {
 const intelligenceItems: readonly NavigationItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Indicators', href: '/indicators', icon: Radar },
+  { label: 'Intelligence Hub', href: '/intelligence', icon: GitFork },
 ];
 
 export default function Sidebar({ role, onLogout }: SidebarProps) {

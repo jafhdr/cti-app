@@ -40,6 +40,29 @@ enum IndicatorStatus {
   EXPIRED
 }
 
+enum IntelligenceEntityType {
+  SOURCE
+  FEED
+  THREAT_ACTOR
+  CAMPAIGN
+  MALWARE
+  TOOL
+  VULNERABILITY
+}
+
+enum CaseStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum AlertStatus {
+  OPEN
+  ACKNOWLEDGED
+  CLOSED
+}
+
 model Tenant {
   id            String   @id @default(cuid())
   name          String
@@ -50,6 +73,10 @@ model Tenant {
   users         User[]
   auditLogs     AuditLog[]
   indicators    Indicator[]
+  intelligenceEntities IntelligenceEntity[]
+  intelligenceRelationships IntelligenceRelationship[]
+  intelligenceCases Case[]
+  alerts        Alert[]
   moduleSettings TenantModule[]
 }
 
@@ -140,10 +167,105 @@ model Indicator {
   description String?
   expiresAt   DateTime?
   createdById String?
+  intelligenceEntityId String?
+  intelligenceEntity IntelligenceEntity? @relation(fields: [intelligenceEntityId], references: [id], onDelete: SetNull)
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 
   @@unique([tenantId, type, value])
   @@index([tenantId, status, severity])
   @@index([tenantId, createdAt])
+  @@index([tenantId, intelligenceEntityId])
+}
+
+model IntelligenceEntity {
+  id          String                 @id @default(cuid())
+  tenantId    String
+  tenant      Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  type        IntelligenceEntityType
+  name        String
+  description String?
+  externalId  String?
+  confidence  Int                    @default(50)
+  severity    IndicatorSeverity      @default(MEDIUM)
+  metadata    Json?
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  outgoingRelationships IntelligenceRelationship[] @relation("RelationshipSource")
+  incomingRelationships IntelligenceRelationship[] @relation("RelationshipTarget")
+  caseLinks   CaseEntity[]
+  alertLinks  AlertEntity[]
+  indicators  Indicator[]
+
+  @@unique([tenantId, type, name])
+  @@index([tenantId, type, severity])
+}
+
+model IntelligenceRelationship {
+  id             String             @id @default(cuid())
+  tenantId       String
+  sourceId       String
+  targetId       String
+  relationshipType String
+  description    String?
+  tenant         Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  source         IntelligenceEntity @relation("RelationshipSource", fields: [sourceId], references: [id], onDelete: Cascade)
+  target         IntelligenceEntity @relation("RelationshipTarget", fields: [targetId], references: [id], onDelete: Cascade)
+  createdAt      DateTime           @default(now())
+
+  @@unique([tenantId, sourceId, targetId, relationshipType])
+  @@index([tenantId, sourceId])
+  @@index([tenantId, targetId])
+}
+
+model Case {
+  id          String     @id @default(cuid())
+  tenantId    String
+  tenant      Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  status      CaseStatus @default(OPEN)
+  severity    IndicatorSeverity @default(MEDIUM)
+  ownerId     String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  entities    CaseEntity[]
+  alerts      Alert[]
+
+  @@index([tenantId, status, severity])
+}
+
+model CaseEntity {
+  caseId      String
+  entityId    String
+  case        Case               @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  entity      IntelligenceEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+
+  @@id([caseId, entityId])
+}
+
+model Alert {
+  id          String      @id @default(cuid())
+  tenantId    String
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  status      AlertStatus @default(OPEN)
+  severity    IndicatorSeverity @default(MEDIUM)
+  caseId      String?
+  case        Case?       @relation(fields: [caseId], references: [id], onDelete: SetNull)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  entities    AlertEntity[]
+
+  @@index([tenantId, status, severity])
+}
+
+model AlertEntity {
+  alertId     String
+  entityId    String
+  alert       Alert              @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  entity      IntelligenceEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+
+  @@id([alertId, entityId])
 }

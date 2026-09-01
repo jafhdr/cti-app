@@ -13,17 +13,20 @@ type Indicator = {
   id: string; value: string; type: string; severity: string; confidence: number; status: string;
   tags: string[]; source: string | null; description: string | null; expiresAt: string | null;
   tenant: { id: string; name: string };
+  intelligenceEntity: { id: string; name: string; type: string } | null;
 };
 type Tenant = { id: string; name: string };
+type IntelligenceEntity = { id: string; name: string; type: string };
 type CurrentUser = { role: Role; name: string; email: string };
 
-const emptyForm = { value: '', type: 'DOMAIN', severity: 'MEDIUM', status: 'ACTIVE', confidence: '50', tags: '', source: '', description: '', expiresAt: '', tenantId: '' };
+const emptyForm = { value: '', type: 'DOMAIN', severity: 'MEDIUM', status: 'ACTIVE', confidence: '50', tags: '', source: '', description: '', expiresAt: '', tenantId: '', intelligenceEntityId: '' };
 
 export default function IndicatorsPage() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [items, setItems] = useState<Indicator[]>([]);
   const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [entities, setEntities] = useState<IntelligenceEntity[]>([]);
   const [form, setForm] = useState(emptyForm);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Indicator | null>(null);
@@ -44,6 +47,13 @@ export default function IndicatorsPage() {
     if (!res.ok) throw new Error(data.message || 'Gagal memuat indicators.');
     setItems(data.items || []);
   }
+  async function loadEntities(tenantId = '') {
+    const query = tenantId ? `?tenantId=${encodeURIComponent(tenantId)}` : '';
+    const response = await fetch(`${API}/intelligence/overview${query}`, { credentials: 'include', cache: 'no-store' });
+    if (!response.ok) { setEntities([]); return; }
+    const data: { entities?: IntelligenceEntity[] } = await response.json();
+    setEntities(data.entities || []);
+  }
 
   useEffect(() => {
     (async () => {
@@ -55,7 +65,7 @@ export default function IndicatorsPage() {
         if (user.role === 'SUPER_ADMIN') {
           const tenantRes = await fetch(`${API}/users/tenants`, { credentials: 'include' });
           if (tenantRes.ok) setTenants(await tenantRes.json());
-        }
+        } else await loadEntities();
         await loadIndicators();
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : 'Gagal memuat halaman.');
@@ -72,7 +82,8 @@ export default function IndicatorsPage() {
   function openCreate() { setEditing(null); setForm(emptyForm); setShowForm(true); setError(''); setSuccess(''); }
   function openEdit(item: Indicator) {
     setEditing(item);
-    setForm({ value: item.value, type: item.type, severity: item.severity, status: item.status, confidence: String(item.confidence), tags: item.tags.join(', '), source: item.source || '', description: item.description || '', expiresAt: item.expiresAt ? item.expiresAt.slice(0, 10) : '', tenantId: item.tenant.id });
+    setForm({ value: item.value, type: item.type, severity: item.severity, status: item.status, confidence: String(item.confidence), tags: item.tags.join(', '), source: item.source || '', description: item.description || '', expiresAt: item.expiresAt ? item.expiresAt.slice(0, 10) : '', tenantId: item.tenant.id, intelligenceEntityId: item.intelligenceEntity?.id || '' });
+    loadEntities(item.tenant.id).catch(() => setEntities([]));
     setShowForm(true); setError(''); setSuccess('');
   }
   async function submit(event: FormEvent) {
@@ -133,7 +144,8 @@ export default function IndicatorsPage() {
                 <label>Severity<select value={form.severity} onChange={e => setField('severity', e.target.value)}><option value="LOW">Low</option><option value="MEDIUM">Medium</option><option value="HIGH">High</option><option value="CRITICAL">Critical</option></select></label>
                 <label>Status<select value={form.status} onChange={e => setField('status', e.target.value)}><option value="ACTIVE">Active</option><option value="INACTIVE">Inactive</option><option value="EXPIRED">Expired</option></select></label>
                 <label>Confidence (0-100)<input type="number" min="0" max="100" value={form.confidence} onChange={e => setField('confidence', e.target.value)} required /></label>
-                {currentUser?.role === 'SUPER_ADMIN' && <label>Tenant<select value={form.tenantId} onChange={e => setField('tenantId', e.target.value)} required><option value="">Pilih tenant</option>{tenants.map(tenant => <option key={tenant.id} value={tenant.id}>{tenant.name}</option>)}</select></label>}
+                {currentUser?.role === 'SUPER_ADMIN' && <label>Tenant<select value={form.tenantId} onChange={e => { setField('tenantId', e.target.value); setField('intelligenceEntityId', ''); loadEntities(e.target.value).catch(() => setEntities([])); }} required><option value="">Pilih tenant</option>{tenants.map(tenant => <option key={tenant.id} value={tenant.id}>{tenant.name}</option>)}</select></label>}
+                <label>Entitas CTI<select value={form.intelligenceEntityId} onChange={e => setField('intelligenceEntityId', e.target.value)}><option value="">Tidak terkait</option>{entities.map(entity => <option key={entity.id} value={entity.id}>{entity.name} ({entity.type})</option>)}</select></label>
                 <label>Tags (pisahkan koma)<input value={form.tags} onChange={e => setField('tags', e.target.value)} placeholder="phishing, malware" /></label>
                 <label>Source<input value={form.source} onChange={e => setField('source', e.target.value)} placeholder="MISP, analyst, feed" /></label>
                 <label>Expires at<input type="date" value={form.expiresAt} onChange={e => setField('expiresAt', e.target.value)} /></label>
@@ -161,6 +173,7 @@ export default function IndicatorsPage() {
                 { id: 'status', name: 'Status', template: (item: Indicator) => item.status },
                 { id: 'tags', name: 'Tags', template: (item: Indicator) => item.tags.join(', ') || '-' },
                 { id: 'tenant', name: 'Tenant', template: (item: Indicator) => item.tenant.name },
+                { id: 'intelligenceEntity', name: 'Entitas CTI', template: (item: Indicator) => item.intelligenceEntity ? `${item.intelligenceEntity.name} (${item.intelligenceEntity.type})` : '-' },
                 { id: 'actions', name: 'Actions', template: (item: Indicator) => canManage ? <div className="ioc-actions"><Button view="flat" size="s" onClick={() => openEdit(item)}>Edit</Button>{item.status === 'ACTIVE' && <Button view="flat-danger" size="s" onClick={() => deactivate(item)}>Deactivate</Button>}</div> : '-' },
               ]}
             />

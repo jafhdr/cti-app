@@ -1,7 +1,7 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { AuthUser } from '../users/users.types';
-import { IndicatorSeverity, IndicatorStatus } from '@prisma/client';
+import { AlertStatus, CaseStatus, IndicatorSeverity, IndicatorStatus, IntelligenceEntityType } from '@prisma/client';
 
 @Injectable()
 export class DashboardService {
@@ -16,10 +16,14 @@ export class DashboardService {
     // Non-super-admin queries are always constrained by the tenant derived by
     // AuthGuard, never by a client supplied tenant ID.
     const tenantWhere = isGlobalView ? {} : { tenantId: currentUser.tenantId! };
-    const [users, indicators, highRiskIndicators, recentActivity, myIndicatorsCreated, tenantOverview] = await this.prisma.$transaction([
+    const [users, indicators, highRiskIndicators, activeAlerts, openCases, sources, campaigns, recentActivity, myIndicatorsCreated, tenantOverview] = await this.prisma.$transaction([
       this.prisma.user.count({ where: { ...tenantWhere, isActive: true } }),
       this.prisma.indicator.count({ where: { ...tenantWhere, status: IndicatorStatus.ACTIVE } }),
       this.prisma.indicator.count({ where: { ...tenantWhere, status: IndicatorStatus.ACTIVE, severity: { in: [IndicatorSeverity.HIGH, IndicatorSeverity.CRITICAL] } } }),
+      this.prisma.alert.count({ where: { ...tenantWhere, status: { not: AlertStatus.CLOSED } } }),
+      this.prisma.case.count({ where: { ...tenantWhere, status: { not: CaseStatus.CLOSED } } }),
+      this.prisma.intelligenceEntity.count({ where: { ...tenantWhere, type: { in: [IntelligenceEntityType.SOURCE, IntelligenceEntityType.FEED] } } }),
+      this.prisma.intelligenceEntity.count({ where: { ...tenantWhere, type: IntelligenceEntityType.CAMPAIGN } }),
       this.prisma.auditLog.findMany({
         where: isGlobalView ? {} : { tenantId: currentUser.tenantId! },
         select: { id: true, action: true, createdAt: true, metadata: true },
@@ -52,13 +56,13 @@ export class DashboardService {
       // Tenant/scope stats
       indicators,
       highRiskIndicators,
-      activeAlerts: 0,
-      openCases: 0,
+      activeAlerts,
+      openCases,
       users,
       // Personal stats
       myIndicatorsCreated,
-      sources: 0,
-      campaigns: 0,
+      sources,
+      campaigns,
       subscription: { plan: isGlobalView ? 'Platform / Global' : 'MVP / Trial', status: 'ACTIVE' },
       recentActivity,
       tenantOverview: isGlobalView ? tenantOverview : [],

@@ -5,17 +5,20 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { AuthGuard } from '../auth/auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { UsersService } from './users.service';
-import { AuthUser, UserRole } from './users.types';
+import { AuthUser, BulkModuleAccessInput, UserRole } from './users.types';
 
+@ApiTags('users')
 @Controller('users')
 @UseGuards(AuthGuard, RolesGuard)
 export class UsersController {
@@ -95,5 +98,51 @@ export class UsersController {
     @Body() body: { isActive: boolean },
   ) {
     return this.usersService.updateStatus(req.user, userId, body.isActive);
+  }
+
+  @Get(':id/module-access')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  @ApiOperation({ summary: 'Daftar modul subscription dan assignment user' })
+  getModuleAccess(@Req() req: { user: AuthUser }, @Param('id') userId: string) {
+    return this.usersService.getModuleAccess(req.user, userId);
+  }
+
+  @Put(':id/module-access')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  @ApiOperation({ summary: 'Ganti seluruh assignment modul user' })
+  updateModuleAccess(
+    @Req() req: { user: AuthUser },
+    @Param('id') userId: string,
+    @Body() body: { access: Array<{ moduleId: string; featureKeys?: string[] }> },
+  ) {
+    return this.usersService.updateModuleAccess(req.user, userId, body.access);
+  }
+
+  @Get('tenant/:tenantId/module-access')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  @ApiOperation({ summary: 'Daftar semua user dan assignment modul dalam tenant' })
+  listTenantModuleAccess(@Req() req: { user: AuthUser }, @Param('tenantId') tenantId: string) {
+    return this.usersService.listTenantUserModuleAccess(req.user, tenantId);
+  }
+
+  @Patch('tenant/:tenantId/module-access')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  @ApiOperation({ summary: 'Ganti assignment modul untuk beberapa user' })
+  bulkModuleAccess(@Req() req: { user: AuthUser }, @Param('tenantId') tenantId: string, @Body() body: BulkModuleAccessInput) {
+    return this.usersService.bulkUpdateModuleAccess(req.user, tenantId, body);
+  }
+}
+
+@ApiTags('modules')
+@Controller('modules')
+@UseGuards(AuthGuard, RolesGuard)
+export class ModuleUserAccessController {
+  constructor(private readonly usersService: UsersService) {}
+
+  @Get(':moduleId/user-access')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  @ApiOperation({ summary: 'Daftar user yang memiliki akses ke modul' })
+  listModuleUserAccess(@Req() req: { user: AuthUser }, @Param('moduleId') moduleId: string, @Query('tenantId') tenantId?: string) {
+    return this.usersService.listModuleUserAccess(req.user, moduleId, tenantId);
   }
 }

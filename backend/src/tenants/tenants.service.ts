@@ -33,6 +33,42 @@ export class TenantsService {
           data: { name: adminName, email: adminEmail, passwordHash: await bcrypt.hash(input.adminPassword, 12), role: Role.ADMIN, tenantId: tenant.id },
           select: { id: true, name: true, email: true, role: true },
         });
+        // Otomatis berikan subscription Community untuk tenant baru
+        const communityPackage = await tx.subscriptionPackage.findFirst({ where: { type: 'PREDEFINED', isActive: true }, orderBy: { priceMonthly: 'asc' }, take: 1 });
+        if (communityPackage) {
+          const renewalAt = new Date();
+          renewalAt.setFullYear(renewalAt.getFullYear() + 1);
+          await tx.tenantSubscription.create({
+            data: {
+              tenantId: tenant.id,
+              packageId: communityPackage.id,
+              billingCycle: 'YEARLY',
+              priceMonthly: communityPackage.priceMonthly,
+              priceYearly: communityPackage.priceYearly ?? communityPackage.priceMonthly,
+              status: 'ACTIVE',
+              renewalAt,
+            },
+          });
+          // Aktifkan semua modul yang ada di package untuk tenant baru
+          const packageModules = await tx.subscriptionPackage.findUnique({ where: { id: communityPackage.id }, include: { modules: { include: { module: true } } } });
+          if (packageModules) {
+            for (const pm of packageModules.modules) {
+              if (!pm.module) continue;
+              const setting = await tx.tenantModule.upsert({
+                where: { tenantId_moduleId: { tenantId: tenant.id, moduleId: pm.module.id } },
+                update: {},
+                create: { tenantId: tenant.id, moduleId: pm.module.id, isEnabled: true },
+              });
+              for (const role of [Role.ADMIN, Role.USER] as const) {
+                await tx.moduleRoleAccess.upsert({
+                  where: { tenantModuleId_role: { tenantModuleId: setting.id, role } },
+                  update: {},
+                  create: { tenantModuleId: setting.id, role, isAllowed: true },
+                });
+              }
+            }
+          }
+        }
         await tx.auditLog.create({ data: { userId: actor.sub, tenantId: tenant.id, action: 'TENANT_CREATED', metadata: { tenantId: tenant.id, initialAdminId: admin.id } as Prisma.InputJsonValue } });
         return { tenant, admin };
       });

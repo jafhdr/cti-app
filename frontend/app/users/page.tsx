@@ -7,6 +7,7 @@ import { Table } from '@/components/ui/table';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import SharedSidebar from '../../components/dashboard/Sidebar';
+import ModuleAccessPanel from '../../components/users/ModuleAccessPanel';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -37,49 +38,6 @@ type CurrentUser = {
 };
 
 /* ── Sidebar ── */
-function LegacySidebar({ role, onLogout }: { role: Role; onLogout: () => void }) {
-  const base = [
-    { label: 'Dashboard', href: '/dashboard' },
-    { label: 'Indicators', href: '/indicators' },
-    { label: 'Threat Actors', href: '#' },
-    { label: 'Campaigns', href: '#' },
-    { label: 'Cases', href: '#' },
-    { label: 'Reports', href: '#' },
-    { label: 'Sources', href: '#' },
-    { label: 'Alerts', href: '#' },
-  ];
-  const adminMenus =
-    role === 'SUPER_ADMIN'
-      ? [
-          { label: 'ADMIN', href: '', divider: true },
-          { label: '🏢 Tenant Management', href: '/tenants' },
-          { label: '👥 User Management', href: '/users' },
-          { label: '📋 Audit Log', href: '/audit-logs' },
-        ]
-      : role === 'ADMIN'
-      ? [
-          { label: 'ADMIN', href: '', divider: true },
-          { label: '👥 User Management', href: '/users' },
-          { label: '📋 Audit Log', href: '/audit-logs' },
-        ]
-      : [];
-  return (
-    <aside className="sidebar" style={{ display: 'flex', flexDirection: 'column' }}>
-      <div className="brand">CTI Platform</div>
-      <nav className="nav" style={{ flex: 1 }}>
-        {[...base, ...adminMenus].map((item) =>
-          (item as any).divider ? (
-            <div key={item.label} style={{ fontSize: 10, color: '#64748b', padding: '14px 12px 4px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{item.label}</div>
-          ) : (
-            <Link key={item.label} href={item.href} className={`nav-item${item.href === '/users' ? ' active' : ''}`}>{item.label}</Link>
-          )
-        )}
-      </nav>
-      <button onClick={onLogout} className="logout" style={{ margin: '16px 0 0', width: '100%', textAlign: 'center' }}>Logout</button>
-    </aside>
-  );
-}
-
 /* ── Main Page ── */
 function UsersPageContent() {
   const router = useRouter();
@@ -99,6 +57,7 @@ function UsersPageContent() {
   const [role, setRole] = useState<'ADMIN' | 'USER'>('USER');
   const [tenantId, setTenantId] = useState('');
   const [saving, setSaving] = useState(false);
+  const [accessUser, setAccessUser] = useState<User | null>(null);
 
   // Messages
   const [error, setError] = useState('');
@@ -235,6 +194,10 @@ function UsersPageContent() {
     } catch (err) { setError(err instanceof Error ? err.message : 'Gagal mengubah role.'); }
   }
 
+  async function openModuleAccess(user: User) {
+    setError(''); setSuccess(''); setAccessUser(user);
+  }
+
   /* ── Scope label ── */
   const scopeLabel =
     currentUser?.role === 'SUPER_ADMIN'
@@ -292,7 +255,7 @@ function UsersPageContent() {
 
           {/* Role badge */}
           {currentUser?.role === 'ADMIN' && currentUser.tenant && (
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#eff6ff', borderRadius: 8, padding: '8px 14px', marginBottom: 20, fontSize: 13 }}>
+            <div className="context-note" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'var(--soc-blue-tint)', borderRadius: 6, padding: '8px 14px', marginBottom: 20, fontSize: 13 }}>
               <span>🏢</span>
               <span>Anda adalah <strong>Admin</strong> dari tenant <strong>{currentUser.tenant.name}</strong>. Anda hanya dapat mengelola user dalam tenant ini.</span>
             </div>
@@ -382,7 +345,7 @@ function UsersPageContent() {
                     return <span>{u.role}</span>;
                   }},
                   { id: 'status', name: 'Status', template: (u: User) => (
-                    <span style={{ display: 'inline-block', padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 700, background: u.isActive ? '#e9f8ef' : '#fff0f0', color: u.isActive ? '#18794e' : '#b42318' }}>
+                    <span className={`status-pill ${u.isActive ? 'is-active' : 'is-inactive'}`} style={{ display: 'inline-block', padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 700, background: u.isActive ? '#e9f8ef' : '#fff0f0', color: u.isActive ? '#18794e' : '#b42318' }}>
                       {u.isActive ? 'Aktif' : 'Nonaktif'}
                     </span>
                   )},
@@ -394,6 +357,7 @@ function UsersPageContent() {
                       <div style={{ display: 'flex', gap: 8 }}>
                         <Button view="flat" size="s" disabled={cannotManage} onClick={() => editUser(u)}>Edit</Button>
                         <Button view="flat" size="s" disabled={cannotManage} onClick={() => resetUserPassword(u)}>Reset PW</Button>
+                        <Button view="flat" size="s" disabled={cannotManage || u.role !== 'USER'} onClick={() => openModuleAccess(u)}>Akses Modul</Button>
                         <Button view={u.isActive ? 'flat-danger' : 'flat'} size="s" disabled={cannotManage} onClick={() => toggleUserStatus(u)}>
                           {u.isActive ? 'Nonaktifkan' : 'Aktifkan'}
                         </Button>
@@ -404,6 +368,7 @@ function UsersPageContent() {
               />
             )}
           </Card>
+          {accessUser && <ModuleAccessPanel target={accessUser} onClose={() => setAccessUser(null)} onError={setError} onSaved={setSuccess} onUnauthorized={() => router.replace('/')} />}
         </main>
       </section>
     </div>

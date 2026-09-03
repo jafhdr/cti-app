@@ -1,4 +1,5 @@
 import './globals.css';
+import './soc-theme.css';
 
 export default function RootLayout({
   children,

@@ -30,6 +30,73 @@ async function main() {
     { slug: 'case-management', name: 'Case Management', description: 'Koordinasikan investigasi dan respons insiden.', category: 'CTI' as const },
   ].map((module) => prisma.appModule.upsert({ where: { slug: module.slug }, update: module, create: module })),
   );
+
+  const featuresBySlug: Record<string, Array<{ key: string; name: string; description: string }>> = {
+    'threat-intelligence': [
+      { key: 'indicator-management', name: 'Indicator Management', description: 'Kelola IOC dan status indikator.' },
+      { key: 'intelligence-hub', name: 'Intelligence Hub', description: 'Relasi entitas, case, dan alert.' },
+      { key: 'export', name: 'Export Data', description: 'Ekspor data intelijen untuk analisis lanjutan.' },
+    ],
+    'appsec-posture': [
+      { key: 'posture-overview', name: 'Posture Overview', description: 'Ringkasan risiko keamanan aplikasi.' },
+      { key: 'advanced-chart', name: 'Advanced Charts', description: 'Visualisasi temuan dan tren risiko.' },
+    ],
+    'case-management': [
+      { key: 'case-workflow', name: 'Case Workflow', description: 'Kelola siklus investigasi insiden.' },
+      { key: 'alert-triage', name: 'Alert Triage', description: 'Prioritaskan dan tindak lanjuti alert.' },
+    ],
+  };
+  await Promise.all(modules.flatMap((module) => (featuresBySlug[module.slug] ?? []).map((feature) =>
+    prisma.moduleFeature.upsert({
+      where: { moduleId_key: { moduleId: module.id, key: feature.key } },
+      update: { name: feature.name, description: feature.description },
+      create: { moduleId: module.id, ...feature },
+    }),
+  )));
+
+  const packageDefinitions = [
+    { name: 'Community', description: 'Fondasi CTI untuk tim yang baru memulai.', priceMonthly: 0, priceYearly: 0, moduleSlugs: ['threat-intelligence'] },
+    { name: 'Professional', description: 'Perlindungan terpadu untuk operasi keamanan berkembang.', priceMonthly: 1_500_000, priceYearly: 15_000_000, moduleSlugs: ['threat-intelligence', 'case-management'] },
+    { name: 'Team', description: 'Seluruh kapabilitas platform untuk kolaborasi lintas tim.', priceMonthly: 4_000_000, priceYearly: 40_000_000, moduleSlugs: ['threat-intelligence', 'case-management', 'appsec-posture'] },
+  ];
+  for (const definition of packageDefinitions) {
+    const subscriptionPackage = await prisma.subscriptionPackage.upsert({
+      where: { name: definition.name },
+      update: { description: definition.description, type: 'PREDEFINED', priceMonthly: definition.priceMonthly, priceYearly: definition.priceYearly, isActive: true },
+      create: { name: definition.name, description: definition.description, type: 'PREDEFINED', billingCycle: 'MONTHLY', priceMonthly: definition.priceMonthly, priceYearly: definition.priceYearly },
+    });
+    const includedModules = modules.filter((module) => definition.moduleSlugs.includes(module.slug));
+    await prisma.packageModule.deleteMany({ where: { packageId: subscriptionPackage.id, moduleId: { notIn: includedModules.map((module) => module.id) } } });
+    await Promise.all(includedModules.map((module) => prisma.packageModule.upsert({
+      where: { packageId_moduleId: { packageId: subscriptionPackage.id, moduleId: module.id } },
+      update: {}, create: { packageId: subscriptionPackage.id, moduleId: module.id },
+    })));
+  }
+
+  const customPackage = await prisma.subscriptionPackage.upsert({
+    where: { name: 'Custom Package' },
+    update: { description: 'Pilih modul sesuai kebutuhan organisasi.', type: 'CUSTOM', isActive: true },
+    create: { name: 'Custom Package', description: 'Pilih modul sesuai kebutuhan organisasi.', type: 'CUSTOM', billingCycle: 'MONTHLY', priceMonthly: 0, priceYearly: 0 },
+  });
+  const customPrices: Record<string, { monthly: number; yearly: number }> = {
+    'threat-intelligence': { monthly: 750_000, yearly: 7_500_000 },
+    'case-management': { monthly: 600_000, yearly: 6_000_000 },
+    'appsec-posture': { monthly: 900_000, yearly: 9_000_000 },
+  };
+  await Promise.all(modules.map((module) => prisma.packageModule.upsert({
+    where: { packageId_moduleId: { packageId: customPackage.id, moduleId: module.id } },
+    update: { modulePriceMonthly: customPrices[module.slug].monthly, modulePriceYearly: customPrices[module.slug].yearly },
+    create: { packageId: customPackage.id, moduleId: module.id, modulePriceMonthly: customPrices[module.slug].monthly, modulePriceYearly: customPrices[module.slug].yearly },
+  })));
+
+  const community = await prisma.subscriptionPackage.findUniqueOrThrow({ where: { name: 'Community' } });
+  const renewalAt = new Date();
+  renewalAt.setFullYear(renewalAt.getFullYear() + 1);
+  await prisma.tenantSubscription.upsert({
+    where: { tenantId: tenant.id },
+    update: {},
+    create: { tenantId: tenant.id, packageId: community.id, billingCycle: 'YEARLY', priceMonthly: community.priceMonthly, priceYearly: community.priceYearly, status: 'ACTIVE', renewalAt },
+  });
   const tenants = await prisma.tenant.findMany({ select: { id: true } });
   await Promise.all(tenants.flatMap((tenant) => modules.map(async (module) => {
     const setting = await prisma.tenantModule.upsert({

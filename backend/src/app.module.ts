@@ -9,6 +9,7 @@ import { IndicatorsModule } from './indicators/indicators.module';
 import { TenantsModule } from './tenants/tenants.module';
 import { ModulesModule } from './modules/modules.module';
 import { IntelligenceModule } from './intelligence/intelligence.module';
+import { SubscriptionModule } from './subscription/subscription.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { IntelligenceModule } from './intelligence/intelligence.module';
     TenantsModule,
     ModulesModule,
     IntelligenceModule,
+    SubscriptionModule,
     UsersModule,
   ],
   providers: [PrismaService],

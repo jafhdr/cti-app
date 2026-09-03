@@ -235,7 +235,7 @@ export default function TenantsPage() {
                 data={tenants}
                 columns={[
                   { id: 'name', name: 'Nama Tenant', template: (t: Tenant) => <div><div style={{ fontWeight: 600 }}>{t.name}</div><div style={{ fontSize: 12, color: '#687386' }}>{t.slug}</div></div> },
-                  { id: 'status', name: 'Status', template: (t: Tenant) => <span style={{ display: 'inline-block', padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 700, background: t.isActive ? '#e9f8ef' : '#fff0f0', color: t.isActive ? '#18794e' : '#b42318' }}>{t.isActive ? 'Aktif' : 'Nonaktif'}</span> },
+                  { id: 'status', name: 'Status', template: (t: Tenant) => <span className={`status-pill ${t.isActive ? 'is-active' : 'is-inactive'}`} style={{ display: 'inline-block', padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 700, background: t.isActive ? '#e9f8ef' : '#fff0f0', color: t.isActive ? '#18794e' : '#b42318' }}>{t.isActive ? 'Aktif' : 'Nonaktif'}</span> },
                   { id: 'users', name: 'User', template: (t: Tenant) => t._count.users },
                   { id: 'indicators', name: 'Indicators', template: (t: Tenant) => t._count.indicators },
                   { id: 'createdAt', name: 'Dibuat', template: (t: Tenant) => new Date(t.createdAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) },

@@ -42,19 +42,54 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(password, 12);
     const user = await this.prisma.$transaction(async (tx) => {
       const tenant = await tx.tenant.create({ data: { name: organization.trim(), slug } });
-      return tx.user.create({
+      const createdUser = await tx.user.create({
         data: {
           name: name.trim(),
           email: normalizedEmail,
           passwordHash,
-          // The creator of an organisation owns its workspace and can invite
-          // regular users. Additional admins remain a SUPER_ADMIN action.
           role: 'ADMIN',
           tenantId: tenant.id,
         },
         include: { tenant: true },
       });
-    }); 
+      // Berikan subscription Community untuk tenant baru
+      const communityPackage = await tx.subscriptionPackage.findFirst({ where: { type: 'PREDEFINED', isActive: true }, orderBy: { priceMonthly: 'asc' }, take: 1 });
+      if (communityPackage) {
+        const renewalAt = new Date();
+        renewalAt.setFullYear(renewalAt.getFullYear() + 1);
+        await tx.tenantSubscription.create({
+          data: {
+            tenantId: tenant.id,
+            packageId: communityPackage.id,
+            billingCycle: 'YEARLY',
+            priceMonthly: communityPackage.priceMonthly,
+            priceYearly: communityPackage.priceYearly ?? communityPackage.priceMonthly,
+            status: 'ACTIVE',
+            renewalAt,
+          },
+        });
+        // Aktifkan semua modul dalam package untuk tenant
+        const packageModules = await tx.subscriptionPackage.findUnique({ where: { id: communityPackage.id }, include: { modules: { include: { module: true } } } });
+        if (packageModules) {
+          for (const pm of packageModules.modules) {
+            if (!pm.module) continue;
+            const setting = await tx.tenantModule.upsert({
+              where: { tenantId_moduleId: { tenantId: tenant.id, moduleId: pm.module.id } },
+              update: {},
+              create: { tenantId: tenant.id, moduleId: pm.module.id, isEnabled: true },
+            });
+            for (const role of ['ADMIN', 'USER'] as const) {
+              await tx.moduleRoleAccess.upsert({
+                where: { tenantModuleId_role: { tenantModuleId: setting.id, role } },
+                update: {},
+                create: { tenantModuleId: setting.id, role, isAllowed: true },
+              });
+            }
+          }
+        }
+      }
+      return createdUser;
+    });
 
     await this.prisma.auditLog.create({ data: { userId: user.id, tenantId: user.tenantId, action: 'SIGNUP' } });
     return this.issueSession(user);

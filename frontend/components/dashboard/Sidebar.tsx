@@ -1,6 +1,6 @@
 'use client';
 
-import { Activity, Building2, ClipboardList, GitFork, LayoutDashboard, LogOut, Moon, Radar, ShieldAlert, Sun, Users, type LucideIcon } from 'lucide-react';
+import { Activity, Building2, ClipboardList, CreditCard, GitFork, KeyRound, LayoutDashboard, LogOut, Moon, Radar, ShieldAlert, Sun, Users, type LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -43,13 +43,17 @@ export default function Sidebar({ role, onLogout }: SidebarProps) {
     ? [
       { label: 'Tenant Management', href: '/tenants', icon: Building2 },
       { label: 'User Management', href: '/users', icon: Users },
+      { label: 'Akses Modul', href: '/module-access', icon: KeyRound },
       { label: 'Module Management', href: '/modules', icon: ShieldAlert },
+      { label: 'Subscription', href: '/subscription', icon: CreditCard },
       { label: 'Audit Log', href: '/audit-logs', icon: ClipboardList },
     ]
     : role === 'ADMIN'
       ? [
         { label: 'User Management', href: '/users', icon: Users },
+        { label: 'Akses Modul', href: '/module-access', icon: KeyRound },
         { label: 'Module Management', href: '/modules', icon: ShieldAlert },
+        { label: 'Subscription', href: '/subscription', icon: CreditCard },
         { label: 'Audit Log', href: '/audit-logs', icon: ClipboardList },
       ]
       : [];

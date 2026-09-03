@@ -21,10 +21,10 @@ const sizeClasses: Record<NonNullable<ButtonProps['size']>, string> = {
 export function Button({ className, variant, view, size = 'm', ...props }: ButtonProps) {
   const selectedVariant = variant ?? (view ? viewToVariant[view] : 'default');
   const variants: Record<ButtonVariant, string> = {
-    default: 'bg-primary text-primary-foreground shadow-sm hover:bg-primary/90',
-    outline: 'border border-input bg-background text-foreground shadow-sm hover:bg-accent',
-    ghost: 'text-muted-foreground hover:bg-accent hover:text-foreground',
-    destructive: 'bg-destructive text-white shadow-sm hover:bg-destructive/90',
+    default: 'soc-button-primary',
+    outline: 'soc-button-outline',
+    ghost: 'soc-button-ghost',
+    destructive: 'soc-button-destructive',
   };
   return <button className={cn('inline-flex items-center justify-center whitespace-nowrap rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50', sizeClasses[size], variants[selectedVariant], className)} {...props} />;
 }

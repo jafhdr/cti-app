@@ -63,6 +63,23 @@ enum AlertStatus {
   CLOSED
 }
 
+enum SubscriptionPackageType {
+  PREDEFINED
+  CUSTOM
+}
+
+enum BillingCycle {
+  MONTHLY
+  YEARLY
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
 model Tenant {
   id            String   @id @default(cuid())
   name          String
@@ -78,6 +95,8 @@ model Tenant {
   intelligenceCases Case[]
   alerts        Alert[]
   moduleSettings TenantModule[]
+  subscription TenantSubscription?
+  userModuleAccess UserModuleAccess[]
 }
 
 model AppModule {
@@ -90,6 +109,76 @@ model AppModule {
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
   settings    TenantModule[]
+  packageModules PackageModule[]
+  features ModuleFeature[]
+  customSubscriptions TenantCustomModule[]
+  userAccess UserModuleAccess[]
+}
+
+model SubscriptionPackage {
+  id           String                  @id @default(cuid())
+  name         String                  @unique
+  description  String?
+  type         SubscriptionPackageType @default(PREDEFINED)
+  billingCycle BillingCycle            @default(MONTHLY)
+  priceMonthly Int
+  priceYearly  Int?
+  isActive     Boolean                 @default(true)
+  modules      PackageModule[]
+  subscriptions TenantSubscription[]
+  createdAt    DateTime                @default(now())
+  updatedAt    DateTime                @updatedAt
+}
+
+model PackageModule {
+  packageId         String
+  moduleId          String
+  modulePriceMonthly Int?
+  modulePriceYearly  Int?
+  package            SubscriptionPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  module             AppModule            @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  @@id([packageId, moduleId])
+}
+
+model ModuleFeature {
+  id          String    @id @default(cuid())
+  moduleId    String
+  key         String
+  name        String
+  description String?
+  module      AppModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  @@unique([moduleId, key])
+}
+
+model TenantSubscription {
+  id            String             @id @default(cuid())
+  tenantId      String             @unique
+  packageId     String?
+  isCustom      Boolean            @default(false)
+  billingCycle  BillingCycle
+  priceMonthly  Int
+  priceYearly   Int?
+  status        SubscriptionStatus @default(TRIAL)
+  subscribedAt  DateTime           @default(now())
+  renewalAt     DateTime
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  tenant        Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  package       SubscriptionPackage? @relation(fields: [packageId], references: [id], onDelete: SetNull)
+  customModules TenantCustomModule[]
+
+  @@index([status, renewalAt])
+}
+
+model TenantCustomModule {
+  subscriptionId String
+  moduleId       String
+  subscription   TenantSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  module         AppModule           @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  @@id([subscriptionId, moduleId])
 }
 
 model TenantModule {
@@ -129,6 +218,20 @@ model User {
   tenant       Tenant?  @relation(fields: [tenantId], references: [id])
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  moduleAccess UserModuleAccess[]
+}
+
+model UserModuleAccess {
+  userId      String
+  tenantId    String
+  moduleId    String
+  featureKeys String[]  @default([])
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  module      AppModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, tenantId, moduleId])
+  @@index([tenantId, moduleId])
 }
 
 model AuditLog {

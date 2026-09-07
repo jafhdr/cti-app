@@ -96,7 +96,7 @@ export class AuthService {
   }
 
   async me(userId: string) {
-    return this.prisma.user.findUnique({
+    const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: {
         id: true,
@@ -106,6 +106,32 @@ export class AuthService {
         tenant: { select: { id: true, name: true, slug: true } },
       },
     });
+    if (!user) return null;
+
+    const modules = await this.prisma.appModule.findMany({
+      where: { isActive: true },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        userAccess: {
+          where: { userId, tenantId: user.tenant?.id ?? '' },
+          select: { featureKeys: true },
+        },
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    return {
+      ...user,
+      moduleAccess: modules.map((module) => ({
+        moduleId: module.id,
+        moduleName: module.name,
+        moduleSlug: module.slug,
+        assigned: user.role === 'SUPER_ADMIN' || module.userAccess.length > 0,
+        featureKeys: module.userAccess[0]?.featureKeys ?? [],
+      })),
+    };
   }
 
   async refresh(refreshToken: string) {

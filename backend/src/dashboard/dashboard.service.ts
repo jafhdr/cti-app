@@ -24,11 +24,17 @@ export class DashboardService {
       this.prisma.case.count({ where: { ...tenantWhere, status: { not: CaseStatus.CLOSED } } }),
       this.prisma.intelligenceEntity.count({ where: { ...tenantWhere, type: { in: [IntelligenceEntityType.SOURCE, IntelligenceEntityType.FEED] } } }),
       this.prisma.intelligenceEntity.count({ where: { ...tenantWhere, type: IntelligenceEntityType.CAMPAIGN } }),
-      this.prisma.auditLog.findMany({
-        where: isGlobalView ? {} : { tenantId: currentUser.tenantId! },
-        select: { id: true, action: true, createdAt: true, metadata: true },
-        orderBy: { createdAt: 'desc' }, take: 10,
-      }),
+      currentUser.role === 'USER'
+        ? this.prisma.auditLog.findMany({
+            where: { id: '__none__' },
+            select: { id: true, action: true, createdAt: true, metadata: true },
+          })
+        : this.prisma.auditLog.findMany({
+            where: isGlobalView ? {} : { tenantId: currentUser.tenantId! },
+            select: { id: true, action: true, createdAt: true, metadata: true },
+            orderBy: { createdAt: 'desc' },
+            take: 10,
+          }),
       this.prisma.indicator.count({ where: { ...tenantWhere, createdById: currentUser.sub } }),
       isGlobalView
         ? this.prisma.tenant.findMany({

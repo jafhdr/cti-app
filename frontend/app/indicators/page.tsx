@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Table } from '@/components/ui/table';
 import { useRouter } from 'next/navigation';
 import Sidebar from '../../components/dashboard/Sidebar';
+import type { ModuleAccess } from '../../lib/module-access';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 type Role = 'SUPER_ADMIN' | 'ADMIN' | 'USER';
@@ -17,7 +18,12 @@ type Indicator = {
 };
 type Tenant = { id: string; name: string };
 type IntelligenceEntity = { id: string; name: string; type: string };
-type CurrentUser = { role: Role; name: string; email: string };
+type CurrentUser = {
+  role: Role;
+  name: string;
+  email: string;
+  moduleAccess: ModuleAccess[];
+};
 
 const emptyForm = { value: '', type: 'DOMAIN', severity: 'MEDIUM', status: 'ACTIVE', confidence: '50', tags: '', source: '', description: '', expiresAt: '', tenantId: '', intelligenceEntityId: '' };
 
@@ -60,7 +66,7 @@ export default function IndicatorsPage() {
       try {
         const me = await fetch(`${API}/auth/me`, { credentials: 'include' });
         if (!me.ok) return router.replace('/');
-        const user = await me.json();
+        const user: CurrentUser = await me.json();
         setCurrentUser(user);
         if (user.role === 'SUPER_ADMIN') {
           const tenantRes = await fetch(`${API}/users/tenants`, { credentials: 'include' });
@@ -115,7 +121,7 @@ export default function IndicatorsPage() {
 
   return (
     <div className="app">
-      <Sidebar role={currentUser?.role} onLogout={logout} />
+      <Sidebar role={currentUser?.role} moduleAccess={currentUser?.moduleAccess ?? []} onLogout={logout} />
 
       <section className="main">
         <header className="topbar">

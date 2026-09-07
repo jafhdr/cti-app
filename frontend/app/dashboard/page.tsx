@@ -12,12 +12,21 @@ const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 ───────────────────────────────────────────── */
 type Role = 'SUPER_ADMIN' | 'ADMIN' | 'USER';
 
+type ModuleAccess = {
+  readonly moduleId: string;
+  readonly moduleName: string;
+  readonly moduleSlug: string;
+  readonly assigned: boolean;
+  readonly featureKeys: readonly string[];
+};
+
 type Me = {
   id: string;
   name: string;
   email: string;
   role: Role;
   tenant: { id: string; name: string; slug: string } | null;
+  moduleAccess: ModuleAccess[];
 };
 
 type TenantRow = {
@@ -181,6 +190,15 @@ function GlobalDashboard({ summary }: { summary: Summary }) {
         </div>
       )}
 
+      <div className="section card" style={{ marginTop: 20, marginBottom: 20 }}>
+        <h3 style={{ margin: '0 0 14px' }}>⚡ Quick Actions</h3>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          <Link href="/tenants" className="quick-action is-info">Kelola Tenant</Link>
+          <Link href="/users" className="quick-action is-success">Kelola User</Link>
+          <Link href="/audit-logs" className="quick-action is-warning">Audit Log Global</Link>
+        </div>
+      </div>
+
       <ActivityLog items={summary.recentActivity} />
     </>
   );
@@ -339,7 +357,7 @@ export default function DashboardPage() {
 
   return (
     <div className="app">
-      <Sidebar role={user.role} />
+      <Sidebar role={user.role} moduleAccess={user.moduleAccess} onLogout={logout} />
 
       <section className="main">
         <header className="topbar">

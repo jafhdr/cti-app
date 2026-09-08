@@ -57,12 +57,12 @@ const dashboardItem: NavigationItem = { label: 'Dashboard', href: '/dashboard', 
 const threatIntelligenceItems: readonly NavigationItem[] = [
   { label: 'Overview', href: '/threat-intelligence', icon: Shield },
   { label: 'Indicators', href: '/threat-intelligence/indicators', icon: Radar, aliases: ['/indicators'] },
-  { label: 'Threat Actors', href: '/threat-intelligence/threat-actors', icon: Bot },
+  { label: 'Threat Actors', href: '/intelligence/threat-actors', icon: Bot, aliases: ['/threat-intelligence/threat-actors'] },
   { label: 'Campaigns', href: '/threat-intelligence/campaigns', icon: Network },
   { label: 'Malware & Tools', href: '/threat-intelligence/malware-tools', icon: Bug },
   { label: 'Vulnerabilities', href: '/threat-intelligence/vulnerabilities', icon: ShieldAlert },
   { label: 'Intelligence Reports', href: '/threat-intelligence/reports', icon: FileText },
-  { label: 'Sources', href: '/threat-intelligence/sources', icon: BookOpen },
+  { label: 'Sources', href: '/intelligence/sources', icon: BookOpen, aliases: ['/threat-intelligence/sources'] },
   { label: 'Feeds', href: '/threat-intelligence/feeds', icon: Radio },
   { label: 'Intelligence Hub', href: '/threat-intelligence/hub', icon: GitFork, aliases: ['/intelligence'] },
 ];
@@ -74,7 +74,7 @@ export default function Sidebar({
 }: SidebarProps) {
   const pathname = usePathname();
   const [darkMode, setDarkMode] = useState(false);
-  const activeModuleId = pathname.startsWith('/threat-intelligence') || pathname === '/indicators' || pathname === '/intelligence'
+  const activeModuleId = pathname.startsWith('/threat-intelligence') || pathname === '/indicators' || pathname.startsWith('/intelligence')
     ? 'threat-intelligence'
     : administrationItemsForRole(role).some(item => isItemActive(item, pathname))
       ? 'administration'

@@ -25,7 +25,7 @@ export class IndicatorsService {
       } : {}),
     };
     const [items, total] = await this.prisma.$transaction([
-      this.prisma.indicator.findMany({ where, include: { tenant: { select: { id: true, name: true, slug: true } }, intelligenceEntity: { select: { id: true, name: true, type: true } } }, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit }),
+      this.prisma.indicator.findMany({ where, include: { tenant: { select: { id: true, name: true, slug: true } }, intelligenceEntity: { select: { id: true, name: true, type: true } }, intelligenceSource: { select: { id: true, name: true, provider: true } } }, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit }),
       this.prisma.indicator.count({ where }),
     ]);
     return { items, page, limit, total };
@@ -36,11 +36,12 @@ export class IndicatorsService {
     if (!tenantId) throw new BadRequestException('Tenant wajib dipilih');
     await this.assertTenant(tenantId);
     await this.assertIntelligenceEntity(tenantId, input.intelligenceEntityId);
+    await this.assertIntelligenceSource(tenantId, input.intelligenceSourceId);
     const data = this.validateInput(input);
     try {
       const indicator = await this.prisma.indicator.create({
         data: { ...data, tenantId, createdById: currentUser.sub },
-        include: { tenant: { select: { id: true, name: true, slug: true } }, intelligenceEntity: { select: { id: true, name: true, type: true } } },
+        include: { tenant: { select: { id: true, name: true, slug: true } }, intelligenceEntity: { select: { id: true, name: true, type: true } }, intelligenceSource: { select: { id: true, name: true, provider: true } } },
       });
       await this.audit(currentUser, tenantId, 'INDICATOR_CREATED', { indicatorId: indicator.id, type: indicator.type, value: indicator.value });
       return indicator;
@@ -53,9 +54,10 @@ export class IndicatorsService {
   async update(currentUser: AuthUser, id: string, input: IndicatorInput) {
     const indicator = await this.scopedIndicator(currentUser, id);
     await this.assertIntelligenceEntity(indicator.tenantId, input.intelligenceEntityId);
+    await this.assertIntelligenceSource(indicator.tenantId, input.intelligenceSourceId);
     const data = this.validateInput(input);
     try {
-      const updated = await this.prisma.indicator.update({ where: { id }, data, include: { tenant: { select: { id: true, name: true, slug: true } }, intelligenceEntity: { select: { id: true, name: true, type: true } } } });
+      const updated = await this.prisma.indicator.update({ where: { id }, data, include: { tenant: { select: { id: true, name: true, slug: true } }, intelligenceEntity: { select: { id: true, name: true, type: true } }, intelligenceSource: { select: { id: true, name: true, provider: true } } } });
       await this.audit(currentUser, indicator.tenantId, 'INDICATOR_UPDATED', { indicatorId: id, type: updated.type, value: updated.value });
       return updated;
     } catch (error) {
@@ -86,6 +88,7 @@ export class IndicatorsService {
       description: input.description?.trim() || null,
       expiresAt,
       intelligenceEntityId: input.intelligenceEntityId || null,
+      intelligenceSourceId: input.intelligenceSourceId || null,
     };
   }
 
@@ -103,6 +106,11 @@ export class IndicatorsService {
     if (!entityId) return;
     const entity = await this.prisma.intelligenceEntity.findFirst({ where: { id: entityId, tenantId }, select: { id: true } });
     if (!entity) throw new BadRequestException('Entitas CTI tidak ditemukan pada tenant ini');
+  }
+  private async assertIntelligenceSource(tenantId: string, sourceId?: string | null) {
+    if (!sourceId) return;
+    const source = await this.prisma.intelligenceSource.findFirst({ where: { id: sourceId, tenantId }, select: { id: true } });
+    if (!source) throw new BadRequestException('Intelligence source tidak ditemukan pada tenant ini');
   }
   private tenantId(user: AuthUser) {
     if (!user.tenantId) throw new ForbiddenException('Tenant context wajib tersedia');

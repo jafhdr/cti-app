@@ -40,6 +40,41 @@ enum IndicatorStatus {
   EXPIRED
 }
 
+enum IntelligenceSourceType {
+  OPEN_SOURCE
+  COMMERCIAL
+  GOVERNMENT
+  COMMUNITY
+  INTERNAL
+}
+
+enum IntelligenceSourceReliability {
+  A
+  B
+  C
+  D
+  E
+  F
+}
+
+enum TlpLevel {
+  CLEAR
+  GREEN
+  AMBER
+  AMBER_STRICT
+  RED
+}
+
+enum IntelligenceSourceStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum ThreatActorStatus {
+  ACTIVE
+  INACTIVE
+}
+
 enum IntelligenceEntityType {
   SOURCE
   FEED
@@ -91,6 +126,8 @@ model Tenant {
   users         User[]
   auditLogs     AuditLog[]
   indicators    Indicator[]
+  intelligenceSources IntelligenceSource[]
+  threatActors ThreatActor[]
   intelligenceEntities IntelligenceEntity[]
   intelligenceRelationships IntelligenceRelationship[]
   intelligenceCases Case[]
@@ -268,6 +305,8 @@ model Indicator {
   status      IndicatorStatus  @default(ACTIVE)
   tags        String[]         @default([])
   source      String?
+  intelligenceSourceId String?
+  intelligenceSource IntelligenceSource? @relation(fields: [intelligenceSourceId], references: [id], onDelete: SetNull)
   description String?
   expiresAt   DateTime?
   createdById String?
@@ -280,6 +319,31 @@ model Indicator {
   @@index([tenantId, status, severity])
   @@index([tenantId, createdAt])
   @@index([tenantId, intelligenceEntityId])
+  @@index([tenantId, intelligenceSourceId])
+}
+
+model IntelligenceSource {
+  id          String                        @id @default(cuid())
+  tenantId    String
+  tenant      Tenant                        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  sourceType  IntelligenceSourceType
+  provider    String?
+  url         String?
+  reliability IntelligenceSourceReliability @default(C)
+  confidence  Int                           @default(50)
+  tlp         TlpLevel                      @default(AMBER)
+  status      IntelligenceSourceStatus      @default(ACTIVE)
+  lastSyncAt  DateTime?
+  createdBy   String
+  createdAt   DateTime                      @default(now())
+  updatedAt   DateTime                      @updatedAt
+  indicators  Indicator[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId, sourceType, status, tlp])
+  @@index([tenantId, updatedAt])
 }
 
 model IntelligenceEntity {
@@ -300,9 +364,30 @@ model IntelligenceEntity {
   caseLinks   CaseEntity[]
   alertLinks  AlertEntity[]
   indicators  Indicator[]
+  threatActor ThreatActor?
 
   @@unique([tenantId, type, name])
   @@index([tenantId, type, severity])
+}
+
+model ThreatActor {
+  id            String             @id @default(cuid())
+  tenantId      String
+  tenant        Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  entityId      String             @unique
+  entity        IntelligenceEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  aliases       String[]           @default([])
+  motivation    String?
+  targetSectors String[]           @default([])
+  country       String?
+  region        String?
+  status        ThreatActorStatus  @default(ACTIVE)
+  createdBy     String
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  @@unique([tenantId, entityId])
+  @@index([tenantId, status, updatedAt])
 }
 
 model IntelligenceRelationship {

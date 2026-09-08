@@ -1,0 +1,6 @@
+export const sourceTypes = ['OPEN_SOURCE', 'COMMERCIAL', 'GOVERNMENT', 'COMMUNITY', 'INTERNAL'] as const;
+export const reliabilityLevels = ['A', 'B', 'C', 'D', 'E', 'F'] as const;
+export const tlpLevels = ['CLEAR', 'GREEN', 'AMBER', 'AMBER_STRICT', 'RED'] as const;
+export type IntelligenceSource = { readonly id: string; readonly name: string; readonly description: string | null; readonly sourceType: typeof sourceTypes[number]; readonly provider: string | null; readonly url: string | null; readonly reliability: typeof reliabilityLevels[number]; readonly confidence: number; readonly tlp: typeof tlpLevels[number]; readonly status: 'ACTIVE' | 'INACTIVE'; readonly lastSyncAt: string | null; readonly createdAt: string; readonly updatedAt: string };
+export type SourceFormValue = { readonly name: string; readonly description: string; readonly sourceType: string; readonly provider: string; readonly url: string; readonly reliability: string; readonly confidence: string; readonly tlp: string; readonly status: string; readonly lastSyncAt: string };
+export const emptySourceForm: SourceFormValue = { name: '', description: '', sourceType: 'OPEN_SOURCE', provider: '', url: '', reliability: 'C', confidence: '50', tlp: 'AMBER', status: 'ACTIVE', lastSyncAt: '' };

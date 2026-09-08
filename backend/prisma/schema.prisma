@@ -48,6 +48,7 @@ enum IntelligenceEntityType {
   MALWARE
   TOOL
   VULNERABILITY
+  REPORT
 }
 
 enum CaseStatus {

@@ -1,0 +1,1 @@
+ALTER TYPE "IntelligenceEntityType" ADD VALUE IF NOT EXISTS 'REPORT';

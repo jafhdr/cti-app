@@ -638,6 +638,39 @@ body { background: var(--color-background); color: var(--color-foreground); }
 html.dark { color-scheme: dark; }
 html.dark body, html.dark .app, html.dark .module-app { background: #0b1220; color: #e5edf8; }
 html.dark .topbar, html.dark .card, html.dark .module-card, html.dark .module-tenant, html.dark .module-create, html.dark .auth-card { background: #111827; border-color: #26344b; color: #e5edf8; }
+
+.sidebar-nested-item { padding-left: 12px; }
+.sidebar-parent-label { margin: 10px 0 4px; color: var(--soc-muted); font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.sidebar-nested-item .sidebar-link { font-size: 12px; }
+.sidebar-module { display: grid; gap: 3px; }
+.sidebar-module-toggle { display: flex; width: 100%; min-height: 34px; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 9px; border: 1px solid transparent; border-radius: 4px; background: transparent; color: var(--soc-muted); cursor: pointer; font: 700 10px/1.2 "SFMono-Regular", Consolas, monospace; letter-spacing: .06em; text-align: left; text-transform: uppercase; }
+.sidebar-module-toggle:hover, .sidebar-module-toggle:focus-visible, .sidebar-module.active > .sidebar-module-toggle { background: var(--soc-surface); color: var(--soc-ink); }
+.sidebar-module-toggle:focus-visible { outline: 2px solid var(--soc-blue); outline-offset: 2px; }
+.sidebar-submenu { display: grid; gap: 3px; padding-left: 12px; }
+.sidebar-submenu .sidebar-link { font-size: 12px; }
+.sidebar-empty-submenu { padding: 7px 9px; color: var(--soc-muted); font: 500 10px/1.2 "SFMono-Regular", Consolas, monospace; }
+.ti-section-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+.ti-section-tabs a { color: var(--soc-body); text-decoration: none; border: 1px solid var(--soc-border); border-radius: 4px; padding: 6px 10px; font-size: 12px; }
+.ti-section-tabs a:hover, .ti-section-tabs a:focus-visible { color: var(--soc-blue); border-color: currentColor; }
+.ti-entity-list { display: grid; gap: 12px; }
+.ti-entity-card { padding: 16px; }
+.ti-entity-card header { display: flex; justify-content: space-between; gap: 12px; }
+.ti-entity-meta { display: flex; flex-wrap: wrap; gap: 12px; color: var(--soc-body); font-size: 12px; margin-top: 8px; }
+@media (max-width: 900px) {
+  .app, .main, .sidebar { min-width: 0; overflow-x: hidden; }
+  .sidebar-navigation { width: 100%; min-width: 0; flex-flow: row nowrap !important; align-items: flex-start; overflow-x: auto; }
+  .sidebar-group { display: contents !important; }
+  .sidebar-nested-item { flex: 0 0 auto; padding-left: 0; }
+  .sidebar-parent-label { display: none; }
+  .sidebar-navigation > .sidebar-link, .sidebar-module { flex: 0 0 auto; }
+  .sidebar-module { min-width: 176px; }
+  .sidebar-submenu { display: flex; padding: 3px 0 0; }
+  .sidebar-empty-submenu { white-space: nowrap; }
+}
+@media (max-width: 600px) {
+  .topbar > span { display: flex; width: 100%; max-width: none; align-items: center; gap: 4px; overflow: visible; }
+  .topbar > span select { flex: 1; min-width: 0; }
+}
 html.dark .content h1, html.dark .content h2, html.dark .module-heading h1, html.dark .module-card h2 { color: #f8fafc; }
 html.dark .muted, html.dark .tenant, html.dark .content p, html.dark .module-heading p, html.dark .module-card p, html.dark .cti-activity p { color: #94a3b8; }
 html.dark input, html.dark select, html.dark textarea, html.dark .ioc-form input, html.dark .ioc-form select, html.dark .ioc-form textarea, html.dark .ioc-filters input, html.dark .ioc-filters select, html.dark .module-create input, html.dark .module-create select, html.dark .module-tenant select { background: #0f172a; border-color: #334155; color: #e5edf8; }

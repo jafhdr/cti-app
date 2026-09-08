@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Table } from '@/components/ui/table';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import Sidebar from '../../components/dashboard/Sidebar';
 import type { ModuleAccess } from '../../lib/module-access';
 
@@ -125,11 +126,12 @@ export default function IndicatorsPage() {
 
       <section className="main">
         <header className="topbar">
-          <div style={{ fontWeight: 600 }}>🔍 Indicators / IOC</div>
+          <div style={{ fontWeight: 600 }}>Threat Intelligence / Indicators</div>
           <span style={{ fontSize: 13, color: '#687386' }}>{currentUser?.email} · <strong>{currentUser?.role}</strong></span>
         </header>
 
         <main className="content">
+          <nav className="ti-section-tabs" aria-label="Threat Intelligence"><Link href="/threat-intelligence">Overview</Link><Link href="/threat-intelligence/indicators">Indicators</Link><Link href="/threat-intelligence/hub">Intelligence Hub</Link></nav>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
             <div>
               <h1 style={{ margin: '0 0 6px' }}>Indicators / IOC</h1>

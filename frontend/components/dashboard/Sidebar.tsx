@@ -4,8 +4,17 @@ import {
   Activity,
   Building2,
   ClipboardList,
+  ChevronDown,
+  ChevronRight,
   CreditCard,
   GitFork,
+  BookOpen,
+  Bot,
+  Bug,
+  FileText,
+  Network,
+  Radio,
+  Shield,
   KeyRound,
   LayoutDashboard,
   LogOut,
@@ -27,6 +36,13 @@ type NavigationItem = {
   readonly label: string;
   readonly href: string;
   readonly icon: LucideIcon;
+  readonly aliases?: readonly string[];
+};
+
+type NavigationModule = {
+  readonly id: string;
+  readonly label: string;
+  readonly items: readonly NavigationItem[];
 };
 
 type SidebarProps = {
@@ -36,15 +52,20 @@ type SidebarProps = {
 };
 
 // Items yang selalu tampil untuk semua role
-const coreItems: readonly NavigationItem[] = [
-  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { label: 'Indicators', href: '/indicators', icon: Radar },
-];
+const dashboardItem: NavigationItem = { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard };
 
-// Mapping modul ke halaman yang tersedia (tambah baris baru saat halaman dibuat)
-const modulePageMap: Record<string, { href: string; icon: LucideIcon }> = {
-  'threat-intelligence': { href: '/intelligence', icon: GitFork },
-};
+const threatIntelligenceItems: readonly NavigationItem[] = [
+  { label: 'Overview', href: '/threat-intelligence', icon: Shield },
+  { label: 'Indicators', href: '/threat-intelligence/indicators', icon: Radar, aliases: ['/indicators'] },
+  { label: 'Threat Actors', href: '/threat-intelligence/threat-actors', icon: Bot },
+  { label: 'Campaigns', href: '/threat-intelligence/campaigns', icon: Network },
+  { label: 'Malware & Tools', href: '/threat-intelligence/malware-tools', icon: Bug },
+  { label: 'Vulnerabilities', href: '/threat-intelligence/vulnerabilities', icon: ShieldAlert },
+  { label: 'Intelligence Reports', href: '/threat-intelligence/reports', icon: FileText },
+  { label: 'Sources', href: '/threat-intelligence/sources', icon: BookOpen },
+  { label: 'Feeds', href: '/threat-intelligence/feeds', icon: Radio },
+  { label: 'Intelligence Hub', href: '/threat-intelligence/hub', icon: GitFork, aliases: ['/intelligence'] },
+];
 
 export default function Sidebar({
   role,
@@ -53,6 +74,12 @@ export default function Sidebar({
 }: SidebarProps) {
   const pathname = usePathname();
   const [darkMode, setDarkMode] = useState(false);
+  const activeModuleId = pathname.startsWith('/threat-intelligence') || pathname === '/indicators' || pathname === '/intelligence'
+    ? 'threat-intelligence'
+    : administrationItemsForRole(role).some(item => isItemActive(item, pathname))
+      ? 'administration'
+      : null;
+  const [expandedModules, setExpandedModules] = useState<Readonly<Record<string, boolean>>>(() => activeModuleId ? { [activeModuleId]: true } : {});
 
   useEffect(() => {
     const savedTheme = window.localStorage.getItem('cti-theme');
@@ -64,6 +91,11 @@ export default function Sidebar({
     setDarkMode(shouldUseDarkMode);
   }, []);
 
+  useEffect(() => {
+    if (!activeModuleId) return;
+    setExpandedModules(current => current[activeModuleId] ? current : { ...current, [activeModuleId]: true });
+  }, [activeModuleId]);
+
   function toggleTheme() {
     const nextDarkMode = !darkMode;
     document.documentElement.classList.toggle('dark', nextDarkMode);
@@ -71,50 +103,19 @@ export default function Sidebar({
     setDarkMode(nextDarkMode);
   }
 
-  // Buat daftar item intelligence section
-  const intelligenceItems: readonly NavigationItem[] = (() => {
-    // Untuk SUPER_ADMIN dan ADMIN: tampilkan semua item original
-    if (role !== 'USER') {
-      return [
-        ...coreItems,
-        { label: 'Intelligence Hub', href: '/intelligence', icon: GitFork },
-      ];
-    }
+  const canAccessThreatIntelligence = role === 'SUPER_ADMIN' || role === 'ADMIN' || moduleAccess.some(module => module.assigned && module.moduleSlug === 'threat-intelligence');
+  const catalogModules: readonly NavigationModule[] = moduleAccess
+    .filter(module => module.moduleSlug !== 'threat-intelligence' && (role === 'SUPER_ADMIN' || module.assigned))
+    .map(module => ({ id: module.moduleSlug, label: module.moduleName, items: [] }));
+  const modules: readonly NavigationModule[] = [
+    ...catalogModules,
+    ...(canAccessThreatIntelligence ? [{ id: 'threat-intelligence', label: 'Threat Intelligence', items: threatIntelligenceItems }] : []),
+    ...(administrationItemsForRole(role).length > 0 ? [{ id: 'administration', label: 'Administration', items: administrationItemsForRole(role) }] : []),
+  ].sort((left, right) => moduleOrder(left.id) - moduleOrder(right.id));
 
-    // Untuk USER: tampilkan core items + modul yang diizinkan
-    const items: NavigationItem[] = [...coreItems];
-
-    // Tambah modul lain dari moduleAccess yang punya halaman
-    for (const mod of moduleAccess) {
-      if (!mod.assigned) continue;
-      const page = modulePageMap[mod.moduleSlug];
-      if (page) {
-        items.push({ label: mod.moduleName, href: page.href, icon: page.icon });
-      }
-    }
-
-    return items;
-  })();
-
-  const administrationItems: readonly NavigationItem[] =
-    role === 'SUPER_ADMIN'
-      ? [
-          { label: 'Tenant Management', href: '/tenants', icon: Building2 },
-          { label: 'User Management', href: '/users', icon: Users },
-          { label: 'Akses Modul', href: '/module-access', icon: KeyRound },
-          { label: 'Module Management', href: '/modules', icon: ShieldAlert },
-          { label: 'Subscription', href: '/subscription', icon: CreditCard },
-          { label: 'Audit Log', href: '/audit-logs', icon: ClipboardList },
-        ]
-      : role === 'ADMIN'
-        ? [
-            { label: 'User Management', href: '/users', icon: Users },
-            { label: 'Akses Modul', href: '/module-access', icon: KeyRound },
-            { label: 'Module Management', href: '/modules', icon: ShieldAlert },
-            { label: 'Subscription', href: '/subscription', icon: CreditCard },
-            { label: 'Audit Log', href: '/audit-logs', icon: ClipboardList },
-          ]
-        : [];
+  function toggleModule(id: string): void {
+    setExpandedModules(current => ({ ...current, [id]: !current[id] }));
+  }
 
   return (
     <aside className="sidebar">
@@ -128,29 +129,8 @@ export default function Sidebar({
       </Link>
 
       <nav className="sidebar-navigation" aria-label="Navigasi utama">
-        <div className="sidebar-group">
-          <p className="sidebar-group-label">Intelligence</p>
-          {intelligenceItems.map((item) => (
-            <NavigationLink
-              item={item}
-              key={item.href}
-              pathname={pathname}
-            />
-          ))}
-        </div>
-
-        {administrationItems.length > 0 && (
-          <div className="sidebar-group">
-            <p className="sidebar-group-label">Administration</p>
-            {administrationItems.map((item) => (
-              <NavigationLink
-                item={item}
-                key={item.href}
-                pathname={pathname}
-              />
-            ))}
-          </div>
-        )}
+        <NavigationLink item={dashboardItem} pathname={pathname} />
+        {modules.map(module => <ModuleSection expanded={expandedModules[module.id] ?? false} key={module.id} module={module} pathname={pathname} onToggle={toggleModule} />)}
       </nav>
 
       <div className="sidebar-footer">
@@ -179,6 +159,11 @@ export default function Sidebar({
   );
 }
 
+function ModuleSection({ expanded, module, pathname, onToggle }: { readonly expanded: boolean; readonly module: NavigationModule; readonly pathname: string; readonly onToggle: (id: string) => void }) {
+  const submenuId = `sidebar-module-${module.id}`;
+  return <section className={`sidebar-module${module.items.some(item => isItemActive(item, pathname)) ? ' active' : ''}`}><button type="button" className="sidebar-module-toggle" aria-controls={submenuId} aria-expanded={expanded} onClick={() => onToggle(module.id)}><span>{module.label}</span>{expanded ? <ChevronDown size={15} aria-hidden="true" /> : <ChevronRight size={15} aria-hidden="true" />}</button>{expanded && <div className="sidebar-submenu" id={submenuId}>{module.items.length > 0 ? module.items.map(item => <NavigationLink item={item} key={item.href} pathname={pathname} />) : <span className="sidebar-empty-submenu">Belum ada halaman</span>}</div>}</section>;
+}
+
 function NavigationLink({
   item,
   pathname,
@@ -187,7 +172,7 @@ function NavigationLink({
   readonly pathname: string;
 }) {
   const Icon = item.icon;
-  const isActive = pathname === item.href;
+  const isActive = isItemActive(item, pathname);
   return (
     <Link
       href={item.href}
@@ -198,4 +183,17 @@ function NavigationLink({
       <span>{item.label}</span>
     </Link>
   );
+}
+
+function isItemActive(item: NavigationItem, pathname: string): boolean { return pathname === item.href || (item.aliases?.includes(pathname) ?? false); }
+
+function administrationItemsForRole(role?: Role): readonly NavigationItem[] {
+  if (role === 'SUPER_ADMIN') return [{ label: 'Tenant Management', href: '/tenants', icon: Building2 }, { label: 'User Management', href: '/users', icon: Users }, { label: 'Akses Modul', href: '/module-access', icon: KeyRound }, { label: 'Module Management', href: '/modules', icon: ShieldAlert }, { label: 'Subscription', href: '/subscription', icon: CreditCard }, { label: 'Audit Log', href: '/audit-logs', icon: ClipboardList }];
+  if (role === 'ADMIN') return [{ label: 'User Management', href: '/users', icon: Users }, { label: 'Akses Modul', href: '/module-access', icon: KeyRound }, { label: 'Module Management', href: '/modules', icon: ShieldAlert }, { label: 'Subscription', href: '/subscription', icon: CreditCard }, { label: 'Audit Log', href: '/audit-logs', icon: ClipboardList }];
+  return [];
+}
+
+function moduleOrder(id: string): number {
+  const order: Readonly<Record<string, number>> = { 'case-management': 10, 'threat-intelligence': 20, 'appsec-posture': 30, administration: 100 };
+  return order[id] ?? 50;
 }

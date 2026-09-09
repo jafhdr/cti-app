@@ -3,7 +3,7 @@ import { IntelligenceData } from '../../../components/intelligence/IntelligenceD
 import { ThreatIntelligenceShell } from '../../../components/intelligence/ThreatIntelligenceShell';
 import { intelligenceSections } from '../../../lib/threat-intelligence';
 
-export function generateStaticParams() { return intelligenceSections.filter(section => !['campaigns', 'malware-tools'].includes(section.slug)).map(section => ({ section: section.slug })); }
+export function generateStaticParams() { return intelligenceSections.filter(section => !['campaigns', 'malware-tools', 'vulnerabilities'].includes(section.slug)).map(section => ({ section: section.slug })); }
 
 export default async function IntelligenceSectionPage({ params }: { readonly params: Promise<{ readonly section: string }> }) {
   const { section: slug } = await params;

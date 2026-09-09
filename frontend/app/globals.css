@@ -271,6 +271,27 @@ body {
 .ioc-filters input { min-width: 220px; flex: 1; }
 @media (max-width: 700px) { .ioc-form { grid-template-columns: 1fr; } }
 
+.source-detail-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin:0 0 16px; padding:16px; border-bottom:1px solid var(--soc-border); }
+.source-detail-grid > div { display:grid; gap:4px; min-width:0; }
+.source-detail-grid dt { color:var(--soc-muted); font:600 10px/1.2 "SFMono-Regular",Consolas,monospace; letter-spacing:.04em; text-transform:uppercase; }
+.source-detail-grid dd { margin:0; color:var(--soc-ink); overflow-wrap:anywhere; }
+.source-detail-wide { grid-column:1/-1; }
+.source-related { display:grid; gap:8px; margin:0 16px; padding:14px 0; border-bottom:1px solid var(--soc-border-muted); }
+.source-related h3,.source-related p { margin:0; }
+.source-related h3 { font-size:13px; }
+.source-related-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 10px; border:1px solid var(--soc-border-muted); border-radius:4px; background:var(--soc-nav); }
+@media (max-width:700px) {
+  .source-detail-grid { grid-template-columns:1fr; padding:12px; }
+  .source-detail-wide { grid-column:auto; }
+  .source-related { margin-inline:12px; }
+  .cti-table-wrap[aria-label="Vulnerability table"] td:nth-child(1)::before { content:"CVE ID"; }
+  .cti-table-wrap[aria-label="Vulnerability table"] td:nth-child(2)::before { content:"Name"; }
+  .cti-table-wrap[aria-label="Vulnerability table"] td:nth-child(3)::before { content:"Severity"; }
+  .cti-table-wrap[aria-label="Vulnerability table"] td:nth-child(4)::before { content:"CVSS"; }
+  .cti-table-wrap[aria-label="Vulnerability table"] td:nth-child(5)::before { content:"Relations"; }
+  .cti-table-wrap[aria-label="Vulnerability table"] td:nth-child(6)::before { content:"Actions"; }
+}
+
 /* =========================
    Responsive
    ========================= */
@@ -652,6 +673,7 @@ html.dark .topbar, html.dark .card, html.dark .module-card, html.dark .module-te
 .ti-section-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
 .ti-section-tabs a { color: var(--soc-body); text-decoration: none; border: 1px solid var(--soc-border); border-radius: 4px; padding: 6px 10px; font-size: 12px; }
 .ti-section-tabs a:hover, .ti-section-tabs a:focus-visible { color: var(--soc-blue); border-color: currentColor; }
+.ti-section-tabs a[aria-current="page"] { color: var(--soc-blue); border-color: currentColor; background: var(--soc-blue-tint); }
 .ti-entity-list { display: grid; gap: 12px; }
 .ti-entity-card { padding: 16px; }
 .ti-entity-card header { display: flex; justify-content: space-between; gap: 12px; }

@@ -130,31 +130,35 @@ enum SubscriptionStatus {
 }
 
 model Tenant {
-  id                        String                     @id @default(cuid())
-  name                      String
-  slug                      String                     @unique
-  isActive                  Boolean                    @default(true)
-  deactivatedAt             DateTime?
-  createdAt                 DateTime                   @default(now())
-  users                     User[]
-  auditLogs                 AuditLog[]
-  indicators                Indicator[]
-  intelligenceSources       IntelligenceSource[]
-  threatActors              ThreatActor[]
-  campaigns                 Campaign[]
-  campaignIndicators        CampaignIndicator[]
-  mitreTechniques           MitreTechnique[]
-  campaignMitreTechniques   CampaignMitreTechnique[]
-  malwareTools              MalwareTool[]
-  threatActorMalwareTools   ThreatActorMalwareTool[]
-  campaignMalwareTools      CampaignMalwareTool[]
-  intelligenceEntities      IntelligenceEntity[]
-  intelligenceRelationships IntelligenceRelationship[]
-  intelligenceCases         Case[]
-  alerts                    Alert[]
-  moduleSettings            TenantModule[]
-  subscription              TenantSubscription?
-  userModuleAccess          UserModuleAccess[]
+  id                         String                     @id @default(cuid())
+  name                       String
+  slug                       String                     @unique
+  isActive                   Boolean                    @default(true)
+  deactivatedAt              DateTime?
+  createdAt                  DateTime                   @default(now())
+  users                      User[]
+  auditLogs                  AuditLog[]
+  indicators                 Indicator[]
+  intelligenceSources        IntelligenceSource[]
+  threatActors               ThreatActor[]
+  campaigns                  Campaign[]
+  campaignIndicators         CampaignIndicator[]
+  mitreTechniques            MitreTechnique[]
+  campaignMitreTechniques    CampaignMitreTechnique[]
+  malwareTools               MalwareTool[]
+  threatActorMalwareTools    ThreatActorMalwareTool[]
+  campaignMalwareTools       CampaignMalwareTool[]
+  vulnerabilities            Vulnerability[]
+  threatActorVulnerabilities ThreatActorVulnerability[]
+  campaignVulnerabilities    CampaignVulnerability[]
+  malwareToolVulnerabilities MalwareToolVulnerability[]
+  intelligenceEntities       IntelligenceEntity[]
+  intelligenceRelationships  IntelligenceRelationship[]
+  intelligenceCases          Case[]
+  alerts                     Alert[]
+  moduleSettings             TenantModule[]
+  subscription               TenantSubscription?
+  userModuleAccess           UserModuleAccess[]
 }
 
 model AppModule {
@@ -392,22 +396,23 @@ model IntelligenceEntity {
 }
 
 model ThreatActor {
-  id            String                   @id @default(cuid())
-  tenantId      String
-  tenant        Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  entityId      String                   @unique
-  entity        IntelligenceEntity       @relation(fields: [entityId], references: [id], onDelete: Cascade)
-  aliases       String[]                 @default([])
-  motivation    String?
-  targetSectors String[]                 @default([])
-  country       String?
-  region        String?
-  status        ThreatActorStatus        @default(ACTIVE)
-  createdBy     String
-  createdAt     DateTime                 @default(now())
-  updatedAt     DateTime                 @updatedAt
-  campaigns     Campaign[]
-  malwareTools  ThreatActorMalwareTool[]
+  id              String                     @id @default(cuid())
+  tenantId        String
+  tenant          Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  entityId        String                     @unique
+  entity          IntelligenceEntity         @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  aliases         String[]                   @default([])
+  motivation      String?
+  targetSectors   String[]                   @default([])
+  country         String?
+  region          String?
+  status          ThreatActorStatus          @default(ACTIVE)
+  createdBy       String
+  createdAt       DateTime                   @default(now())
+  updatedAt       DateTime                   @updatedAt
+  campaigns       Campaign[]
+  malwareTools    ThreatActorMalwareTool[]
+  vulnerabilities ThreatActorVulnerability[]
 
   @@unique([tenantId, entityId])
   @@unique([id, tenantId])
@@ -433,6 +438,7 @@ model Campaign {
   indicators      CampaignIndicator[]
   mitreTechniques CampaignMitreTechnique[]
   malwareTools    CampaignMalwareTool[]
+  vulnerabilities CampaignVulnerability[]
   createdBy       String
   createdAt       DateTime                 @default(now())
   updatedAt       DateTime                 @updatedAt
@@ -444,22 +450,83 @@ model Campaign {
 }
 
 model MalwareTool {
-  id           String                   @id @default(cuid())
-  tenantId     String
-  tenant       Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  name         String
-  type         MalwareToolType
-  description  String?
-  externalId   String?
-  url          String?
-  threatActors ThreatActorMalwareTool[]
-  campaigns    CampaignMalwareTool[]
-  createdAt    DateTime                 @default(now())
-  updatedAt    DateTime                 @updatedAt
+  id              String                     @id @default(cuid())
+  tenantId        String
+  tenant          Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name            String
+  type            MalwareToolType
+  description     String?
+  externalId      String?
+  url             String?
+  threatActors    ThreatActorMalwareTool[]
+  campaigns       CampaignMalwareTool[]
+  vulnerabilities MalwareToolVulnerability[]
+  createdAt       DateTime                   @default(now())
+  updatedAt       DateTime                   @updatedAt
 
   @@unique([tenantId, name])
   @@unique([id, tenantId])
   @@index([tenantId, type, updatedAt])
+}
+
+model Vulnerability {
+  id           String                     @id @default(cuid())
+  tenantId     String
+  tenant       Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  cveId        String
+  name         String
+  description  String?
+  severity     IndicatorSeverity          @default(MEDIUM)
+  cvssScore    Float?
+  url          String?
+  threatActors ThreatActorVulnerability[]
+  campaigns    CampaignVulnerability[]
+  malwareTools MalwareToolVulnerability[]
+  createdAt    DateTime                   @default(now())
+  updatedAt    DateTime                   @updatedAt
+
+  @@unique([tenantId, cveId])
+  @@unique([id, tenantId])
+  @@index([tenantId, severity, updatedAt])
+}
+
+model ThreatActorVulnerability {
+  threatActorId   String
+  vulnerabilityId String
+  tenantId        String
+  threatActor     ThreatActor   @relation(fields: [threatActorId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  vulnerability   Vulnerability @relation(fields: [vulnerabilityId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt       DateTime      @default(now())
+
+  @@id([threatActorId, vulnerabilityId])
+  @@index([tenantId, vulnerabilityId])
+}
+
+model CampaignVulnerability {
+  campaignId      String
+  vulnerabilityId String
+  tenantId        String
+  campaign        Campaign      @relation(fields: [campaignId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  vulnerability   Vulnerability @relation(fields: [vulnerabilityId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt       DateTime      @default(now())
+
+  @@id([campaignId, vulnerabilityId])
+  @@index([tenantId, vulnerabilityId])
+}
+
+model MalwareToolVulnerability {
+  malwareToolId   String
+  vulnerabilityId String
+  tenantId        String
+  malwareTool     MalwareTool   @relation(fields: [malwareToolId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  vulnerability   Vulnerability @relation(fields: [vulnerabilityId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt       DateTime      @default(now())
+
+  @@id([malwareToolId, vulnerabilityId])
+  @@index([tenantId, vulnerabilityId])
 }
 
 model ThreatActorMalwareTool {

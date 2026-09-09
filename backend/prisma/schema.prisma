@@ -83,6 +83,11 @@ enum CampaignStatus {
   CANCELLED
 }
 
+enum MalwareToolType {
+  MALWARE
+  TOOL
+}
+
 enum IntelligenceEntityType {
   SOURCE
   FEED
@@ -140,6 +145,9 @@ model Tenant {
   campaignIndicators        CampaignIndicator[]
   mitreTechniques           MitreTechnique[]
   campaignMitreTechniques   CampaignMitreTechnique[]
+  malwareTools              MalwareTool[]
+  threatActorMalwareTools   ThreatActorMalwareTool[]
+  campaignMalwareTools      CampaignMalwareTool[]
   intelligenceEntities      IntelligenceEntity[]
   intelligenceRelationships IntelligenceRelationship[]
   intelligenceCases         Case[]
@@ -384,52 +392,100 @@ model IntelligenceEntity {
 }
 
 model ThreatActor {
-  id            String             @id @default(cuid())
+  id            String                   @id @default(cuid())
   tenantId      String
-  tenant        Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  entityId      String             @unique
-  entity        IntelligenceEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
-  aliases       String[]           @default([])
+  tenant        Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  entityId      String                   @unique
+  entity        IntelligenceEntity       @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  aliases       String[]                 @default([])
   motivation    String?
-  targetSectors String[]           @default([])
+  targetSectors String[]                 @default([])
   country       String?
   region        String?
-  status        ThreatActorStatus  @default(ACTIVE)
+  status        ThreatActorStatus        @default(ACTIVE)
   createdBy     String
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
   campaigns     Campaign[]
+  malwareTools  ThreatActorMalwareTool[]
 
   @@unique([tenantId, entityId])
+  @@unique([id, tenantId])
   @@index([tenantId, status, updatedAt])
 }
 
 model Campaign {
-  id            String              @id @default(cuid())
-  tenantId      String
-  tenant        Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  name          String
-  description   String?
-  objective     String?
-  status        CampaignStatus      @default(PLANNED)
-  severity      IndicatorSeverity   @default(MEDIUM)
-  confidence    Int                 @default(50)
-  startDate     DateTime?
-  endDate       DateTime?
-  externalId    String?
-  referenceUrl  String?
-  threatActorId String
-  threatActor   ThreatActor         @relation(fields: [threatActorId], references: [id], onDelete: Restrict)
-  indicators    CampaignIndicator[]
+  id              String                   @id @default(cuid())
+  tenantId        String
+  tenant          Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name            String
+  description     String?
+  objective       String?
+  status          CampaignStatus           @default(PLANNED)
+  severity        IndicatorSeverity        @default(MEDIUM)
+  confidence      Int                      @default(50)
+  startDate       DateTime?
+  endDate         DateTime?
+  externalId      String?
+  referenceUrl    String?
+  threatActorId   String
+  threatActor     ThreatActor              @relation(fields: [threatActorId], references: [id], onDelete: Restrict)
+  indicators      CampaignIndicator[]
   mitreTechniques CampaignMitreTechnique[]
-  createdBy     String
-  createdAt     DateTime            @default(now())
-  updatedAt     DateTime            @updatedAt
+  malwareTools    CampaignMalwareTool[]
+  createdBy       String
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
 
   @@unique([tenantId, name])
   @@unique([id, tenantId])
   @@index([tenantId, status, severity, updatedAt])
   @@index([tenantId, threatActorId])
+}
+
+model MalwareTool {
+  id           String                   @id @default(cuid())
+  tenantId     String
+  tenant       Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name         String
+  type         MalwareToolType
+  description  String?
+  externalId   String?
+  url          String?
+  threatActors ThreatActorMalwareTool[]
+  campaigns    CampaignMalwareTool[]
+  createdAt    DateTime                 @default(now())
+  updatedAt    DateTime                 @updatedAt
+
+  @@unique([tenantId, name])
+  @@unique([id, tenantId])
+  @@index([tenantId, type, updatedAt])
+}
+
+model ThreatActorMalwareTool {
+  threatActorId String
+  malwareToolId String
+  tenantId      String
+  threatActor   ThreatActor @relation(fields: [threatActorId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  malwareTool   MalwareTool @relation(fields: [malwareToolId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  tenant        Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt     DateTime    @default(now())
+
+  @@id([threatActorId, malwareToolId])
+  @@index([tenantId, malwareToolId])
+}
+
+model CampaignMalwareTool {
+  campaignId    String
+  malwareToolId String
+  tenantId      String
+  campaign      Campaign    @relation(fields: [campaignId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  malwareTool   MalwareTool @relation(fields: [malwareToolId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  tenant        Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt     DateTime    @default(now())
+
+  @@id([campaignId, malwareToolId])
+  @@index([tenantId, malwareToolId])
 }
 
 model MitreTechnique {
@@ -453,7 +509,7 @@ model MitreTechnique {
 }
 
 model CampaignMitreTechnique {
-  campaignId      String
+  campaignId       String
   mitreTechniqueId String
   tenantId         String
   campaign         Campaign       @relation(fields: [campaignId, tenantId], references: [id, tenantId], onDelete: Cascade)

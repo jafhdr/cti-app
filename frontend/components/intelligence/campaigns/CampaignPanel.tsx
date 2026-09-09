@@ -104,6 +104,10 @@ export function CampaignPanel({
             <h3>MITRE ATT&amp;CK techniques</h3>
             {campaign.mitreTechniques.length === 0 ? <p>No linked MITRE techniques.</p> : <ul>{campaign.mitreTechniques.map(({ mitreTechnique }) => <li key={mitreTechnique.id}><span>{mitreTechnique.externalId}</span><strong>{mitreTechnique.name}</strong><small>{mitreTechnique.tactic} · {mitreTechnique.platform}</small></li>)}</ul>}
           </section>
+          <section className="actor-related">
+            <h3>Malware &amp; Tools</h3>
+            {(campaign.malwareTools?.length ?? 0) === 0 ? <p>No linked malware or tools.</p> : <ul>{campaign.malwareTools?.map(({ malwareTool }) => <li key={malwareTool.id}><span>{malwareTool.type}</span><strong>{malwareTool.name}</strong><small>{malwareTool.externalId || 'No external ID'}</small></li>)}</ul>}
+          </section>
         </>
       ) : (
         <form className="ioc-form" onSubmit={onSubmit}>

@@ -11,10 +11,12 @@ import { CampaignsController } from './campaigns.controller';
 import { CampaignsService } from './campaigns.service';
 import { MitreTechniquesController } from './mitre-techniques.controller';
 import { MitreTechniquesService } from './mitre-techniques.service';
+import { MalwareToolsController } from './malware-tools.controller';
+import { MalwareToolsService } from './malware-tools.service';
 
 @Module({
   imports: [AuthModule],
-  controllers: [IntelligenceController, SourcesController, ThreatActorsController, CampaignsController, MitreTechniquesController],
-  providers: [IntelligenceService, SourcesService, ThreatActorsService, CampaignsService, MitreTechniquesService, PrismaService],
+  controllers: [IntelligenceController, SourcesController, ThreatActorsController, CampaignsController, MitreTechniquesController, MalwareToolsController],
+  providers: [IntelligenceService, SourcesService, ThreatActorsService, CampaignsService, MitreTechniquesService, MalwareToolsService, PrismaService],
 })
 export class IntelligenceModule {}

@@ -5,6 +5,7 @@ import type { AuthUser } from '../users/users.types';
 import type { CreateThreatActorDto, ListThreatActorsQueryDto, UpdateThreatActorDto } from './threat-actors.dto';
 
 const detailInclude = {
+  malwareTools: { include: { malwareTool: true }, orderBy: { createdAt: 'asc' as const } },
   entity: { include: {
     indicators: { select: { id: true, value: true, type: true, severity: true, status: true }, orderBy: { createdAt: 'desc' as const }, take: 25 },
     outgoingRelationships: { include: { target: { select: { id: true, name: true, type: true, severity: true } } }, orderBy: { createdAt: 'desc' as const } },

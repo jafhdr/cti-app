@@ -680,7 +680,7 @@ html.dark input, html.dark select, html.dark textarea, html.dark .ioc-form input
 .source-heading p { margin: 0; color: var(--soc-muted); font-size: 13px; }
 .source-eyebrow { color: var(--soc-blue); font: 600 10px/1.2 "SFMono-Regular", Consolas, monospace; letter-spacing: .1em; }
 .source-table-card, .source-panel { padding: 20px; }
-.source-panel { margin-bottom: 20px; box-shadow: 0 16px 36px rgba(0,0,0,.22); }
+.source-panel { margin-bottom: 20px; }
 .source-panel-heading, .source-pagination { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .source-panel-heading h2 { margin: 4px 0 18px; font-size: 18px; }
 .source-detail { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; margin: 0; }
@@ -704,6 +704,7 @@ main:has(.campaign-filters) .source-panel { box-shadow: none; }
 .actor-related { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--soc-border); }
 .actor-related h3 { margin: 0 0 12px; font-size: 13px; }.actor-related p { color: var(--soc-muted); font-size: 12px; }
 .actor-related ul { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }.actor-related li { display: grid; grid-template-columns: 140px 1fr auto; align-items: center; gap: 12px; border: 1px solid var(--soc-border); border-radius: 6px; padding: 10px 12px; }.actor-related li span,.actor-related li small { color: var(--soc-muted); font: 600 10px/1.3 "SFMono-Regular",Consolas,monospace; }
+.malware-relation-list li { grid-template-columns: minmax(0, 1fr) auto; }.malware-relation-list li button { justify-self: end; }
 @media(max-width:1100px){.actor-filters,.campaign-filters{grid-template-columns:repeat(2,minmax(0,1fr))}.actor-filters input:first-child,.campaign-filters input:first-child{grid-column:1/-1}.actor-related li{grid-template-columns:1fr}.actor-related li small{justify-self:start}}
 @media(max-width:700px){.actor-filters,.campaign-filters{grid-template-columns:1fr}.actor-filters input,.actor-filters input:first-child,.campaign-filters input,.campaign-filters input:first-child{grid-column:auto;min-width:0;width:100%}}
 .error button { margin-left: 8px; border: 0; background: transparent; color: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }

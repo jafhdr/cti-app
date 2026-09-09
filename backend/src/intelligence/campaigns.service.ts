@@ -8,7 +8,8 @@ const detailInclude = {
   threatActor: { select: { id: true, entity: { select: { id: true, name: true, externalId: true } } } },
   indicators: { include: { indicator: { select: { id: true, value: true, type: true, severity: true, status: true } } }, orderBy: { createdAt: 'asc' as const } },
   mitreTechniques: { include: { mitreTechnique: true }, orderBy: { createdAt: 'asc' as const } },
-  _count: { select: { indicators: true, mitreTechniques: true } },
+  malwareTools: { include: { malwareTool: true }, orderBy: { createdAt: 'asc' as const } },
+  _count: { select: { indicators: true, mitreTechniques: true, malwareTools: true } },
 } satisfies Prisma.CampaignInclude;
 
 @Injectable()

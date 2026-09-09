@@ -27,6 +27,7 @@ export class CreateCampaignDto {
   @IsOptional() @IsUrl({ require_protocol: true }) @MaxLength(2048) referenceUrl?: string;
   @IsString() threatActorId!: string;
   @IsOptional() @IsArray() @IsString({ each: true }) indicatorIds?: string[];
+  @IsOptional() @IsArray() @IsString({ each: true }) mitreTechniqueIds?: string[];
 }
 
 export class UpdateCampaignDto {
@@ -42,4 +43,5 @@ export class UpdateCampaignDto {
   @IsOptional() @IsUrl({ require_protocol: true }) @MaxLength(2048) referenceUrl?: string;
   @IsOptional() @IsString() threatActorId?: string;
   @IsOptional() @IsArray() @IsString({ each: true }) indicatorIds?: string[];
+  @IsOptional() @IsArray() @IsString({ each: true }) mitreTechniqueIds?: string[];
 }

@@ -7,7 +7,8 @@ import type { CreateCampaignDto, ListCampaignsQueryDto, UpdateCampaignDto } from
 const detailInclude = {
   threatActor: { select: { id: true, entity: { select: { id: true, name: true, externalId: true } } } },
   indicators: { include: { indicator: { select: { id: true, value: true, type: true, severity: true, status: true } } }, orderBy: { createdAt: 'asc' as const } },
-  _count: { select: { indicators: true } },
+  mitreTechniques: { include: { mitreTechnique: true }, orderBy: { createdAt: 'asc' as const } },
+  _count: { select: { indicators: true, mitreTechniques: true } },
 } satisfies Prisma.CampaignInclude;
 
 @Injectable()
@@ -38,11 +39,12 @@ export class CampaignsService {
 
   async relations(user: AuthUser, requestedTenantId?: string) {
     const tenantId = this.resolveTenant(user, requestedTenantId);
-    const [threatActors, indicators] = await this.prisma.$transaction([
+    const [threatActors, indicators, mitreTechniques] = await this.prisma.$transaction([
       this.prisma.threatActor.findMany({ where: { tenantId }, select: { id: true, entity: { select: { name: true } } }, orderBy: { entity: { name: 'asc' } } }),
       this.prisma.indicator.findMany({ where: { tenantId }, select: { id: true, value: true, type: true, severity: true, status: true }, orderBy: { value: 'asc' } }),
+      this.prisma.mitreTechnique.findMany({ where: { tenantId }, orderBy: { externalId: 'asc' } }),
     ]);
-    return { threatActors, indicators };
+    return { threatActors, indicators, mitreTechniques };
   }
 
   async get(user: AuthUser, id: string, requestedTenantId?: string) { return this.scopedCampaign(user, id, requestedTenantId); }
@@ -52,7 +54,8 @@ export class CampaignsService {
     const name = input.name.trim();
     if (!name) throw new BadRequestException('Nama campaign wajib diisi');
     const indicatorIds = this.ids(input.indicatorIds);
-    await this.assertRelations(tenantId, input.threatActorId, indicatorIds);
+    const mitreTechniqueIds = this.ids(input.mitreTechniqueIds);
+    await this.assertRelations(tenantId, input.threatActorId, indicatorIds, mitreTechniqueIds);
     const dates = this.dates(input.startDate, input.endDate);
     try {
       const campaign = await this.prisma.campaign.create({
@@ -62,6 +65,7 @@ export class CampaignsService {
           confidence: input.confidence ?? 50, ...dates, externalId: input.externalId?.trim() || null,
           referenceUrl: input.referenceUrl?.trim() || null, threatActorId: input.threatActorId, createdBy: user.sub,
           indicators: { create: indicatorIds.map(indicatorId => ({ tenantId, indicatorId })) },
+          mitreTechniques: { create: mitreTechniqueIds.map(mitreTechniqueId => ({ tenantId, mitreTechniqueId })) },
         },
         include: detailInclude,
       });
@@ -76,7 +80,8 @@ export class CampaignsService {
     if (input.name !== undefined && !name) throw new BadRequestException('Nama campaign wajib diisi');
     const threatActorId = input.threatActorId ?? existing.threatActorId;
     const indicatorIds = input.indicatorIds === undefined ? undefined : this.ids(input.indicatorIds);
-    await this.assertRelations(existing.tenantId, threatActorId, indicatorIds ?? existing.indicators.map(link => link.indicatorId));
+    const mitreTechniqueIds = input.mitreTechniqueIds === undefined ? undefined : this.ids(input.mitreTechniqueIds);
+    await this.assertRelations(existing.tenantId, threatActorId, indicatorIds ?? existing.indicators.map(link => link.indicatorId), mitreTechniqueIds ?? existing.mitreTechniques.map(link => link.mitreTechniqueId));
     const dates = this.dates(input.startDate, input.endDate, existing.startDate, existing.endDate);
     try {
       const campaign = await this.prisma.$transaction(async transaction => {
@@ -94,6 +99,10 @@ export class CampaignsService {
         if (indicatorIds !== undefined) {
           await transaction.campaignIndicator.deleteMany({ where: { campaignId: id } });
           if (indicatorIds.length > 0) await transaction.campaignIndicator.createMany({ data: indicatorIds.map(indicatorId => ({ campaignId: id, indicatorId, tenantId: existing.tenantId })) });
+        }
+        if (mitreTechniqueIds !== undefined) {
+          await transaction.campaignMitreTechnique.deleteMany({ where: { campaignId: id } });
+          if (mitreTechniqueIds.length > 0) await transaction.campaignMitreTechnique.createMany({ data: mitreTechniqueIds.map(mitreTechniqueId => ({ campaignId: id, mitreTechniqueId, tenantId: existing.tenantId })) });
         }
         return transaction.campaign.findUniqueOrThrow({ where: { id }, include: detailInclude });
       });
@@ -126,13 +135,15 @@ export class CampaignsService {
     if (startDate && endDate && endDate < startDate) throw new BadRequestException('Tanggal selesai tidak boleh sebelum tanggal mulai');
     return { startDate, endDate };
   }
-  private async assertRelations(tenantId: string, threatActorId: string, indicatorIds: readonly string[]) {
-    const [actor, indicatorCount] = await this.prisma.$transaction([
+  private async assertRelations(tenantId: string, threatActorId: string, indicatorIds: readonly string[], mitreTechniqueIds: readonly string[]) {
+    const [actor, indicatorCount, mitreTechniqueCount] = await this.prisma.$transaction([
       this.prisma.threatActor.findFirst({ where: { id: threatActorId, tenantId }, select: { id: true } }),
       this.prisma.indicator.count({ where: { id: { in: [...indicatorIds] }, tenantId } }),
+      this.prisma.mitreTechnique.count({ where: { id: { in: [...mitreTechniqueIds] }, tenantId } }),
     ]);
     if (!actor) throw new BadRequestException('Threat actor tidak ditemukan pada tenant ini');
     if (indicatorCount !== indicatorIds.length) throw new BadRequestException('Satu atau lebih indicator tidak ditemukan pada tenant ini');
+    if (mitreTechniqueCount !== mitreTechniqueIds.length) throw new BadRequestException('Satu atau lebih MITRE technique tidak ditemukan pada tenant ini');
   }
   private orderBy(field?: string, direction?: string): Prisma.CampaignOrderByWithRelationInput {
     const order: Prisma.SortOrder = direction === 'asc' ? 'asc' : 'desc';

@@ -9,10 +9,12 @@ import { ThreatActorsController } from './threat-actors.controller';
 import { ThreatActorsService } from './threat-actors.service';
 import { CampaignsController } from './campaigns.controller';
 import { CampaignsService } from './campaigns.service';
+import { MitreTechniquesController } from './mitre-techniques.controller';
+import { MitreTechniquesService } from './mitre-techniques.service';
 
 @Module({
   imports: [AuthModule],
-  controllers: [IntelligenceController, SourcesController, ThreatActorsController, CampaignsController],
-  providers: [IntelligenceService, SourcesService, ThreatActorsService, CampaignsService, PrismaService],
+  controllers: [IntelligenceController, SourcesController, ThreatActorsController, CampaignsController, MitreTechniquesController],
+  providers: [IntelligenceService, SourcesService, ThreatActorsService, CampaignsService, MitreTechniquesService, PrismaService],
 })
 export class IntelligenceModule {}

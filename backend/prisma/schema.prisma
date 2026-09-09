@@ -138,6 +138,8 @@ model Tenant {
   threatActors              ThreatActor[]
   campaigns                 Campaign[]
   campaignIndicators        CampaignIndicator[]
+  mitreTechniques           MitreTechnique[]
+  campaignMitreTechniques   CampaignMitreTechnique[]
   intelligenceEntities      IntelligenceEntity[]
   intelligenceRelationships IntelligenceRelationship[]
   intelligenceCases         Case[]
@@ -419,13 +421,48 @@ model Campaign {
   threatActorId String
   threatActor   ThreatActor         @relation(fields: [threatActorId], references: [id], onDelete: Restrict)
   indicators    CampaignIndicator[]
+  mitreTechniques CampaignMitreTechnique[]
   createdBy     String
   createdAt     DateTime            @default(now())
   updatedAt     DateTime            @updatedAt
 
   @@unique([tenantId, name])
+  @@unique([id, tenantId])
   @@index([tenantId, status, severity, updatedAt])
   @@index([tenantId, threatActorId])
+}
+
+model MitreTechnique {
+  id          String                   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  externalId  String
+  name        String
+  description String?
+  tactic      String
+  platform    String
+  url         String?
+  campaigns   CampaignMitreTechnique[]
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
+
+  @@unique([tenantId, externalId])
+  @@unique([id, tenantId])
+  @@index([tenantId, tactic, platform])
+  @@index([tenantId, updatedAt])
+}
+
+model CampaignMitreTechnique {
+  campaignId      String
+  mitreTechniqueId String
+  tenantId         String
+  campaign         Campaign       @relation(fields: [campaignId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  mitreTechnique   MitreTechnique @relation(fields: [mitreTechniqueId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  tenant           Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt        DateTime       @default(now())
+
+  @@id([campaignId, mitreTechniqueId])
+  @@index([tenantId, mitreTechniqueId])
 }
 
 model CampaignIndicator {

@@ -1,0 +1,3 @@
+export type MitreTechnique = { readonly id: string; readonly externalId: string; readonly name: string; readonly description: string | null; readonly tactic: string; readonly platform: string; readonly url: string | null; readonly createdAt: string; readonly updatedAt: string; readonly campaigns?: readonly { readonly campaign: { readonly id: string; readonly name: string; readonly status: string } }[]; readonly _count: { readonly campaigns: number } };
+export type MitreForm = { readonly externalId: string; readonly name: string; readonly description: string; readonly tactic: string; readonly platform: string; readonly url: string };
+export const emptyMitreForm: MitreForm = { externalId: '', name: '', description: '', tactic: '', platform: '', url: '' };

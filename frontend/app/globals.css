@@ -694,11 +694,18 @@ html.dark input, html.dark select, html.dark textarea, html.dark .ioc-form input
 .tlp-clear { color: var(--soc-body); }.tlp-green { color: var(--soc-green); }.tlp-amber,.tlp-amber-strict { color: var(--soc-yellow); }.tlp-red { color: var(--soc-red); }
 .source-pagination { margin-top: 16px; color: var(--soc-muted); font-size: 12px; }.source-pagination>div { display: flex; gap: 8px; }
 .actor-filters { display: grid; grid-template-columns: minmax(220px,2fr) repeat(5,minmax(120px,1fr)); }
+.campaign-filters { display: grid; grid-template-columns: minmax(240px,2fr) repeat(4,minmax(130px,1fr)); }
+.ioc-form select[multiple] { min-height: 112px; }
+.campaign-helper { display: block; margin-top: 6px; color: var(--soc-muted); font-size: 11px; }
+main:has(.campaign-filters) .source-panel { box-shadow: none; }
+.ioc-severity { display: inline-flex; align-items: center; gap: 5px; border: 1px solid currentColor; border-radius: 4px; padding: 2px 6px; font: 700 10px/1.2 "SFMono-Regular",Consolas,monospace; }
+.ioc-severity::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.severity-low { color: var(--soc-green); }.severity-medium { color: var(--soc-yellow); }.severity-high { color: var(--soc-red); }.severity-critical { color: var(--soc-violet); }
 .actor-related { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--soc-border); }
 .actor-related h3 { margin: 0 0 12px; font-size: 13px; }.actor-related p { color: var(--soc-muted); font-size: 12px; }
 .actor-related ul { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }.actor-related li { display: grid; grid-template-columns: 140px 1fr auto; align-items: center; gap: 12px; border: 1px solid var(--soc-border); border-radius: 6px; padding: 10px 12px; }.actor-related li span,.actor-related li small { color: var(--soc-muted); font: 600 10px/1.3 "SFMono-Regular",Consolas,monospace; }
-@media(max-width:1100px){.actor-filters{grid-template-columns:repeat(2,minmax(0,1fr))}.actor-filters input:first-child{grid-column:1/-1}.actor-related li{grid-template-columns:1fr}.actor-related li small{justify-self:start}}
-@media(max-width:700px){.actor-filters{grid-template-columns:1fr}.actor-filters input,.actor-filters input:first-child{grid-column:auto;min-width:0;width:100%}}
+@media(max-width:1100px){.actor-filters,.campaign-filters{grid-template-columns:repeat(2,minmax(0,1fr))}.actor-filters input:first-child,.campaign-filters input:first-child{grid-column:1/-1}.actor-related li{grid-template-columns:1fr}.actor-related li small{justify-self:start}}
+@media(max-width:700px){.actor-filters,.campaign-filters{grid-template-columns:1fr}.actor-filters input,.actor-filters input:first-child,.campaign-filters input,.campaign-filters input:first-child{grid-column:auto;min-width:0;width:100%}}
 .error button { margin-left: 8px; border: 0; background: transparent; color: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
 @media(max-width:700px){.source-heading{align-items:stretch;flex-direction:column}.source-detail{grid-template-columns:1fr}.source-detail-wide{grid-column:auto}.source-pagination{align-items:flex-start;flex-direction:column}}
 html.dark .cti-table-wrap, html.dark .cti-table th, html.dark .cti-table th, html.dark .cti-table td { border-color: #26344b; }

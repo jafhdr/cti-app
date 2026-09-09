@@ -7,10 +7,12 @@ import { SourcesController } from './sources.controller';
 import { SourcesService } from './sources.service';
 import { ThreatActorsController } from './threat-actors.controller';
 import { ThreatActorsService } from './threat-actors.service';
+import { CampaignsController } from './campaigns.controller';
+import { CampaignsService } from './campaigns.service';
 
 @Module({
   imports: [AuthModule],
-  controllers: [IntelligenceController, SourcesController, ThreatActorsController],
-  providers: [IntelligenceService, SourcesService, ThreatActorsService, PrismaService],
+  controllers: [IntelligenceController, SourcesController, ThreatActorsController, CampaignsController],
+  providers: [IntelligenceService, SourcesService, ThreatActorsService, CampaignsService, PrismaService],
 })
 export class IntelligenceModule {}

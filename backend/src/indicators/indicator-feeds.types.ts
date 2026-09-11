@@ -27,3 +27,7 @@ export type FeedSyncResult = {
   readonly received: number;
   readonly message?: string;
 };
+
+export type FeedRuntimeResult = FeedSyncResult & {
+  readonly completedAt: Date;
+};

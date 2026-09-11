@@ -1,0 +1,22 @@
+'use client';
+
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { FeedsWorkspace } from '@/components/intelligence/feeds/FeedsWorkspace';
+import { ThreatIntelligenceShell } from '@/components/intelligence/ThreatIntelligenceShell';
+
+const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+type Role = 'SUPER_ADMIN' | 'ADMIN' | 'USER';
+
+export default function ThreatFeedsPage() {
+  const router = useRouter();
+  const [role, setRole] = useState<Role | null>(null);
+  useEffect(() => {
+    fetch(`${API}/auth/me`, { credentials: 'include', cache: 'no-store' }).then(async response => {
+      if (!response.ok) { router.replace('/'); return; }
+      const user: { readonly role: Role } = await response.json();
+      setRole(user.role);
+    }).catch(() => router.replace('/'));
+  }, [router]);
+  return <ThreatIntelligenceShell title="Threat Feeds">{role ? <FeedsWorkspace role={role} /> : <div className="source-state">Loading threat feeds...</div>}</ThreatIntelligenceShell>;
+}

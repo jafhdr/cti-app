@@ -31,6 +31,10 @@ export class IndicatorsController {
   @Roles('SUPER_ADMIN', 'ADMIN')
   syncFeeds(@Req() req: { user: AuthUser }, @Body() body: SyncIndicatorFeedsDto) { return this.feeds.sync(req.user, body.tenantId); }
 
+  @Get('feed-status')
+  @Roles('SUPER_ADMIN', 'ADMIN', 'USER')
+  feedStatus(@Req() req: { user: AuthUser }, @Query('tenantId') tenantId?: string) { return this.feeds.status(req.user, tenantId); }
+
   @Patch(':id')
   @Roles('SUPER_ADMIN', 'ADMIN')
   update(@Req() req: { user: AuthUser }, @Param('id') id: string, @Body() body: IndicatorInput) { return this.indicators.update(req.user, id, body); }

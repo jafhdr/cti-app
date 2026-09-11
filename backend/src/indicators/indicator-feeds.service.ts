@@ -1,10 +1,11 @@
 import { BadRequestException, ForbiddenException, Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { IndicatorStatus, IntelligenceSourceStatus, IntelligenceSourceType, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
 import type { AuthUser } from '../users/users.types';
 import { IndicatorFeedClients } from './indicator-feed.clients';
 import { feedProviders } from './indicator-feeds.types';
-import type { FeedProvider, FeedSyncResult, NormalizedIndicator } from './indicator-feeds.types';
+import type { FeedProvider, FeedRuntimeResult, FeedSyncResult, NormalizedIndicator } from './indicator-feeds.types';
 
 const providerDetails = {
   URLHAUS: { name: 'URLhaus Feed', provider: 'URLhaus', url: 'https://urlhaus.abuse.ch/', cooldownMs: 5 * 60_000 },
@@ -15,10 +16,12 @@ const providerDetails = {
 @Injectable()
 export class IndicatorFeedsService {
   private readonly logger = new Logger(IndicatorFeedsService.name);
+  private readonly latestResults = new Map<string, FeedRuntimeResult>();
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly clients: IndicatorFeedClients,
+    private readonly config: ConfigService,
   ) {}
 
   async sync(user: AuthUser, requestedTenantId?: string) {
@@ -27,7 +30,9 @@ export class IndicatorFeedsService {
     if (!tenant) throw new BadRequestException('Tenant tidak ditemukan');
 
     this.logger.log('indicator.feed.sync.started', { tenantId });
-    const results = await Promise.all(feedProviders.map(provider => this.syncProvider(user, tenantId, provider)));
+    const results = await Promise.all(feedProviders.map(provider => this.syncProviderSafely(user, tenantId, provider)));
+    const completedAt = new Date();
+    for (const result of results) this.latestResults.set(this.resultKey(tenantId, result.provider), { ...result, completedAt });
     const totals = results.reduce((summary, result) => ({
       created: summary.created + result.created,
       updated: summary.updated + result.updated,
@@ -36,6 +41,47 @@ export class IndicatorFeedsService {
     }), { created: 0, updated: 0, skipped: 0, received: 0 });
     this.logger.log('indicator.feed.sync.finished', { tenantId, ...totals });
     return { tenantId, results, totals };
+  }
+
+  private async syncProviderSafely(user: AuthUser, tenantId: string, provider: FeedProvider): Promise<FeedSyncResult> {
+    try {
+      return await this.syncProvider(user, tenantId, provider);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown feed error';
+      this.logger.error('indicator.feed.sync.failed', { provider, tenantId, error: message });
+      return { provider, status: 'FAILED', created: 0, updated: 0, skipped: 0, received: 0, message };
+    }
+  }
+
+  async status(user: AuthUser, requestedTenantId?: string) {
+    const tenantId = this.resolveTenant(user, requestedTenantId);
+    const sources = await this.prisma.intelligenceSource.findMany({
+      where: { tenantId, provider: { in: Object.values(providerDetails).map(details => details.provider) } },
+      select: { provider: true, status: true, lastSyncAt: true, _count: { select: { indicators: true } } },
+    });
+    const sourceByProvider = new Map(sources.map(source => [source.provider, source]));
+    const providers = feedProviders.map(provider => {
+      const details = providerDetails[provider];
+      const source = sourceByProvider.get(details.provider);
+      const latest = this.latestResults.get(this.resultKey(tenantId, provider));
+      const configured = this.clients.isConfigured(provider);
+      const failed = latest?.status === 'FAILED' || source?.status === IntelligenceSourceStatus.INACTIVE;
+      return {
+        provider,
+        name: details.provider,
+        status: configured ? (failed ? 'FAILED' : 'ACTIVE') : 'NOT_CONFIGURED',
+        lastSyncAt: latest?.completedAt ?? source?.lastSyncAt ?? null,
+        received: latest?.received ?? source?._count.indicators ?? 0,
+        created: latest?.created ?? null,
+        updated: latest?.updated ?? null,
+        error: latest?.status === 'FAILED' ? latest.message ?? 'Feed sync gagal' : source?.status === IntelligenceSourceStatus.INACTIVE ? 'Intelligence source tidak aktif' : null,
+      } as const;
+    });
+    return {
+      tenantId,
+      scheduler: { enabled: true, intervalMinutes: this.intervalMinutes(), nextSyncAt: null },
+      providers,
+    };
   }
 
   private async syncProvider(user: AuthUser, tenantId: string, provider: FeedProvider): Promise<FeedSyncResult> {
@@ -149,4 +195,11 @@ export class IndicatorFeedsService {
     if (!user.tenantId) throw new ForbiddenException('Tenant context wajib tersedia');
     return user.tenantId;
   }
+
+  private intervalMinutes(): number {
+    const configured = Number(this.config.get<string>('THREAT_FEED_SYNC_INTERVAL_MINUTES'));
+    return Number.isInteger(configured) && configured > 0 ? configured : 60;
+  }
+
+  private resultKey(tenantId: string, provider: FeedProvider): string { return `${tenantId}:${provider}`; }
 }

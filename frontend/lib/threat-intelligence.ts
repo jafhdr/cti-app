@@ -5,7 +5,6 @@ export const intelligenceSections = [
   { slug: 'vulnerabilities', label: 'Vulnerabilities', types: ['VULNERABILITY'] },
   { slug: 'reports', label: 'Intelligence Reports', types: ['REPORT'] },
   { slug: 'sources', label: 'Sources', types: ['SOURCE'] },
-  { slug: 'feeds', label: 'Feeds', types: ['FEED'] },
 ] as const;
 
 export type IntelligenceEntity = {

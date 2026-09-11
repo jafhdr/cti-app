@@ -88,6 +88,20 @@ enum MalwareToolType {
   TOOL
 }
 
+enum IntelligenceReportType {
+  STRATEGIC
+  TACTICAL
+  OPERATIONAL
+  TECHNICAL
+}
+
+enum IntelligenceReportStatus {
+  DRAFT
+  REVIEW
+  PUBLISHED
+  ARCHIVED
+}
+
 enum IntelligenceEntityType {
   SOURCE
   FEED
@@ -149,6 +163,13 @@ model Tenant {
   threatActorMalwareTools    ThreatActorMalwareTool[]
   campaignMalwareTools       CampaignMalwareTool[]
   vulnerabilities            Vulnerability[]
+  intelligenceReports        IntelligenceReport[]
+  reportThreatActors         IntelligenceReportThreatActor[]
+  reportCampaigns            IntelligenceReportCampaign[]
+  reportIndicators           IntelligenceReportIndicator[]
+  reportMalwareTools         IntelligenceReportMalwareTool[]
+  reportVulnerabilities      IntelligenceReportVulnerability[]
+  reportSources              IntelligenceReportSource[]
   threatActorVulnerabilities ThreatActorVulnerability[]
   campaignVulnerabilities    CampaignVulnerability[]
   malwareToolVulnerabilities MalwareToolVulnerability[]
@@ -337,10 +358,12 @@ model Indicator {
   intelligenceEntityId String?
   intelligenceEntity   IntelligenceEntity? @relation(fields: [intelligenceEntityId], references: [id], onDelete: SetNull)
   campaigns            CampaignIndicator[]
+  intelligenceReports  IntelligenceReportIndicator[]
   createdAt            DateTime            @default(now())
   updatedAt            DateTime            @updatedAt
 
   @@unique([tenantId, type, value])
+  @@unique([id, tenantId])
   @@index([tenantId, status, severity])
   @@index([tenantId, createdAt])
   @@index([tenantId, intelligenceEntityId])
@@ -365,8 +388,10 @@ model IntelligenceSource {
   createdAt   DateTime                      @default(now())
   updatedAt   DateTime                      @updatedAt
   indicators  Indicator[]
+  intelligenceReports IntelligenceReportSource[]
 
   @@unique([tenantId, name])
+  @@unique([id, tenantId])
   @@index([tenantId, sourceType, status, tlp])
   @@index([tenantId, updatedAt])
 }
@@ -413,6 +438,7 @@ model ThreatActor {
   campaigns       Campaign[]
   malwareTools    ThreatActorMalwareTool[]
   vulnerabilities ThreatActorVulnerability[]
+  intelligenceReports IntelligenceReportThreatActor[]
 
   @@unique([tenantId, entityId])
   @@unique([id, tenantId])
@@ -439,6 +465,7 @@ model Campaign {
   mitreTechniques CampaignMitreTechnique[]
   malwareTools    CampaignMalwareTool[]
   vulnerabilities CampaignVulnerability[]
+  intelligenceReports IntelligenceReportCampaign[]
   createdBy       String
   createdAt       DateTime                 @default(now())
   updatedAt       DateTime                 @updatedAt
@@ -461,6 +488,7 @@ model MalwareTool {
   threatActors    ThreatActorMalwareTool[]
   campaigns       CampaignMalwareTool[]
   vulnerabilities MalwareToolVulnerability[]
+  intelligenceReports IntelligenceReportMalwareTool[]
   createdAt       DateTime                   @default(now())
   updatedAt       DateTime                   @updatedAt
 
@@ -482,12 +510,111 @@ model Vulnerability {
   threatActors ThreatActorVulnerability[]
   campaigns    CampaignVulnerability[]
   malwareTools MalwareToolVulnerability[]
+  intelligenceReports IntelligenceReportVulnerability[]
   createdAt    DateTime                   @default(now())
   updatedAt    DateTime                   @updatedAt
 
   @@unique([tenantId, cveId])
   @@unique([id, tenantId])
   @@index([tenantId, severity, updatedAt])
+}
+
+model IntelligenceReport {
+  id              String                            @id @default(cuid())
+  tenantId        String
+  tenant          Tenant                            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  title           String
+  summary         String
+  content         String
+  reportType      IntelligenceReportType
+  tlp             TlpLevel                          @default(AMBER)
+  status          IntelligenceReportStatus          @default(DRAFT)
+  publishedAt     DateTime?
+  threatActors    IntelligenceReportThreatActor[]
+  campaigns       IntelligenceReportCampaign[]
+  indicators      IntelligenceReportIndicator[]
+  malwareTools    IntelligenceReportMalwareTool[]
+  vulnerabilities IntelligenceReportVulnerability[]
+  sources         IntelligenceReportSource[]
+  createdAt       DateTime                          @default(now())
+  updatedAt       DateTime                          @updatedAt
+
+  @@unique([tenantId, title])
+  @@unique([id, tenantId])
+  @@index([tenantId, status, reportType, updatedAt])
+  @@index([tenantId, publishedAt])
+}
+
+model IntelligenceReportThreatActor {
+  reportId      String
+  threatActorId String
+  tenantId      String
+  report        IntelligenceReport @relation(fields: [reportId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  threatActor   ThreatActor        @relation(fields: [threatActorId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  tenant        Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt     DateTime           @default(now())
+  @@id([reportId, threatActorId])
+  @@index([tenantId, threatActorId])
+}
+
+model IntelligenceReportCampaign {
+  reportId  String
+  campaignId String
+  tenantId  String
+  report    IntelligenceReport @relation(fields: [reportId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  campaign  Campaign           @relation(fields: [campaignId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  tenant    Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt DateTime           @default(now())
+  @@id([reportId, campaignId])
+  @@index([tenantId, campaignId])
+}
+
+model IntelligenceReportIndicator {
+  reportId   String
+  indicatorId String
+  tenantId   String
+  report     IntelligenceReport @relation(fields: [reportId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  indicator  Indicator          @relation(fields: [indicatorId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  tenant     Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt  DateTime           @default(now())
+  @@id([reportId, indicatorId])
+  @@index([tenantId, indicatorId])
+}
+
+model IntelligenceReportMalwareTool {
+  reportId     String
+  malwareToolId String
+  tenantId     String
+  report       IntelligenceReport @relation(fields: [reportId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  malwareTool  MalwareTool        @relation(fields: [malwareToolId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  tenant       Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt    DateTime           @default(now())
+  @@id([reportId, malwareToolId])
+  @@index([tenantId, malwareToolId])
+}
+
+model IntelligenceReportVulnerability {
+  reportId        String
+  vulnerabilityId String
+  tenantId        String
+  report          IntelligenceReport @relation(fields: [reportId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  vulnerability   Vulnerability      @relation(fields: [vulnerabilityId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  tenant          Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt       DateTime           @default(now())
+  @@id([reportId, vulnerabilityId])
+  @@index([tenantId, vulnerabilityId])
+}
+
+model IntelligenceReportSource {
+  reportId  String
+  sourceId  String
+  tenantId  String
+  report    IntelligenceReport @relation(fields: [reportId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  source    IntelligenceSource @relation(fields: [sourceId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  tenant    Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt DateTime           @default(now())
+  @@id([reportId, sourceId])
+  @@index([tenantId, sourceId])
 }
 
 model ThreatActorVulnerability {

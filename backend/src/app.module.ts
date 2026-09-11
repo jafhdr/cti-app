@@ -10,10 +10,12 @@ import { TenantsModule } from './tenants/tenants.module';
 import { ModulesModule } from './modules/modules.module';
 import { IntelligenceModule } from './intelligence/intelligence.module';
 import { SubscriptionModule } from './subscription/subscription.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(),
     AuthModule,
     DashboardModule,
     AuditModule,

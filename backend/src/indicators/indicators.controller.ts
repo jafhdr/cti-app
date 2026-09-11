@@ -7,12 +7,17 @@ import { RequiresModule } from '../auth/module-access.decorator';
 import { AuthUser } from '../users/users.types';
 import { IndicatorInput } from './indicators.types';
 import { IndicatorsService } from './indicators.service';
+import { IndicatorFeedsService } from './indicator-feeds.service';
+import { SyncIndicatorFeedsDto } from './indicator-feeds.types';
 
 @Controller('indicators')
 @UseGuards(AuthGuard, RolesGuard, ModuleAccessGuard)
 @RequiresModule('threat-intelligence')
 export class IndicatorsController {
-  constructor(private readonly indicators: IndicatorsService) {}
+  constructor(
+    private readonly indicators: IndicatorsService,
+    private readonly feeds: IndicatorFeedsService,
+  ) {}
 
   @Get()
   @Roles('SUPER_ADMIN', 'ADMIN', 'USER')
@@ -21,6 +26,10 @@ export class IndicatorsController {
   @Post()
   @Roles('SUPER_ADMIN', 'ADMIN')
   create(@Req() req: { user: AuthUser }, @Body() body: IndicatorInput) { return this.indicators.create(req.user, body); }
+
+  @Post('feed-sync')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  syncFeeds(@Req() req: { user: AuthUser }, @Body() body: SyncIndicatorFeedsDto) { return this.feeds.sync(req.user, body.tenantId); }
 
   @Patch(':id')
   @Roles('SUPER_ADMIN', 'ADMIN')

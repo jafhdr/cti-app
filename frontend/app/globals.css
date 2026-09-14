@@ -710,6 +710,16 @@ html.dark input, html.dark select, html.dark textarea, html.dark .ioc-form input
 .source-detail dd { margin: 5px 0 0; color: var(--soc-ink); overflow-wrap: anywhere; }
 .source-detail-wide { grid-column: 1/-1; }
 .source-state { display: grid; place-items: center; gap: 6px; min-height: 220px; color: var(--soc-muted); text-align: center; }
+.indicator-enrichment-panel .source-panel-heading { align-items: flex-start; }
+.indicator-enrichment-panel button:focus-visible { outline: 2px solid var(--soc-blue) !important; outline-offset: 2px; box-shadow: 0 0 0 3px var(--soc-focus); }
+.indicator-enrichment-type { color: var(--soc-muted); font: 600 11px/1.2 "SFMono-Regular",Consolas,monospace; }
+.indicator-enrichment-history { display: grid; gap: 12px; margin-top: 16px; }
+.indicator-enrichment-entry { border: 1px solid var(--soc-border); border-left: 3px solid var(--soc-green); border-radius: 6px; background: var(--soc-canvas); overflow: hidden; }
+.indicator-enrichment-entry.is-failed { border-left-color: var(--soc-red); }
+.indicator-enrichment-entry header { display: flex; align-items: center; gap: 12px; padding: 12px; border-bottom: 1px solid var(--soc-border-muted); }
+.indicator-enrichment-entry time { margin-left: auto; color: var(--soc-muted); font-size: 11px; }
+.indicator-enrichment-entry pre { margin: 0; padding: 12px; color: var(--soc-body); font: 500 12px/1.5 "SFMono-Regular",Consolas,monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+.indicator-enrichment-error { margin: 0; padding: 12px; color: var(--soc-red); }
 .source-name { border: 0; padding: 0; background: transparent; color: var(--soc-blue); cursor: pointer; font: inherit; font-weight: 700; }
 .source-name:hover { text-decoration: underline; }
 .source-tlp { display: inline-flex; border: 1px solid currentColor; border-radius: 4px; padding: 2px 6px; font: 700 10px/1.2 "SFMono-Regular",Consolas,monospace; }

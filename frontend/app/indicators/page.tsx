@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Sidebar from '../../components/dashboard/Sidebar';
 import type { ModuleAccess } from '../../lib/module-access';
+import { IndicatorEnrichmentPanel } from '../../components/indicators/IndicatorEnrichmentPanel';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 type Role = 'SUPER_ADMIN' | 'ADMIN' | 'USER';
@@ -37,6 +38,7 @@ export default function IndicatorsPage() {
   const [form, setForm] = useState(emptyForm);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Indicator | null>(null);
+  const [selected, setSelected] = useState<Indicator | null>(null);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState({ type: '', severity: '', status: 'ACTIVE' });
   const [error, setError] = useState('');
@@ -143,6 +145,8 @@ export default function IndicatorsPage() {
           {error && <div className="error" style={{ marginBottom: 16 }}>{error}</div>}
           {success && <div className="success" style={{ marginBottom: 16 }}>{success}</div>}
 
+          {selected && <IndicatorEnrichmentPanel indicator={selected} canManage={canManage} onClose={() => setSelected(null)} />}
+
           {showForm && (
             <Card view="outlined" style={{ padding: 28, marginBottom: 24 }}>
               <h2 style={{ margin: '0 0 20px' }}>{editing ? 'Edit Indicator' : 'Add Indicator'}</h2>
@@ -182,7 +186,7 @@ export default function IndicatorsPage() {
                 { id: 'tags', name: 'Tags', template: (item: Indicator) => item.tags.join(', ') || '-' },
                 { id: 'tenant', name: 'Tenant', template: (item: Indicator) => item.tenant.name },
                 { id: 'intelligenceEntity', name: 'Entitas CTI', template: (item: Indicator) => item.intelligenceEntity ? `${item.intelligenceEntity.name} (${item.intelligenceEntity.type})` : '-' },
-                { id: 'actions', name: 'Actions', template: (item: Indicator) => canManage ? <div className="ioc-actions"><Button view="flat" size="s" onClick={() => openEdit(item)}>Edit</Button>{item.status === 'ACTIVE' && <Button view="flat-danger" size="s" onClick={() => deactivate(item)}>Deactivate</Button>}</div> : '-' },
+                { id: 'actions', name: 'Actions', template: (item: Indicator) => <div className="ioc-actions"><Button view="flat" size="s" onClick={() => setSelected(item)}>Detail</Button>{canManage && <><Button view="flat" size="s" onClick={() => openEdit(item)}>Edit</Button>{item.status === 'ACTIVE' && <Button view="flat-danger" size="s" onClick={() => deactivate(item)}>Deactivate</Button>}</>}</div> },
               ]}
             />
           </Card>

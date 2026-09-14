@@ -6,10 +6,12 @@ import { IndicatorsService } from './indicators.service';
 import { IndicatorFeedClients } from './indicator-feed.clients';
 import { IndicatorFeedsService } from './indicator-feeds.service';
 import { IndicatorFeedScheduler } from './indicator-feed.scheduler';
+import { IndicatorEnrichmentClient } from './indicator-enrichment.client';
+import { IndicatorEnrichmentService } from './indicator-enrichment.service';
 
 @Module({
   imports: [AuthModule],
   controllers: [IndicatorsController],
-  providers: [IndicatorsService, IndicatorFeedsService, IndicatorFeedClients, IndicatorFeedScheduler, PrismaService],
+  providers: [IndicatorsService, IndicatorFeedsService, IndicatorFeedClients, IndicatorFeedScheduler, IndicatorEnrichmentClient, IndicatorEnrichmentService, PrismaService],
 })
 export class IndicatorsModule {}

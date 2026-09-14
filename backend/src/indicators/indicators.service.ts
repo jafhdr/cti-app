@@ -73,6 +73,65 @@ export class IndicatorsService {
     return updated;
   }
 
+  async correlateThreatActor(currentUser: AuthUser, id: string) {
+    const indicator = await this.scopedIndicator(currentUser, id);
+    if (indicator.intelligenceEntityId) {
+      const existingActor = await this.prisma.threatActor.findFirst({
+        where: { tenantId: indicator.tenantId, entityId: indicator.intelligenceEntityId },
+        select: { id: true, entity: { select: { name: true } } },
+      });
+      if (existingActor) return {
+        status: 'matched' as const,
+        indicatorId: id,
+        threatActor: { id: existingActor.id, name: existingActor.entity.name },
+        basis: ['existing_link'] as const,
+        created: false,
+      };
+      return { status: 'no_match' as const, indicatorId: id, reason: 'INDICATOR_ALREADY_LINKED' as const };
+    }
+
+    const candidates = await this.prisma.threatActor.findMany({
+      where: {
+        tenantId: indicator.tenantId,
+        status: 'ACTIVE',
+        OR: [
+          { campaigns: { some: { tenantId: indicator.tenantId, indicators: { some: { indicatorId: id } } } } },
+          { intelligenceReports: { some: { tenantId: indicator.tenantId, report: { indicators: { some: { indicatorId: id } } } } } },
+        ],
+      },
+      select: {
+        id: true,
+        entityId: true,
+        entity: { select: { name: true } },
+        campaigns: { where: { tenantId: indicator.tenantId, indicators: { some: { indicatorId: id } } }, select: { id: true }, take: 1 },
+        intelligenceReports: { where: { tenantId: indicator.tenantId, report: { indicators: { some: { indicatorId: id } } } }, select: { reportId: true }, take: 1 },
+      },
+      take: 2,
+    });
+    if (candidates.length === 0) return { status: 'no_match' as const, indicatorId: id, reason: 'NO_VALID_CANDIDATE' as const };
+    if (candidates.length > 1) return { status: 'no_match' as const, indicatorId: id, reason: 'AMBIGUOUS_CANDIDATES' as const };
+
+    const actor = candidates[0];
+    if (!actor) return { status: 'no_match' as const, indicatorId: id, reason: 'NO_VALID_CANDIDATE' as const };
+    const basis = [
+      ...(actor.campaigns.length > 0 ? ['campaign' as const] : []),
+      ...(actor.intelligenceReports.length > 0 ? ['intelligence_report' as const] : []),
+    ];
+    await this.prisma.indicator.update({ where: { id }, data: { intelligenceEntityId: actor.entityId } });
+    await this.audit(currentUser, indicator.tenantId, 'INDICATOR_THREAT_ACTOR_CORRELATED', {
+      indicatorId: id,
+      threatActorId: actor.id,
+      basis: basis.join(','),
+    });
+    return {
+      status: 'matched' as const,
+      indicatorId: id,
+      threatActor: { id: actor.id, name: actor.entity.name },
+      basis,
+      created: true,
+    };
+  }
+
   private validateInput(input: IndicatorInput) {
     const value = input.value?.trim();
     if (!value || !this.isType(input.type) || !this.isSeverity(input.severity)) throw new BadRequestException('Value, type, dan severity wajib valid');

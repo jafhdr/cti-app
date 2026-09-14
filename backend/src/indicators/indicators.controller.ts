@@ -9,6 +9,7 @@ import { IndicatorInput } from './indicators.types';
 import { IndicatorsService } from './indicators.service';
 import { IndicatorFeedsService } from './indicator-feeds.service';
 import { SyncIndicatorFeedsDto } from './indicator-feeds.types';
+import { IndicatorEnrichmentService } from './indicator-enrichment.service';
 
 @Controller('indicators')
 @UseGuards(AuthGuard, RolesGuard, ModuleAccessGuard)
@@ -17,6 +18,7 @@ export class IndicatorsController {
   constructor(
     private readonly indicators: IndicatorsService,
     private readonly feeds: IndicatorFeedsService,
+    private readonly enrichment: IndicatorEnrichmentService,
   ) {}
 
   @Get()
@@ -34,6 +36,20 @@ export class IndicatorsController {
   @Get('feed-status')
   @Roles('SUPER_ADMIN', 'ADMIN', 'USER')
   feedStatus(@Req() req: { user: AuthUser }, @Query('tenantId') tenantId?: string) { return this.feeds.status(req.user, tenantId); }
+
+  @Get(':id/enrichments')
+  @Roles('SUPER_ADMIN', 'ADMIN', 'USER')
+  enrichments(@Req() req: { user: AuthUser }, @Param('id') id: string) { return this.enrichment.list(req.user, id); }
+
+  @Post(':id/enrich')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  enrich(@Req() req: { user: AuthUser }, @Param('id') id: string) { return this.enrichment.run(req.user, id); }
+
+  @Post(':id/correlate-threat-actor')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  correlateThreatActor(@Req() req: { user: AuthUser }, @Param('id') id: string) {
+    return this.indicators.correlateThreatActor(req.user, id);
+  }
 
   @Patch(':id')
   @Roles('SUPER_ADMIN', 'ADMIN')

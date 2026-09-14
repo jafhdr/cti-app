@@ -10,6 +10,7 @@ import { IndicatorsService } from './indicators.service';
 import { IndicatorFeedsService } from './indicator-feeds.service';
 import { SyncIndicatorFeedsDto } from './indicator-feeds.types';
 import { IndicatorEnrichmentService } from './indicator-enrichment.service';
+import { ThreatActorAttributionService } from './threat-actor-attribution.service';
 
 @Controller('indicators')
 @UseGuards(AuthGuard, RolesGuard, ModuleAccessGuard)
@@ -19,6 +20,7 @@ export class IndicatorsController {
     private readonly indicators: IndicatorsService,
     private readonly feeds: IndicatorFeedsService,
     private readonly enrichment: IndicatorEnrichmentService,
+    private readonly attribution: ThreatActorAttributionService,
   ) {}
 
   @Get()
@@ -50,6 +52,10 @@ export class IndicatorsController {
   correlateThreatActor(@Req() req: { user: AuthUser }, @Param('id') id: string) {
     return this.indicators.correlateThreatActor(req.user, id);
   }
+
+  @Post(':id/attribute-threat-actor')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  attributeThreatActor(@Req() req: { user: AuthUser }, @Param('id') id: string) { return this.attribution.attribute(req.user, id); }
 
   @Patch(':id')
   @Roles('SUPER_ADMIN', 'ADMIN')

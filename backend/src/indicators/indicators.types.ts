@@ -16,3 +16,7 @@ export type IndicatorInput = {
   intelligenceEntityId?: string | null;
   intelligenceSourceId?: string | null;
 };
+
+export type ThreatActorAttributionInput = {
+  readonly threatActorId: string;
+};

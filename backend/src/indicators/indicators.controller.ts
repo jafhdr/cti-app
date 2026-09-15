@@ -5,7 +5,7 @@ import { RolesGuard } from '../auth/roles.guard';
 import { ModuleAccessGuard } from '../auth/module-access.guard';
 import { RequiresModule } from '../auth/module-access.decorator';
 import { AuthUser } from '../users/users.types';
-import { IndicatorInput } from './indicators.types';
+import { IndicatorInput, ThreatActorAttributionInput } from './indicators.types';
 import { IndicatorsService } from './indicators.service';
 import { IndicatorFeedsService } from './indicator-feeds.service';
 import { SyncIndicatorFeedsDto } from './indicator-feeds.types';
@@ -53,9 +53,21 @@ export class IndicatorsController {
     return this.indicators.correlateThreatActor(req.user, id);
   }
 
-  @Post(':id/attribute-threat-actor')
-  @Roles('SUPER_ADMIN', 'ADMIN')
-  attributeThreatActor(@Req() req: { user: AuthUser }, @Param('id') id: string) { return this.attribution.attribute(req.user, id); }
+   @Post(':id/confirm-threat-actor')
+   @Roles('SUPER_ADMIN', 'ADMIN')
+   confirmThreatActor(@Req() req: { user: AuthUser }, @Param('id') id: string, @Body() body: ThreatActorAttributionInput) {
+     return this.attribution.confirm(req.user, id, body.threatActorId);
+   }
+
+   @Post(':id/attribute-threat-actor')
+   @Roles('SUPER_ADMIN', 'ADMIN')
+   attributeThreatActor(@Req() req: { user: AuthUser }, @Param('id') id: string, @Body() body: ThreatActorAttributionInput) {
+     return this.attribution.attribute(req.user, id, body.threatActorId);
+   }
+
+   @Post(':id/discover-threat-actors')
+   @Roles('SUPER_ADMIN', 'ADMIN')
+   discoverThreatActors(@Req() req: { user: AuthUser }, @Param('id') id: string) { return this.attribution.discover(req.user, id); }
 
   @Patch(':id')
   @Roles('SUPER_ADMIN', 'ADMIN')

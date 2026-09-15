@@ -1,9 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 
-const app = 'http://localhost:3000';
+const app = process.env.SOURCES_APP_URL || 'http://localhost:3000';
 const indicator = { id: 'indicator-1', value: 'example.com', type: 'DOMAIN', severity: 'HIGH', confidence: 90, status: 'ACTIVE', tags: ['phishing'], source: 'analyst', description: 'Suspicious domain', expiresAt: null, tenant: { id: 'tenant-a', name: 'Tenant A' }, intelligenceEntity: null };
 const enrichment = { id: 'enrichment-1', provider: 'CLOUDFLARE_DNS', status: 'SUCCESS', error: null, createdAt: '2026-09-14T08:00:00.000Z', data: { host: 'example.com', responseCode: 0, records: [{ type: 1, ttl: 300, value: '93.184.216.34' }] } };
-const attribution = { status: 'MATCH', indicatorId: 'indicator-1', candidate: { id: 'actor-1', name: 'APT One' }, confidence: 85, matchedEvidence: [{ kind: 'INDICATOR_TAG', value: 'phishing', weight: 20 }, { kind: 'INTELLIGENCE_REPORT', value: 'report-1', weight: 65 }], created: true };
 
 async function session(page: Page): Promise<{ readonly runCount: () => number }> {
   let enriched = false;
@@ -17,25 +16,15 @@ async function session(page: Page): Promise<{ readonly runCount: () => number }>
     runs += 1;
     return route.fulfill({ json: enrichment });
   });
-  await page.route(/\/indicators\/indicator-1\/attribute-threat-actor$/, route => route.fulfill({ json: attribution }));
   return { runCount: () => runs };
 }
 
-test('indicator detail runs threat actor attribution and displays its evidence', async ({ page }) => {
+test('indicator detail does not expose direct threat actor attribution', async ({ page }) => {
   await session(page);
   await page.goto(`${app}/indicators`);
   await page.getByRole('button', { name: 'Detail' }).click();
 
-  await page.getByRole('button', { name: 'Run attribution' }).click();
-
-  await expect(page.getByText('MATCH', { exact: true })).toBeVisible();
-  await expect(page.getByText('APT One', { exact: true })).toBeVisible();
-  await expect(page.getByText('85% confidence')).toBeVisible();
-  await expect(page.getByText('INTELLIGENCE_REPORT: report-1 (+65)')).toBeVisible();
-  for (const viewport of [{ name: 'desktop', width: 1280, height: 900 }, { name: 'tablet', width: 768, height: 900 }, { name: 'mobile', width: 375, height: 812 }]) {
-    await page.setViewportSize(viewport);
-    await page.screenshot({ path: `../.omo/evidence/indicator-attribution/${viewport.name}.png`, fullPage: true });
-  }
+  await expect(page.getByRole('button', { name: 'Run attribution' })).toHaveCount(0);
 });
 
 test('indicator detail runs enrichment and keeps the saved provider context visible', async ({ page }) => {
@@ -90,8 +79,6 @@ test('indicator enrichment exposes busy, hover, focus, close, and API error stat
 
   const closeButton = page.getByRole('button', { name: 'Close' });
   await enrichButton.focus();
-  await page.keyboard.press('Tab');
-  await expect(page.getByRole('button', { name: 'Run attribution' })).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(closeButton).toBeFocused();
   const focusStyle = await closeButton.evaluate(element => ({ outlineStyle: getComputedStyle(element).outlineStyle, outlineWidth: Number.parseFloat(getComputedStyle(element).outlineWidth) }));

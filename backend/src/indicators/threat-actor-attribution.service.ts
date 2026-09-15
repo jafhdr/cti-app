@@ -1,4 +1,4 @@
-import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import type { IndicatorType, Prisma } from '@prisma/client';
 import { isIP } from 'node:net';
 import { PrismaService } from '../prisma.service';
@@ -23,48 +23,31 @@ type Candidate = {
   readonly matchedEvidence: readonly MatchedEvidence[];
 };
 
+const DISCOVERY_EVIDENCE_TYPES = {
+  CAMPAIGN: 'CAMPAIGN', INTELLIGENCE_REPORT: 'INTELLIGENCE_REPORT', INDICATOR_VALUE: 'EXACT_INDICATOR',
+  INDICATOR_TAG: 'TAG', SOURCE: 'SOURCE', PROVIDER: 'ENRICHMENT', ENRICHMENT_CONTEXT: 'ENRICHMENT', EXISTING_RELATION: 'EXACT_INDICATOR',
+} as const satisfies Record<EvidenceKind, string>;
+
 @Injectable()
 export class ThreatActorAttributionService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async attribute(currentUser: AuthUser, indicatorId: string) {
+  async discover(currentUser: AuthUser, indicatorId: string) {
     const indicator = await this.prisma.indicator.findUnique({
       where: { id: indicatorId },
-      include: { intelligenceSource: { select: { name: true, provider: true } } },
     });
     if (!indicator) throw new NotFoundException('Indicator tidak ditemukan');
-    if (currentUser.role !== 'SUPER_ADMIN' && indicator.tenantId !== currentUser.tenantId) {
-      throw new ForbiddenException('Indicator berada di tenant lain');
-    }
-
-    if (indicator.intelligenceEntityId) {
-      const linked = await this.prisma.threatActor.findFirst({
-        where: { tenantId: indicator.tenantId, entityId: indicator.intelligenceEntityId, entity: { tenantId: indicator.tenantId } },
-        select: { id: true, entityId: true, entity: { select: { name: true } } },
-      });
-      if (linked) return {
-        status: 'MATCH' as const,
-        indicatorId,
-        candidate: { id: linked.id, name: linked.entity.name },
-        confidence: 100,
-        matchedEvidence: [{ kind: 'EXISTING_RELATION' as const, value: linked.entityId, weight: 100 }],
-        created: false,
-      };
-      return { status: 'NO_MATCH' as const, indicatorId, confidence: 0, matchedEvidence: [], candidates: [] };
-    }
-
-    const [enrichments, actors] = await Promise.all([
+    if (currentUser.role !== 'SUPER_ADMIN' && indicator.tenantId !== currentUser.tenantId) throw new ForbiddenException('Indicator berada di tenant lain');
+    const [intelligenceSource, enrichments, actors] = await Promise.all([
+      indicator.intelligenceSourceId
+        ? this.prisma.intelligenceSource.findFirst({ where: { id: indicator.intelligenceSourceId, tenantId: indicator.tenantId }, select: { name: true, provider: true } })
+        : Promise.resolve(null),
       this.prisma.indicatorEnrichment.findMany({
-        where: { tenantId: indicator.tenantId, indicatorId, status: 'SUCCESS' },
-        select: { provider: true, data: true },
-        orderBy: { createdAt: 'desc' },
-        take: 10,
+        where: { tenantId: indicator.tenantId, indicatorId, status: 'SUCCESS' }, select: { provider: true, data: true }, orderBy: { createdAt: 'desc' }, take: 10,
       }),
       this.prisma.threatActor.findMany({
         where: {
-          tenantId: indicator.tenantId,
-          status: 'ACTIVE',
-          entity: { tenantId: indicator.tenantId },
+          tenantId: indicator.tenantId, status: 'ACTIVE', entity: { tenantId: indicator.tenantId },
           OR: [
             { campaigns: { some: { tenantId: indicator.tenantId, indicators: { some: { indicatorId } } } } },
             { intelligenceReports: { some: { tenantId: indicator.tenantId, report: { indicators: { some: { indicatorId } } } } } },
@@ -77,41 +60,167 @@ export class ThreatActorAttributionService {
           campaigns: { where: { tenantId: indicator.tenantId, indicators: { some: { indicatorId } } }, select: { id: true }, take: 1 },
           intelligenceReports: { where: { tenantId: indicator.tenantId, report: { indicators: { some: { indicatorId } } } }, select: { reportId: true }, take: 1 },
         },
-        take: MAXIMUM_CANDIDATES + 1,
+        orderBy: [{ updatedAt: 'desc' }, { id: 'asc' }], take: MAXIMUM_CANDIDATES + 1,
       }),
     ]);
-
-    if (actors.length > MAXIMUM_CANDIDATES) return { status: 'AMBIGUOUS' as const, indicatorId, confidence: 0, matchedEvidence: [], candidates: [] };
-    const candidates = actors.filter(actor => actor.entity.tenantId === indicator.tenantId).map(actor => this.score(actor, indicator, enrichments)).sort((left, right) => right.confidence - left.confidence);
-    const qualified = candidates.filter(candidate => candidate.confidence >= MINIMUM_CONFIDENCE && candidate.matchedEvidence.some(evidence => this.isStrong(evidence.kind)));
-    if (qualified.length > 1) return {
-      status: 'AMBIGUOUS' as const,
-      indicatorId,
-      confidence: qualified[0]?.confidence ?? 0,
-      matchedEvidence: qualified[0]?.matchedEvidence ?? [],
-      candidates: qualified.map(candidate => ({ id: candidate.id, name: candidate.name, confidence: candidate.confidence, matchedEvidence: candidate.matchedEvidence })),
-    };
-    const candidate = qualified[0];
-    if (!candidate) {
-      const best = candidates[0];
-      return { status: 'NO_MATCH' as const, indicatorId, confidence: best?.confidence ?? 0, matchedEvidence: best?.matchedEvidence ?? [], candidates: [] };
-    }
-
-    await this.prisma.$transaction(async transaction => {
-      const confirmed = await transaction.threatActor.findFirst({ where: { id: candidate.id, tenantId: indicator.tenantId, status: 'ACTIVE', entity: { tenantId: indicator.tenantId } }, select: { entityId: true } });
-      if (!confirmed || confirmed.entityId !== candidate.entityId) throw new ConflictException('Kandidat threat actor berubah; jalankan attribution kembali');
-      await transaction.indicator.update({ where: { id_tenantId: { id: indicatorId, tenantId: indicator.tenantId } }, data: { intelligenceEntityId: candidate.entityId } });
-      await transaction.auditLog.create({ data: { userId: currentUser.sub, tenantId: indicator.tenantId, action: 'INDICATOR_THREAT_ACTOR_ATTRIBUTED', metadata: { indicatorId, threatActorId: candidate.id, confidence: String(candidate.confidence) } } });
-    });
-    return {
-      status: 'MATCH' as const,
-      indicatorId,
-      candidate: { id: candidate.id, name: candidate.name },
-      confidence: candidate.confidence,
-      matchedEvidence: candidate.matchedEvidence,
-      created: true,
-    };
+    const overflow = actors.length > MAXIMUM_CANDIDATES;
+    const candidates = actors
+      .filter(actor => actor.entity.tenantId === indicator.tenantId)
+      .map(actor => this.score(actor, { ...indicator, intelligenceSource }, enrichments))
+      .filter(candidate => candidate.matchedEvidence.some(item => this.isDiscoveryEvidence(item.kind)))
+      .sort((left, right) => right.confidence - left.confidence || left.name.localeCompare(right.name) || left.id.localeCompare(right.id))
+      .slice(0, MAXIMUM_CANDIDATES)
+      .map(candidate => ({
+        threatActorId: candidate.id, name: candidate.name, score: candidate.confidence, confidence: this.discoveryConfidence(candidate.confidence),
+        evidence: candidate.matchedEvidence.map(item => ({ type: DISCOVERY_EVIDENCE_TYPES[item.kind], value: item.value })),
+      }));
+    return { status: candidates.length > 0 ? 'CANDIDATES' as const : 'NO_MATCH' as const, indicatorId, candidates, overflow };
   }
+
+   async confirm(currentUser: AuthUser, indicatorId: string, threatActorId: string) {
+     if (!threatActorId?.trim()) throw new BadRequestException('Threat Actor candidate wajib dipilih');
+     const indicator = await this.prisma.indicator.findUnique({
+       where: { id: indicatorId },
+       include: { intelligenceSource: { select: { name: true, provider: true } } },
+     });
+     if (!indicator) throw new NotFoundException('Indicator tidak ditemukan');
+     if (currentUser.role !== 'SUPER_ADMIN' && indicator.tenantId !== currentUser.tenantId) {
+       throw new ForbiddenException('Indicator berada di tenant lain');
+     }
+
+     const [enrichments, actors] = await Promise.all([
+       this.prisma.indicatorEnrichment.findMany({
+         where: { tenantId: indicator.tenantId, indicatorId, status: 'SUCCESS' },
+         select: { provider: true, data: true },
+         orderBy: { createdAt: 'desc' },
+         take: 10,
+       }),
+       this.prisma.threatActor.findMany({
+         where: {
+           id: threatActorId.trim(),
+           tenantId: indicator.tenantId,
+           status: 'ACTIVE',
+           entity: { tenantId: indicator.tenantId },
+           OR: [
+             { campaigns: { some: { tenantId: indicator.tenantId, indicators: { some: { indicatorId } } } } },
+             { intelligenceReports: { some: { tenantId: indicator.tenantId, report: { indicators: { some: { indicatorId } } } } } },
+             { entity: { tenantId: indicator.tenantId, indicators: { some: { tenantId: indicator.tenantId } } } },
+           ],
+         },
+         select: {
+           id: true, entityId: true, aliases: true, targetSectors: true,
+           entity: { select: { tenantId: true, name: true, externalId: true, metadata: true, indicators: { where: { tenantId: indicator.tenantId }, select: { type: true, value: true }, take: 100 } } },
+           campaigns: { where: { tenantId: indicator.tenantId, indicators: { some: { indicatorId } } }, select: { id: true }, take: 1 },
+           intelligenceReports: { where: { tenantId: indicator.tenantId, report: { indicators: { some: { indicatorId } } } }, select: { reportId: true }, take: 1 },
+         },
+         take: 1,
+       }),
+     ]);
+
+     const scoredCandidate = actors
+       .filter(actor => actor.id === threatActorId.trim() && actor.entity.tenantId === indicator.tenantId)
+       .map(actor => this.score(actor, indicator, enrichments))[0];
+     const candidate = scoredCandidate?.confidence !== undefined
+       && scoredCandidate.confidence >= MINIMUM_CONFIDENCE
+       && scoredCandidate.matchedEvidence.some(evidence => this.isStrong(evidence.kind))
+       ? scoredCandidate
+       : undefined;
+     if (!candidate) {
+       return { status: 'NO_MATCH' as const, indicatorId, confidence: scoredCandidate?.confidence ?? 0, matchedEvidence: scoredCandidate?.matchedEvidence ?? [], candidates: [] };
+     }
+
+     return {
+       status: 'CONFIRMED' as const,
+       indicatorId,
+       candidate: { id: candidate.id, name: candidate.name },
+       confidence: candidate.confidence,
+       matchedEvidence: candidate.matchedEvidence,
+     };
+   }
+
+   async attribute(currentUser: AuthUser, indicatorId: string, threatActorId: string) {
+     if (!threatActorId?.trim()) throw new BadRequestException('Threat Actor candidate wajib dipilih');
+     const indicator = await this.prisma.indicator.findUnique({
+       where: { id: indicatorId },
+       include: { intelligenceSource: { select: { name: true, provider: true } } },
+     });
+     if (!indicator) throw new NotFoundException('Indicator tidak ditemukan');
+     if (currentUser.role !== 'SUPER_ADMIN' && indicator.tenantId !== currentUser.tenantId) {
+       throw new ForbiddenException('Indicator berada di tenant lain');
+     }
+
+     if (indicator.intelligenceEntityId) {
+       const linked = await this.prisma.threatActor.findFirst({
+         where: { tenantId: indicator.tenantId, entityId: indicator.intelligenceEntityId, entity: { tenantId: indicator.tenantId } },
+         select: { id: true, entityId: true, entity: { select: { name: true } } },
+       });
+       if (linked) return {
+         status: 'MATCH' as const,
+         indicatorId,
+         candidate: { id: linked.id, name: linked.entity.name },
+         confidence: 100,
+         matchedEvidence: [{ kind: 'EXISTING_RELATION' as const, value: linked.entityId, weight: 100 }],
+         created: false,
+       };
+       return { status: 'NO_MATCH' as const, indicatorId, confidence: 0, matchedEvidence: [], candidates: [] };
+     }
+
+     const [enrichments, actors] = await Promise.all([
+       this.prisma.indicatorEnrichment.findMany({
+         where: { tenantId: indicator.tenantId, indicatorId, status: 'SUCCESS' },
+         select: { provider: true, data: true },
+         orderBy: { createdAt: 'desc' },
+         take: 10,
+       }),
+       this.prisma.threatActor.findMany({
+         where: {
+           id: threatActorId.trim(),
+           tenantId: indicator.tenantId,
+           status: 'ACTIVE',
+           entity: { tenantId: indicator.tenantId },
+           OR: [
+             { campaigns: { some: { tenantId: indicator.tenantId, indicators: { some: { indicatorId } } } } },
+             { intelligenceReports: { some: { tenantId: indicator.tenantId, report: { indicators: { some: { indicatorId } } } } } },
+             { entity: { tenantId: indicator.tenantId, indicators: { some: { tenantId: indicator.tenantId } } } },
+           ],
+         },
+         select: {
+           id: true, entityId: true, aliases: true, targetSectors: true,
+           entity: { select: { tenantId: true, name: true, externalId: true, metadata: true, indicators: { where: { tenantId: indicator.tenantId }, select: { type: true, value: true }, take: 100 } } },
+           campaigns: { where: { tenantId: indicator.tenantId, indicators: { some: { indicatorId } } }, select: { id: true }, take: 1 },
+           intelligenceReports: { where: { tenantId: indicator.tenantId, report: { indicators: { some: { indicatorId } } } }, select: { reportId: true }, take: 1 },
+         },
+         take: 1,
+       }),
+     ]);
+
+     const scoredCandidate = actors
+       .filter(actor => actor.id === threatActorId.trim() && actor.entity.tenantId === indicator.tenantId)
+       .map(actor => this.score(actor, indicator, enrichments))[0];
+     const candidate = scoredCandidate?.confidence !== undefined
+       && scoredCandidate.confidence >= MINIMUM_CONFIDENCE
+       && scoredCandidate.matchedEvidence.some(evidence => this.isStrong(evidence.kind))
+       ? scoredCandidate
+       : undefined;
+     if (!candidate) {
+       return { status: 'NO_MATCH' as const, indicatorId, confidence: scoredCandidate?.confidence ?? 0, matchedEvidence: scoredCandidate?.matchedEvidence ?? [], candidates: [] };
+     }
+
+     await this.prisma.$transaction(async transaction => {
+       const confirmed = await transaction.threatActor.findFirst({ where: { id: candidate.id, tenantId: indicator.tenantId, status: 'ACTIVE', entity: { tenantId: indicator.tenantId } }, select: { entityId: true } });
+       if (!confirmed || confirmed.entityId !== candidate.entityId) throw new ConflictException('Kandidat threat actor berubah; jalankan attribution kembali');
+       await transaction.indicator.update({ where: { id_tenantId: { id: indicatorId, tenantId: indicator.tenantId } }, data: { intelligenceEntityId: candidate.entityId } });
+       await transaction.auditLog.create({ data: { userId: currentUser.sub, tenantId: indicator.tenantId, action: 'INDICATOR_THREAT_ACTOR_ATTRIBUTED', metadata: { indicatorId, threatActorId: candidate.id, confidence: String(candidate.confidence) } } });
+     });
+     return {
+       status: 'MATCH' as const,
+       indicatorId,
+       candidate: { id: candidate.id, name: candidate.name },
+       confidence: candidate.confidence,
+       matchedEvidence: candidate.matchedEvidence,
+       created: true,
+     };
+   }
 
   private score(actor: {
     readonly id: string; readonly entityId: string; readonly aliases: readonly string[]; readonly targetSectors: readonly string[];
@@ -204,6 +313,8 @@ export class ThreatActorAttributionService {
   }
 
   private isStrong(kind: EvidenceKind): boolean { return kind === 'CAMPAIGN' || kind === 'INTELLIGENCE_REPORT' || kind === 'INDICATOR_VALUE'; }
+  private isDiscoveryEvidence(kind: EvidenceKind): boolean { return this.isStrong(kind) || kind === 'ENRICHMENT_CONTEXT'; }
+  private discoveryConfidence(score: number): 'HIGH' | 'MEDIUM' | 'LOW' { return score >= 70 ? 'HIGH' : score >= 40 ? 'MEDIUM' : 'LOW'; }
 
   private jsonStrings(value: Prisma.JsonValue): string[] {
     if (typeof value === 'string') return [value];

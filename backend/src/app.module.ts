@@ -10,6 +10,7 @@ import { TenantsModule } from './tenants/tenants.module';
 import { ModulesModule } from './modules/modules.module';
 import { IntelligenceModule } from './intelligence/intelligence.module';
 import { SubscriptionModule } from './subscription/subscription.module';
+import { CasesModule } from './cases/cases.module';
 import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
@@ -24,9 +25,11 @@ import { ScheduleModule } from '@nestjs/schedule';
     ModulesModule,
     IntelligenceModule,
     SubscriptionModule,
+    CasesModule,
     UsersModule,
   ],
   providers: [PrismaService],
   exports: [PrismaService],
 })
 export class AppModule {}
+

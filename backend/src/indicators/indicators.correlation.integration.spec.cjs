@@ -113,6 +113,8 @@ before(async () => {
       renewalAt: new Date(Date.now() + 60_000),
     },
   });
+  const tenantModule = await prisma.tenantModule.create({ data: { tenantId: primaryTenantId, moduleId: threatModule.id, isEnabled: true } });
+  await prisma.moduleRoleAccess.create({ data: { tenantModuleId: tenantModule.id, role: 'ADMIN', isAllowed: true } });
   await prisma.userModuleAccess.create({
     data: { userId, tenantId: primaryTenantId, moduleId: threatModule.id },
   });

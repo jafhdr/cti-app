@@ -9,17 +9,20 @@ const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export function IntelligenceData({ types, overview = false }: { readonly types?: readonly string[]; readonly overview?: boolean }) {
   const [data, setData] = useState<IntelligenceOverview>({ entities: [], relationships: [] });
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const { tenantId, ready } = useThreatIntelligenceTenant();
   useEffect(() => {
     if (!ready) return;
+    setLoading(true);
     const query = tenantId ? `?tenantId=${encodeURIComponent(tenantId)}` : '';
     fetch(`${API}/intelligence/overview${query}`, { credentials: 'include', cache: 'no-store' }).then(async response => {
       if (!response.ok) throw new Error('Gagal memuat data Threat Intelligence.');
       setData(await response.json());
-    }).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'Gagal memuat data Threat Intelligence.'));
+    }).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'Gagal memuat data Threat Intelligence.')).finally(() => setLoading(false));
   }, [ready, tenantId]);
   const entities = types ? data.entities.filter(entity => types.includes(entity.type)) : data.entities;
+  if (loading) return <Card view="outlined" className="ti-entity-card"><p className="muted" role="status" aria-live="polite">Memuat data Threat Intelligence...</p></Card>;
   if (error) return <p className="error" role="alert">{error}</p>;
   if (overview) {
     const linkedIndicators = data.entities.reduce((total, entity) => total + entity.indicators.length, 0);

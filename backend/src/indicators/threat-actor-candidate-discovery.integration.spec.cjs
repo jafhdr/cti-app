@@ -88,6 +88,8 @@ before(async () => {
   await prisma.tenantSubscription.create({
     data: { tenantId: primaryTenantId, packageId, billingCycle: 'MONTHLY', priceMonthly: 0, status: 'ACTIVE', renewalAt: new Date(Date.now() + 60_000) },
   });
+  const tenantModule = await prisma.tenantModule.create({ data: { tenantId: primaryTenantId, moduleId: threatModule.id, isEnabled: true } });
+  await prisma.moduleRoleAccess.create({ data: { tenantModuleId: tenantModule.id, role: 'ADMIN', isAllowed: true } });
   await prisma.userModuleAccess.create({ data: { userId, tenantId: primaryTenantId, moduleId: threatModule.id } });
   app = await NestFactory.create(AppModule, { logger: false });
   await app.listen(0, '127.0.0.1');

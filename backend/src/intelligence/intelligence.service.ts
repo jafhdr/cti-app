@@ -62,9 +62,39 @@ export class IntelligenceService {
     if (!title) throw new BadRequestException('Judul case wajib diisi');
     const entityIds = this.uniqueIds(input.entityIds);
     await this.assertEntitiesInTenant(tenantId, entityIds);
-    const caseItem = await this.prisma.case.create({ data: { tenantId, title, description: input.description?.trim() || null, severity: this.severity(input.severity), ownerId: user.sub, entities: { create: entityIds.map((entityId) => ({ entityId })) } }, include: { entities: { include: { entity: { select: { id: true, name: true, type: true } } } }, _count: { select: { alerts: true } } } });
+    
+    // Generate case number
+    const count = await this.prisma.case.count({ where: { tenantId } });
+    const year = new Date().getFullYear();
+    const caseNumber = `CASE-${year}-${String(count + 1).padStart(5, '0')}`;
+    
+    const caseItem = await this.prisma.case.create({
+      data: {
+        tenantId,
+        caseNumber,
+        title,
+        description: input.description?.trim() || null,
+        severity: this.severity(input.severity),
+        createdBy: user.sub,
+      },
+    });
+    
+    if (entityIds.length > 0) {
+      await this.prisma.caseEntity.createMany({
+        data: entityIds.map((entityId) => ({ caseId: caseItem.id, entityId })),
+      });
+    }
+    
+    const result = await this.prisma.case.findUnique({
+      where: { id: caseItem.id },
+      include: {
+        entities: { include: { entity: { select: { id: true, name: true, type: true } } } },
+        _count: { select: { alerts: true } },
+      },
+    });
+    
     await this.audit(user, tenantId, 'CASE_CREATED', { caseId: caseItem.id, title });
-    return caseItem;
+    return result;
   }
 
   async updateCaseStatus(user: AuthUser, caseId: string, input: CaseStatusInput) {

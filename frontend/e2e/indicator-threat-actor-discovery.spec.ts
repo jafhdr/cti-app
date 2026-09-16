@@ -51,6 +51,7 @@ test('successful discovery displays candidate details and opens the existing thr
 test('candidate can be confirmed and attributed with its explicit id', async ({ page }) => {
   await indicatorSession(page);
   await page.route(/\/indicators\/indicator-1\/discover-threat-actors$/, route => route.fulfill({ json: { status: 'CANDIDATES', indicatorId: indicator.id, candidates: [candidate], overflow: false } }));
+  await page.route(/\/indicators\/indicator-1\/confirm-threat-actor$/, route => route.fulfill({ json: { status: 'CONFIRMED', indicatorId: indicator.id, candidate: { id: candidate.threatActorId, name: candidate.name }, confidence: candidate.score, matchedEvidence: candidate.evidence } }));
   const attributionBodies: unknown[] = [];
   await page.route(/\/indicators\/indicator-1\/attribute-threat-actor$/, route => {
     attributionBodies.push(route.request().postDataJSON());
@@ -58,9 +59,10 @@ test('candidate can be confirmed and attributed with its explicit id', async ({ 
   });
   await openIndicatorDetail(page);
   await page.getByRole('button', { name: 'Discover Threat Actors' }).click();
+  await page.getByRole('button', { name: 'Confirm', exact: true }).click();
 
   page.once('dialog', dialog => dialog.accept());
-  await page.getByRole('button', { name: 'Confirm & Attribute' }).click();
+  await page.getByRole('button', { name: 'Attribute', exact: true }).click();
 
   await expect(page.getByRole('status')).toContainText('Indicator sudah terhubung ke Threat Actor Cozy Bear.');
   expect(attributionBodies).toEqual([{ threatActorId: candidate.threatActorId }]);
@@ -76,6 +78,7 @@ test('indicator detail has no direct attribution control outside candidate confi
 test('cancelling confirmation does not attribute the candidate', async ({ page }) => {
   await indicatorSession(page);
   await page.route(/\/indicators\/indicator-1\/discover-threat-actors$/, route => route.fulfill({ json: { status: 'CANDIDATES', indicatorId: indicator.id, candidates: [candidate], overflow: false } }));
+  await page.route(/\/indicators\/indicator-1\/confirm-threat-actor$/, route => route.fulfill({ json: { status: 'CONFIRMED', indicatorId: indicator.id, candidate: { id: candidate.threatActorId, name: candidate.name }, confidence: candidate.score, matchedEvidence: candidate.evidence } }));
   let attributionRequests = 0;
   await page.route(/\/indicators\/indicator-1\/attribute-threat-actor$/, route => {
     attributionRequests += 1;
@@ -83,23 +86,26 @@ test('cancelling confirmation does not attribute the candidate', async ({ page }
   });
   await openIndicatorDetail(page);
   await page.getByRole('button', { name: 'Discover Threat Actors' }).click();
+  await page.getByRole('button', { name: 'Confirm', exact: true }).click();
 
   page.once('dialog', dialog => dialog.dismiss());
-  await page.getByRole('button', { name: 'Confirm & Attribute' }).click();
+  await page.getByRole('button', { name: 'Attribute', exact: true }).click();
 
-  await expect(page.getByRole('button', { name: 'Confirm & Attribute' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Attribute', exact: true })).toBeVisible();
   expect(attributionRequests).toBe(0);
 });
 
 test('attribution error is shown clearly', async ({ page }) => {
   await indicatorSession(page);
   await page.route(/\/indicators\/indicator-1\/discover-threat-actors$/, route => route.fulfill({ json: { status: 'CANDIDATES', indicatorId: indicator.id, candidates: [candidate], overflow: false } }));
+  await page.route(/\/indicators\/indicator-1\/confirm-threat-actor$/, route => route.fulfill({ json: { status: 'CONFIRMED', indicatorId: indicator.id, candidate: { id: candidate.threatActorId, name: candidate.name }, confidence: candidate.score, matchedEvidence: candidate.evidence } }));
   await page.route(/\/indicators\/indicator-1\/attribute-threat-actor$/, route => route.fulfill({ status: 409, json: { message: 'Candidate attribution is no longer valid' } }));
   await openIndicatorDetail(page);
   await page.getByRole('button', { name: 'Discover Threat Actors' }).click();
+  await page.getByRole('button', { name: 'Confirm', exact: true }).click();
 
   page.once('dialog', dialog => dialog.accept());
-  await page.getByRole('button', { name: 'Confirm & Attribute' }).click();
+  await page.getByRole('button', { name: 'Attribute', exact: true }).click();
 
   await expect(page.getByText('Candidate attribution is no longer valid', { exact: true })).toBeVisible();
 });

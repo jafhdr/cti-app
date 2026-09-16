@@ -32,6 +32,13 @@ export class ModuleAccessGuard implements CanActivate {
     const included = subscription.isCustom ? subscription.customModules.length > 0 : (subscription.package?.modules.length ?? 0) > 0;
     if (!included) throw new ForbiddenException('Modul tidak termasuk dalam subscription tenant');
 
+    const tenantModule = await this.prisma.tenantModule.findUnique({
+      where: { tenantId_moduleId: { tenantId: user.tenantId, moduleId: module.id } },
+      select: { isEnabled: true, access: { where: { role: user.role }, select: { isAllowed: true }, take: 1 } },
+    });
+    if (!tenantModule?.isEnabled) throw new ForbiddenException('Modul dinonaktifkan untuk tenant ini');
+    if (!tenantModule.access[0]?.isAllowed) throw new ForbiddenException('Role tidak memiliki akses ke modul ini');
+
     // Role ADMIN dan USER tinggal cek assignment per-user — keduanya butuh assignment eksplisit.
     if (user.role === 'USER' || user.role === 'ADMIN') {
       const assignment = await this.prisma.userModuleAccess.findFirst({ where: { userId: user.sub, tenantId: user.tenantId, module: { slug } } });

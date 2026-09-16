@@ -690,6 +690,9 @@ html.dark .topbar, html.dark .card, html.dark .module-card, html.dark .module-te
   .sidebar-empty-submenu { white-space: nowrap; }
 }
 @media (max-width: 600px) {
+  .sidebar-navigation { flex-direction: column !important; align-items: stretch; overflow-x: visible; }
+  .sidebar-navigation > .sidebar-link, .sidebar-module { width: 100%; min-width: 0; }
+  .sidebar-submenu { flex-wrap: wrap; }
   .topbar > span { display: flex; width: 100%; max-width: none; align-items: center; gap: 4px; overflow: visible; }
   .topbar > span select { flex: 1; min-width: 0; }
 }

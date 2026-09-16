@@ -17,10 +17,14 @@ import { VulnerabilitiesController } from './vulnerabilities.controller';
 import { VulnerabilitiesService } from './vulnerabilities.service';
 import { ReportsController } from './reports.controller';
 import { ReportsService } from './reports.service';
+import { MitreAttackStixClient } from './mitre-attack-stix.client';
+import { MitreThreatActorIngestionService } from './mitre-threat-actor-ingestion.service';
+import { MitreThreatActorIngestionScheduler } from './mitre-threat-actor-ingestion.scheduler';
 
 @Module({
   imports: [AuthModule],
   controllers: [IntelligenceController, SourcesController, ThreatActorsController, CampaignsController, MitreTechniquesController, MalwareToolsController, VulnerabilitiesController, ReportsController],
-  providers: [IntelligenceService, SourcesService, ThreatActorsService, CampaignsService, MitreTechniquesService, MalwareToolsService, VulnerabilitiesService, ReportsService, PrismaService],
+  providers: [IntelligenceService, SourcesService, ThreatActorsService, CampaignsService, MitreTechniquesService, MalwareToolsService, VulnerabilitiesService, ReportsService, MitreAttackStixClient, MitreThreatActorIngestionService, MitreThreatActorIngestionScheduler, PrismaService],
+  exports: [MitreAttackStixClient],
 })
 export class IntelligenceModule {}

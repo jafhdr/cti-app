@@ -48,6 +48,11 @@ coverage/
 tmp/
 temp/
 
+# Build/agent artifacts
+.omo/
+frontend/.omo/
+*.tsbuildinfo
+
 # Secrets/redacted files
 *.secret
 secrets/

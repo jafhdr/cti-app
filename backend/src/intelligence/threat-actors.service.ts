@@ -2,7 +2,14 @@ import { BadRequestException, ConflictException, ForbiddenException, Injectable,
 import { IndicatorSeverity, IntelligenceEntityType, Prisma, ThreatActorStatus } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
 import type { AuthUser } from '../users/users.types';
-import type { CreateThreatActorDto, ListThreatActorsQueryDto, UpdateThreatActorDto } from './threat-actors.dto';
+import type { BatchThreatActorsDto, CreateThreatActorDto, ListThreatActorsQueryDto, StixThreatActorDto, UpdateThreatActorDto } from './threat-actors.dto';
+import { mapStixThreatActor } from './stix-threat-actor.mapper';
+
+type UpsertContext = {
+  readonly user: AuthUser;
+  readonly tenantId: string;
+  readonly input: StixThreatActorDto;
+};
 
 const detailInclude = {
   malwareTools: { include: { malwareTool: true }, orderBy: { createdAt: 'asc' as const } },
@@ -56,6 +63,23 @@ export class ThreatActorsService {
     } catch (error) { this.rethrowConflict(error); }
   }
 
+  async upsert(user: AuthUser, input: StixThreatActorDto, requestedTenantId?: string) {
+    const result = await this.persistUpsert({ user, tenantId: this.resolveTenant(user, requestedTenantId), input });
+    return result.actor;
+  }
+
+  async batch(user: AuthUser, input: BatchThreatActorsDto, requestedTenantId?: string) {
+    const tenantId = this.resolveTenant(user, requestedTenantId);
+    const items = [];
+    let created = 0;
+    for (const threatActor of input.threatActors) {
+      const result = await this.persistUpsert({ user, tenantId, input: threatActor });
+      items.push(result.actor);
+      if (result.created) created += 1;
+    }
+    return { items, created, updated: items.length - created };
+  }
+
   async update(user: AuthUser, id: string, input: UpdateThreatActorDto, requestedTenantId?: string) {
     const existing = await this.scopedActor(user, id, requestedTenantId);
     const name = input.name?.trim();
@@ -83,6 +107,27 @@ export class ThreatActorsService {
   private tenantId(user: AuthUser): string { if (!user.tenantId) throw new ForbiddenException('Tenant context wajib tersedia'); return user.tenantId; }
   private async scopedActor(user: AuthUser, id: string, requestedTenantId?: string) { const actor = await this.prisma.threatActor.findFirst({ where: { id, tenantId: this.resolveTenant(user, requestedTenantId) }, include: detailInclude }); if (!actor) throw new NotFoundException('Threat actor tidak ditemukan'); return actor; }
   private values(input?: readonly string[]): string[] { return [...new Set((input ?? []).map(value => value.trim()).filter(Boolean))]; }
+  private async persistUpsert(context: UpsertContext) {
+    const mapped = mapStixThreatActor(context.input);
+    try {
+      const result = await this.prisma.$transaction(async tx => {
+        await tx.$queryRaw`SELECT "id" FROM "Tenant" WHERE "id" = ${context.tenantId} FOR UPDATE`;
+        const existing = await tx.threatActor.findFirst({
+          where: { tenantId: context.tenantId, entity: { type: IntelligenceEntityType.THREAT_ACTOR, externalId: mapped.externalId } },
+        });
+        if (existing) {
+          await tx.intelligenceEntity.update({ where: { id: existing.entityId }, data: { name: mapped.name, description: mapped.description?.trim() || null, metadata: mapped.metadata } });
+          await tx.threatActor.update({ where: { id: existing.id }, data: { aliases: this.values(mapped.aliases), motivation: mapped.motivation?.trim() || null, targetSectors: this.values(mapped.targetSectors), country: mapped.country?.trim() || null, region: mapped.region?.trim() || null } });
+          return { actor: await tx.threatActor.findUniqueOrThrow({ where: { id: existing.id }, include: detailInclude }), created: false };
+        }
+        const entity = await tx.intelligenceEntity.create({ data: { tenantId: context.tenantId, type: IntelligenceEntityType.THREAT_ACTOR, name: mapped.name, description: mapped.description?.trim() || null, externalId: mapped.externalId, metadata: mapped.metadata } });
+        const actor = await tx.threatActor.create({ data: { tenantId: context.tenantId, entityId: entity.id, aliases: this.values(mapped.aliases), motivation: mapped.motivation?.trim() || null, targetSectors: this.values(mapped.targetSectors), country: mapped.country?.trim() || null, region: mapped.region?.trim() || null, createdBy: context.user.sub }, include: detailInclude });
+        return { actor, created: true };
+      });
+      await this.audit(context.user, context.tenantId, result.created ? 'THREAT_ACTOR_INGESTED' : 'THREAT_ACTOR_INGESTION_UPDATED', result.actor.id, { entityId: result.actor.entityId, name: result.actor.entity.name, externalId: mapped.externalId });
+      return result;
+    } catch (error) { this.rethrowConflict(error); }
+  }
   private orderBy(field?: string, direction?: string): Prisma.ThreatActorOrderByWithRelationInput { const sortOrder: Prisma.SortOrder = direction === 'asc' ? 'asc' : 'desc'; if (field === 'name' || field === 'confidence' || field === 'severity') return { entity: { [field]: sortOrder } }; if (field === 'country' || field === 'status' || field === 'createdAt') return { [field]: sortOrder }; return { updatedAt: sortOrder }; }
   private rethrowConflict(error: unknown): never { if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') throw new ConflictException('Threat actor dengan nama tersebut sudah ada pada tenant ini'); throw error; }
   private audit(actor: AuthUser, tenantId: string, action: string, threatActorId: string, metadata: Record<string, string>) { return this.prisma.auditLog.create({ data: { userId: actor.sub, tenantId, action, metadata: { threatActorId, ...metadata } } }); }

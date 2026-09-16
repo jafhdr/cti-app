@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation';
 import { ArrowLeft, Edit2, Loader } from 'lucide-react';
 import Link from 'next/link';
 import AssignModal from './assign-modal';
+import { InvestigationPanel } from './investigation-panel';
 
 interface User {
   id: string;
@@ -65,7 +66,7 @@ export default function CaseDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div role="status" aria-label="Memuat detail case" className="min-h-screen bg-slate-50 flex items-center justify-center">
         <Loader className="h-8 w-8 animate-spin text-blue-600" />
       </div>
     );
@@ -104,9 +105,9 @@ export default function CaseDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6">
+    <div className="min-h-screen bg-slate-50 p-6" style={{ colorScheme: 'light' }}>
       <div className="max-w-4xl mx-auto">
-        <Link href="/cases" className="flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-6">
+        <Link href="/cases" className="mb-6 flex items-center gap-2 !text-blue-600 hover:!text-blue-700">
           <ArrowLeft size={20} />
           Back
         </Link>
@@ -131,15 +132,15 @@ export default function CaseDetailPage() {
 
           {caseDetail.description && (
             <div className="mb-8">
-              <h2 className="text-lg font-semibold text-slate-900 mb-3">Description</h2>
-              <p className="text-gray-700">{caseDetail.description}</p>
+              <h2 className="mb-3 text-lg font-semibold !text-slate-900">Description</h2>
+              <p className="!text-slate-700">{caseDetail.description}</p>
             </div>
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
             <div className="bg-gray-50 rounded-lg p-6">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="font-semibold">Assigned To</h3>
+                <h3 className="font-semibold !text-slate-900">Assigned To</h3>
                 <button
                   onClick={() => setShowAssignModal(true)}
                   className="flex items-center gap-2 px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
@@ -148,14 +149,14 @@ export default function CaseDetailPage() {
                   Change
                 </button>
               </div>
-              <p className="text-sm">
+              <p className="text-sm !text-slate-700">
                 {caseDetail.assignee ? caseDetail.assignee.name : 'Unassigned'}
               </p>
             </div>
 
             <div className="bg-gray-50 rounded-lg p-6">
-              <h3 className="font-semibold mb-2">Created By</h3>
-              <p className="text-sm">{caseDetail.creator.name}</p>
+              <h3 className="mb-2 font-semibold !text-slate-900">Created By</h3>
+              <p className="text-sm !text-slate-700">{caseDetail.creator.name}</p>
             </div>
           </div>
 
@@ -164,6 +165,7 @@ export default function CaseDetailPage() {
             <p className="text-xs text-gray-600">Updated: {new Date(caseDetail.updatedAt).toLocaleString('id-ID')}</p>
           </div>
         </div>
+        <InvestigationPanel caseId={caseDetail.id} />
       </div>
 
       {showAssignModal && (

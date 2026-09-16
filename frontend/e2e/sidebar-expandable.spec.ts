@@ -28,7 +28,7 @@ test('modules expand independently and remain collapsed by default', async ({ pa
   await expect(page.getByRole('link', { name: 'Indicators', exact: true })).toBeVisible();
   await expect(caseManagement).toHaveAttribute('aria-expanded', 'false');
   await caseManagement.click();
-  await expect(page.getByText('Belum ada halaman', { exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Cases', exact: true })).toHaveAttribute('href', '/cases');
   await expect(threatIntelligence).toHaveAttribute('aria-expanded', 'true');
   await page.screenshot({ path: '../.omo/evidence/sidebar/expanded-desktop.png', fullPage: true });
 });

@@ -70,11 +70,11 @@ export default function AssignModal({ caseId, currentAssigneeId, onClose, onSucc
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="mx-4 w-full max-w-md rounded-lg bg-white p-6 text-slate-900 shadow-xl">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold">Assign Case</h2>
-          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded">
+          <h2 className="text-xl font-bold !text-slate-900">Assign Case</h2>
+          <button aria-label="Close" onClick={onClose} className="rounded p-1 text-slate-600 hover:bg-gray-100">
             <X size={20} />
           </button>
         </div>
@@ -98,7 +98,7 @@ export default function AssignModal({ caseId, currentAssigneeId, onClose, onSucc
               <select
                 value={selectedUserId}
                 onChange={(e) => setSelectedUserId(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">-- Select a user --</option>
                 {users.map((user) => (
@@ -112,7 +112,7 @@ export default function AssignModal({ caseId, currentAssigneeId, onClose, onSucc
             <div className="flex gap-3">
               <button
                 onClick={onClose}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-slate-700 hover:bg-gray-50"
               >
                 Cancel
               </button>

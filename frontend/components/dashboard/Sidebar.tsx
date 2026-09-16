@@ -38,6 +38,7 @@ type NavigationItem = {
   readonly href: string;
   readonly icon: LucideIcon;
   readonly aliases?: readonly string[];
+  readonly matchDescendants?: boolean;
 };
 
 type NavigationModule = {
@@ -54,6 +55,10 @@ type SidebarProps = {
 
 // Items yang selalu tampil untuk semua role
 const dashboardItem: NavigationItem = { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard };
+
+const caseManagementItems: readonly NavigationItem[] = [
+  { label: 'Cases', href: '/cases', icon: ClipboardList, matchDescendants: true },
+];
 
 const threatIntelligenceItems: readonly NavigationItem[] = [
   { label: 'Overview', href: '/threat-intelligence', icon: Shield },
@@ -78,6 +83,8 @@ export default function Sidebar({
   const [darkMode, setDarkMode] = useState(false);
   const activeModuleId = pathname.startsWith('/threat-intelligence') || pathname === '/indicators' || pathname.startsWith('/intelligence')
     ? 'threat-intelligence'
+    : pathname === '/cases' || pathname.startsWith('/cases/')
+      ? 'case-management'
     : administrationItemsForRole(role).some(item => isItemActive(item, pathname))
       ? 'administration'
       : null;
@@ -108,7 +115,11 @@ export default function Sidebar({
   const canAccessThreatIntelligence = role === 'SUPER_ADMIN' || role === 'ADMIN' || moduleAccess.some(module => module.assigned && module.moduleSlug === 'threat-intelligence');
   const catalogModules: readonly NavigationModule[] = moduleAccess
     .filter(module => module.moduleSlug !== 'threat-intelligence' && (role === 'SUPER_ADMIN' || module.assigned))
-    .map(module => ({ id: module.moduleSlug, label: module.moduleName, items: [] }));
+    .map(module => ({
+      id: module.moduleSlug,
+      label: module.moduleName,
+      items: module.moduleSlug === 'case-management' ? caseManagementItems : [],
+    }));
   const modules: readonly NavigationModule[] = [
     ...catalogModules,
     ...(canAccessThreatIntelligence ? [{ id: 'threat-intelligence', label: 'Threat Intelligence', items: threatIntelligenceItems }] : []),
@@ -187,7 +198,11 @@ function NavigationLink({
   );
 }
 
-function isItemActive(item: NavigationItem, pathname: string): boolean { return pathname === item.href || (item.aliases?.includes(pathname) ?? false); }
+function isItemActive(item: NavigationItem, pathname: string): boolean {
+  return pathname === item.href
+    || (item.matchDescendants === true && pathname.startsWith(`${item.href}/`))
+    || (item.aliases?.includes(pathname) ?? false);
+}
 
 function administrationItemsForRole(role?: Role): readonly NavigationItem[] {
   if (role === 'SUPER_ADMIN') return [{ label: 'Tenant Management', href: '/tenants', icon: Building2 }, { label: 'User Management', href: '/users', icon: Users }, { label: 'Akses Modul', href: '/module-access', icon: KeyRound }, { label: 'Module Management', href: '/modules', icon: ShieldAlert }, { label: 'Subscription', href: '/subscription', icon: CreditCard }, { label: 'Audit Log', href: '/audit-logs', icon: ClipboardList }];

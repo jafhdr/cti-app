@@ -2,7 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { Prisma, CaseStatus, CasePriority } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
 import { AuthUser } from '../users/users.types';
-import { CreateCaseInput, UpdateCaseInput, ListCaseQuery } from './cases.types';
+import { CreateCaseInput, CreateEvidenceInput, CreateInvestigationNoteInput, UpdateCaseInput, ListCaseQuery } from './cases.types';
 
 @Injectable()
 export class CasesService {
@@ -110,6 +110,81 @@ export class CasesService {
     return detail;
   }
 
+  async getNotes(user: AuthUser, caseId: string) {
+    const caseRecord = await this.scopedCase(user, caseId);
+    return this.prisma.caseInvestigationNote.findMany({
+      where: { caseId, tenantId: caseRecord.tenantId },
+      include: { author: { select: { id: true, name: true, email: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async addNote(user: AuthUser, caseId: string, input: CreateInvestigationNoteInput) {
+    const caseRecord = await this.scopedCase(user, caseId);
+    const content = input.content.trim();
+    if (!content) throw new BadRequestException('Catatan investigasi wajib diisi');
+
+    return this.prisma.$transaction(async (tx) => {
+      const note = await tx.caseInvestigationNote.create({
+        data: { caseId, tenantId: caseRecord.tenantId, content, authorId: user.sub },
+        include: { author: { select: { id: true, name: true, email: true } } },
+      });
+      await tx.caseActivity.create({
+        data: { caseId, tenantId: caseRecord.tenantId, actorId: user.sub, action: 'NOTE_ADDED', metadata: { noteId: note.id } },
+      });
+      await tx.auditLog.create({
+        data: { userId: user.sub, tenantId: caseRecord.tenantId, action: 'CASE_NOTE_ADDED', metadata: { caseId, noteId: note.id } },
+      });
+      return note;
+    });
+  }
+
+  async getEvidence(user: AuthUser, caseId: string) {
+    const caseRecord = await this.scopedCase(user, caseId);
+    return this.prisma.caseEvidence.findMany({
+      where: { caseId, tenantId: caseRecord.tenantId },
+      include: { creator: { select: { id: true, name: true, email: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async addEvidence(user: AuthUser, caseId: string, input: CreateEvidenceInput) {
+    const caseRecord = await this.scopedCase(user, caseId);
+    const name = input.name.trim();
+    const type = input.type.trim();
+    if (!name || !type) throw new BadRequestException('Nama dan tipe evidence wajib diisi');
+
+    return this.prisma.$transaction(async (tx) => {
+      const evidence = await tx.caseEvidence.create({
+        data: {
+          caseId,
+          tenantId: caseRecord.tenantId,
+          name,
+          type,
+          description: input.description?.trim() || null,
+          source: input.source?.trim() || null,
+          createdBy: user.sub,
+        },
+        include: { creator: { select: { id: true, name: true, email: true } } },
+      });
+      await tx.caseActivity.create({
+        data: { caseId, tenantId: caseRecord.tenantId, actorId: user.sub, action: 'EVIDENCE_ADDED', metadata: { evidenceId: evidence.id, name } },
+      });
+      await tx.auditLog.create({
+        data: { userId: user.sub, tenantId: caseRecord.tenantId, action: 'CASE_EVIDENCE_ADDED', metadata: { caseId, evidenceId: evidence.id, name } },
+      });
+      return evidence;
+    });
+  }
+
+  async getActivity(user: AuthUser, caseId: string) {
+    const caseRecord = await this.scopedCase(user, caseId);
+    return this.prisma.caseActivity.findMany({
+      where: { caseId, tenantId: caseRecord.tenantId },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   async create(user: AuthUser, input: CreateCaseInput) {
     const tenantId = user.role === 'SUPER_ADMIN' ? input.tenantId : this.tenantId(user);
     if (!tenantId) throw new BadRequestException('Tenant wajib dipilih');
@@ -119,7 +194,7 @@ export class CasesService {
 
     if (input.assigneeId) {
       const assignee = await this.prisma.user.findUnique({ where: { id: input.assigneeId } });
-      if (!assignee || (assignee.tenantId && assignee.tenantId !== tenantId)) {
+      if (!assignee || assignee.tenantId !== tenantId) {
         throw new NotFoundException('Assignee tidak ditemukan di tenant ini');
       }
     }
@@ -151,6 +226,7 @@ export class CasesService {
         caseNumber: newCase.caseNumber,
         title: newCase.title,
       });
+      await this.activity(user, tenantId, newCase.id, 'CASE_CREATED', { caseNumber: newCase.caseNumber });
 
       return newCase;
     } catch (error) {
@@ -163,7 +239,7 @@ export class CasesService {
 
     if (input.assigneeId) {
       const assignee = await this.prisma.user.findUnique({ where: { id: input.assigneeId } });
-      if (!assignee || (assignee.tenantId && assignee.tenantId !== caseRecord.tenantId)) {
+      if (!assignee || assignee.tenantId !== caseRecord.tenantId) {
         throw new NotFoundException('Assignee tidak ditemukan di tenant ini');
       }
     }
@@ -190,6 +266,7 @@ export class CasesService {
       caseNumber: updated.caseNumber,
       title: updated.title,
     });
+    await this.activity(user, caseRecord.tenantId, caseId, 'CASE_UPDATED', { caseNumber: updated.caseNumber });
 
     return updated;
   }
@@ -220,7 +297,7 @@ export class CasesService {
       throw new NotFoundException('Assignee tidak ditemukan');
     }
 
-    if (assignee.tenantId && assignee.tenantId !== caseRecord.tenantId) {
+    if (assignee.tenantId !== caseRecord.tenantId) {
       throw new ForbiddenException('Assignee harus dari tenant yang sama');
     }
 
@@ -250,11 +327,16 @@ export class CasesService {
       assigneeName: assignee.name,
       assigneeEmail: assignee.email,
     });
+    await this.activity(user, caseRecord.tenantId, caseId, action, {
+      previousAssigneeId: caseRecord.assigneeId,
+      newAssigneeId: assigneeId,
+      assigneeName: assignee.name,
+    });
 
     return updated;
   }
 
-  private async audit(user: AuthUser, tenantId: string, action: string, metadata: any) {
+  private async audit(user: AuthUser, tenantId: string, action: string, metadata: Prisma.InputJsonObject) {
     await this.prisma.auditLog.create({
       data: {
         userId: user.sub,
@@ -262,6 +344,12 @@ export class CasesService {
         action,
         metadata,
       },
+    });
+  }
+
+  private async activity(user: AuthUser, tenantId: string, caseId: string, action: string, metadata: Prisma.InputJsonObject) {
+    await this.prisma.caseActivity.create({
+      data: { actorId: user.sub, tenantId, caseId, action, metadata },
     });
   }
 }

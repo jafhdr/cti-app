@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 
+const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
 function CreateCaseModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -15,8 +17,9 @@ function CreateCaseModal({ onClose, onSuccess }: { onClose: () => void; onSucces
     setError(null);
 
     try {
-      const response = await fetch('/api/cases', {
+      const response = await fetch(`${API}/cases`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title, description, priority }),
       });

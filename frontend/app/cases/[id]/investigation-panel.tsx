@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { Clock3, FileSearch, Loader2, MessageSquareText, Plus } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 
+const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
 type Person = { readonly id: string; readonly name: string; readonly email: string };
 type Note = { readonly id: string; readonly content: string; readonly createdAt: string; readonly author: Person };
 type Evidence = { readonly id: string; readonly name: string; readonly type: string; readonly description: string | null; readonly source: string | null; readonly createdAt: string; readonly creator: Person };
@@ -34,9 +36,9 @@ export function InvestigationPanel({ caseId }: { readonly caseId: string }) {
     setError(null);
     try {
       const responses = await Promise.all([
-        fetch(`/api/cases/${caseId}/notes`),
-        fetch(`/api/cases/${caseId}/evidence`),
-        fetch(`/api/cases/${caseId}/activity`),
+        fetch(`${API}/cases/${caseId}/notes`, { credentials: 'include' }),
+        fetch(`${API}/cases/${caseId}/evidence`, { credentials: 'include' }),
+        fetch(`${API}/cases/${caseId}/activity`, { credentials: 'include' }),
       ]);
       if (responses.some((response) => !response.ok)) throw new Error('Investigation data gagal dimuat');
       const [nextNotes, nextEvidence, nextActivity] = await Promise.all(responses.map((response) => response.json()));
@@ -56,8 +58,9 @@ export function InvestigationPanel({ caseId }: { readonly caseId: string }) {
     setSubmitting(true);
     setError(null);
     try {
-      const response = await fetch(`/api/cases/${caseId}/${path}`, {
+      const response = await fetch(`${API}/cases/${caseId}/${path}`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });

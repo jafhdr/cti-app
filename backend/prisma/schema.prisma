@@ -189,6 +189,9 @@ model Tenant {
   intelligenceEntities       IntelligenceEntity[]
   intelligenceRelationships  IntelligenceRelationship[]
   intelligenceCases          Case[]
+  caseInvestigationNotes     CaseInvestigationNote[]
+  caseEvidence               CaseEvidence[]
+  caseActivities             CaseActivity[]
   alerts                     Alert[]
   moduleSettings             TenantModule[]
   subscription               TenantSubscription?
@@ -317,6 +320,8 @@ model User {
   moduleAccess     UserModuleAccess[]
   casesCreated     Case[]             @relation("CaseCreator")
   casesAssigned    Case[]             @relation("CaseAssignee")
+  investigationNotes CaseInvestigationNote[] @relation("CaseNoteAuthor")
+  evidenceCreated  CaseEvidence[]     @relation("CaseEvidenceCreator")
 }
 
 model UserModuleAccess {
@@ -794,10 +799,59 @@ model Case {
   updatedAt   DateTime          @updatedAt
   entities    CaseEntity[]
   alerts      Alert[]
+  investigationNotes CaseInvestigationNote[]
+  evidence    CaseEvidence[]
+  activities  CaseActivity[]
 
   @@unique([tenantId, caseNumber])
+  @@unique([id, tenantId])
   @@index([tenantId, status, priority, severity])
   @@index([tenantId, createdAt])
+}
+
+model CaseInvestigationNote {
+  id        String   @id @default(cuid())
+  tenantId  String
+  caseId    String
+  content   String
+  authorId  String
+  createdAt DateTime @default(now())
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  case      Case     @relation(fields: [caseId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  author    User     @relation("CaseNoteAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, caseId, createdAt])
+}
+
+model CaseEvidence {
+  id          String   @id @default(cuid())
+  tenantId    String
+  caseId      String
+  name        String
+  type        String
+  description String?
+  source      String?
+  createdBy   String
+  createdAt   DateTime @default(now())
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  case        Case     @relation(fields: [caseId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  creator     User     @relation("CaseEvidenceCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, caseId, createdAt])
+}
+
+model CaseActivity {
+  id        String   @id @default(cuid())
+  tenantId  String
+  caseId    String
+  actorId   String?
+  action    String
+  metadata  Json?
+  createdAt DateTime @default(now())
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  case      Case     @relation(fields: [caseId, tenantId], references: [id, tenantId], onDelete: Cascade)
+
+  @@index([tenantId, caseId, createdAt])
 }
 
 model CaseEntity {

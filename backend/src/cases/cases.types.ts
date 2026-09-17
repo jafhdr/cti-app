@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEnum } from 'class-validator';
+import { IsString, IsOptional, IsEnum, MaxLength, MinLength } from 'class-validator';
 import { CaseStatus, CasePriority, IndicatorSeverity } from '@prisma/client';
 
 export class CreateCaseInput {
@@ -78,6 +78,35 @@ export class ListCaseQuery {
   @IsOptional()
   @IsEnum(IndicatorSeverity)
   severity?: IndicatorSeverity;
+}
+
+export class CreateInvestigationNoteInput {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(10000)
+  content: string = '';
+}
+
+export class CreateEvidenceInput {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(255)
+  name: string = '';
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(100)
+  type: string = '';
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(5000)
+  description?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  source?: string;
 }
 
 

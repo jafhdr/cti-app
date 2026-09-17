@@ -5,6 +5,9 @@ import { ArrowLeft, Edit2, Loader } from 'lucide-react';
 import Link from 'next/link';
 import AssignModal from './assign-modal';
 import { InvestigationPanel } from './investigation-panel';
+import { useCaseMutationAccess } from '../layout';
+
+const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 interface User {
   id: string;
@@ -29,6 +32,7 @@ interface CaseDetail {
 }
 
 export default function CaseDetailPage() {
+  const canMutateCases = useCaseMutationAccess();
   const params = useParams();
   const caseId = params.id as string;
   
@@ -45,7 +49,7 @@ export default function CaseDetailPage() {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch(`/api/cases/${caseId}`);
+      const response = await fetch(`${API}/cases/${caseId}`, { credentials: 'include' });
       if (!response.ok) {
         if (response.status === 404) throw new Error('Case tidak ditemukan');
         throw new Error('Failed to fetch case detail');
@@ -141,13 +145,15 @@ export default function CaseDetailPage() {
             <div className="bg-gray-50 rounded-lg p-6">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="font-semibold !text-slate-900">Assigned To</h3>
-                <button
-                  onClick={() => setShowAssignModal(true)}
-                  className="flex items-center gap-2 px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
-                >
-                  <Edit2 size={14} />
-                  Change
-                </button>
+                {canMutateCases && (
+                  <button
+                    onClick={() => setShowAssignModal(true)}
+                    className="flex items-center gap-2 px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                  >
+                    <Edit2 size={14} />
+                    Change
+                  </button>
+                )}
               </div>
               <p className="text-sm !text-slate-700">
                 {caseDetail.assignee ? caseDetail.assignee.name : 'Unassigned'}

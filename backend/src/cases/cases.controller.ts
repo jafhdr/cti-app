@@ -6,7 +6,7 @@ import { ModuleAccessGuard } from '../auth/module-access.guard';
 import { RequiresModule } from '../auth/module-access.decorator';
 import { AuthUser } from '../users/users.types';
 import { CasesService } from './cases.service';
-import { CreateCaseInput, UpdateCaseInput, ListCaseQuery } from './cases.types';
+import { CreateCaseInput, CreateEvidenceInput, CreateInvestigationNoteInput, UpdateCaseInput, ListCaseQuery } from './cases.types';
 
 @Controller('cases')
 @UseGuards(AuthGuard, RolesGuard, ModuleAccessGuard)
@@ -18,6 +18,42 @@ export class CasesController {
   @Roles('SUPER_ADMIN', 'ADMIN', 'USER')
   list(@Req() req: { user: AuthUser }, @Query() query: ListCaseQuery) {
     return this.casesService.list(req.user, query);
+  }
+
+  @Get('assignable-users')
+  @Roles('SUPER_ADMIN', 'ADMIN', 'USER')
+  getAssignableUsers(@Req() req: { user: AuthUser }, @Query('tenantId') tenantId?: string) {
+    return this.casesService.getAssignableUsers(req.user, tenantId);
+  }
+
+  @Get(':id/notes')
+  @Roles('SUPER_ADMIN', 'ADMIN', 'USER')
+  getNotes(@Req() req: { user: AuthUser }, @Param('id') id: string) {
+    return this.casesService.getNotes(req.user, id);
+  }
+
+  @Post(':id/notes')
+  @Roles('SUPER_ADMIN', 'ADMIN', 'USER')
+  addNote(@Req() req: { user: AuthUser }, @Param('id') id: string, @Body() body: CreateInvestigationNoteInput) {
+    return this.casesService.addNote(req.user, id, body);
+  }
+
+  @Get(':id/evidence')
+  @Roles('SUPER_ADMIN', 'ADMIN', 'USER')
+  getEvidence(@Req() req: { user: AuthUser }, @Param('id') id: string) {
+    return this.casesService.getEvidence(req.user, id);
+  }
+
+  @Post(':id/evidence')
+  @Roles('SUPER_ADMIN', 'ADMIN', 'USER')
+  addEvidence(@Req() req: { user: AuthUser }, @Param('id') id: string, @Body() body: CreateEvidenceInput) {
+    return this.casesService.addEvidence(req.user, id, body);
+  }
+
+  @Get(':id/activity')
+  @Roles('SUPER_ADMIN', 'ADMIN', 'USER')
+  getActivity(@Req() req: { user: AuthUser }, @Param('id') id: string) {
+    return this.casesService.getActivity(req.user, id);
   }
 
   @Get(':id')
@@ -50,9 +86,4 @@ export class CasesController {
     return this.casesService.assign(req.user, id, body.assigneeId);
   }
 
-  @Get('assignable-users')
-  @Roles('SUPER_ADMIN', 'ADMIN', 'USER')
-  getAssignableUsers(@Req() req: { user: AuthUser }, @Query('tenantId') tenantId?: string) {
-    return this.casesService.getAssignableUsers(req.user, tenantId);
-  }
 }

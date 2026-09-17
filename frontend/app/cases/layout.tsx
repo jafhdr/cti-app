@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Sidebar from '../../components/dashboard/Sidebar';
@@ -16,6 +16,12 @@ type CurrentUser = {
   readonly role: Role;
   readonly moduleAccess: readonly ModuleAccess[];
 };
+
+const CaseMutationAccessContext = createContext(false);
+
+export function useCaseMutationAccess(): boolean {
+  return useContext(CaseMutationAccessContext);
+}
 
 export default function CasesLayout({ children }: { readonly children: ReactNode }) {
   const router = useRouter();
@@ -69,7 +75,11 @@ export default function CasesLayout({ children }: { readonly children: ReactNode
           <strong>Case Management</strong>
           <span>{user.email} · {user.role}</span>
         </header>
-        {canAccessCases ? children : (
+        {canAccessCases ? (
+          <CaseMutationAccessContext.Provider value={user.role === 'SUPER_ADMIN' || user.role === 'ADMIN'}>
+            {children}
+          </CaseMutationAccessContext.Provider>
+        ) : (
           <main className="content">
             <div className="error">Anda tidak memiliki akses ke modul Case Management.</div>
             <Link href="/dashboard">Kembali ke Dashboard</Link>

@@ -2,6 +2,8 @@
 import { useEffect, useState } from 'react';
 import { Loader, X } from 'lucide-react';
 
+const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
 interface User {
   id: string;
   name: string;
@@ -30,7 +32,7 @@ export default function AssignModal({ caseId, currentAssigneeId, onClose, onSucc
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/cases/assignable-users');
+      const response = await fetch(`${API}/cases/assignable-users`, { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to fetch users');
       const data = await response.json();
       setUsers(data);
@@ -50,8 +52,9 @@ export default function AssignModal({ caseId, currentAssigneeId, onClose, onSucc
     try {
       setSubmitting(true);
       setError(null);
-      const response = await fetch(`/api/cases/${caseId}/assign`, {
+      const response = await fetch(`${API}/cases/${caseId}/assign`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ assigneeId: selectedUserId }),
       });

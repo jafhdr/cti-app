@@ -2,6 +2,9 @@
 import { useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
 import CreateCaseModal from './create-case-modal';
+import { useCaseMutationAccess } from './layout';
+
+const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 interface Case {
   id: string;
@@ -14,23 +17,29 @@ interface Case {
 }
 
 export default function CasesPage() {
+  const canMutateCases = useCaseMutationAccess();
   const [cases, setCases] = useState<Case[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchCases();
   }, [page]);
 
   const fetchCases = async () => {
+    setLoading(true);
+    setError(null);
     try {
-      const response = await fetch(`/api/cases?page=${page}&limit=25`);
+      const response = await fetch(`${API}/cases?page=${page}&limit=25`, { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to fetch');
       const data = await response.json();
       setCases(data.items);
       setTotal(data.total);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Failed to fetch');
     } finally {
       setLoading(false);
     }
@@ -43,13 +52,20 @@ export default function CasesPage() {
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-4xl font-bold">Case Management</h1>
-          <button onClick={() => setShowCreateModal(true)} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg">
-            <Plus size={20} />
-            New Case
-          </button>
+          {canMutateCases && (
+            <button onClick={() => setShowCreateModal(true)} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg">
+              <Plus size={20} />
+              New Case
+            </button>
+          )}
         </div>
 
-        {cases.length === 0 ? (
+        {error ? (
+          <div role="alert" className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-6">
+            <p>{error}</p>
+            <button type="button" onClick={() => void fetchCases()} className="mt-3 font-semibold underline">Retry</button>
+          </div>
+        ) : cases.length === 0 ? (
           <div className="bg-white rounded-lg p-12 text-center text-gray-600">No cases found</div>
         ) : (
           <div className="bg-white rounded-lg overflow-hidden">

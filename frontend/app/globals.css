@@ -30,13 +30,14 @@ a { color: inherit; text-decoration: none; }
 .tenant { font-size: 13px; color: #687386; }
 .logout { border: 1px solid #d8dee8; background: white; padding: 8px 12px; border-radius: 8px; cursor: pointer; }
 .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.case-related-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .card { background: white; border: 1px solid #e6eaf0; border-radius: 14px; padding: 18px; }
 .card-title { color: #687386; font-size: 13px; }
 .metric { font-size: 30px; font-weight: 800; margin-top: 10px; }
 .section { margin-top: 20px; }
 .badge { display: inline-block; padding: 5px 8px; border-radius: 999px; background: #e9f8ef; color: #18794e; font-size: 12px; font-weight: 700; }
 @media (max-width: 900px) { .app { grid-template-columns: 1fr; } .sidebar { display: none; } .grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 600px) { .content { padding: 18px; } .grid { grid-template-columns: 1fr; } }
+@media (max-width: 600px) { .content { padding: 18px; } .grid, .case-related-grid { grid-template-columns: 1fr; } }
 .auth-title { font-size: 22px; margin: 24px 0 2px; }
 .label-row { display:flex; justify-content:space-between; align-items:center; gap:12px; }
 .label-row a, .auth-footer a { color:#4155d8; font-weight:700; }

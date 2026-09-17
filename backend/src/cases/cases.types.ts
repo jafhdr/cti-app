@@ -109,4 +109,22 @@ export class CreateEvidenceInput {
   source?: string;
 }
 
+export class LinkIndicatorInput {
+  @IsString()
+  @MinLength(1)
+  indicatorId: string = '';
+}
+
+export class LinkThreatActorInput {
+  @IsString()
+  @MinLength(1)
+  threatActorId: string = '';
+}
+
+export class LinkCampaignInput {
+  @IsString()
+  @MinLength(1)
+  campaignId: string = '';
+}
+
 

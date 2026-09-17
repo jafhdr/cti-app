@@ -5,6 +5,9 @@ import { ArrowLeft, Edit2, Loader } from 'lucide-react';
 import Link from 'next/link';
 import AssignModal from './assign-modal';
 import { InvestigationPanel } from './investigation-panel';
+import { RelatedIndicators } from './related-indicators';
+import { RelatedThreatActors } from './related-threat-actors';
+import { RelatedCampaigns } from './related-campaigns';
 import { useCaseMutationAccess } from '../layout';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -171,6 +174,9 @@ export default function CaseDetailPage() {
             <p className="text-xs text-gray-600">Updated: {new Date(caseDetail.updatedAt).toLocaleString('id-ID')}</p>
           </div>
         </div>
+        <RelatedIndicators caseId={caseDetail.id} canMutate={canMutateCases} />
+        <RelatedThreatActors caseId={caseDetail.id} canMutate={canMutateCases} />
+        <RelatedCampaigns caseId={caseDetail.id} canMutate={canMutateCases} />
         <InvestigationPanel caseId={caseDetail.id} />
       </div>
 

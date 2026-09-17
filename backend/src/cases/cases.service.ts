@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, CaseStatus, CasePriority } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
 import { AuthUser } from '../users/users.types';
@@ -182,6 +182,236 @@ export class CasesService {
     return this.prisma.caseActivity.findMany({
       where: { caseId, tenantId: caseRecord.tenantId },
       orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async getIndicators(user: AuthUser, caseId: string) {
+    const caseRecord = await this.scopedCase(user, caseId);
+    const links = await this.prisma.caseIndicator.findMany({
+      where: { caseId, tenantId: caseRecord.tenantId },
+      include: { indicator: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    return links.map((link) => link.indicator);
+  }
+
+  async getAvailableIndicators(user: AuthUser, caseId: string, search?: string) {
+    const caseRecord = await this.scopedCase(user, caseId);
+    const value = search?.trim();
+    return this.prisma.indicator.findMany({
+      where: {
+        tenantId: caseRecord.tenantId,
+        cases: { none: { caseId } },
+        ...(value ? {
+          OR: [
+            { value: { contains: value, mode: 'insensitive' } },
+            { source: { contains: value, mode: 'insensitive' } },
+            { tags: { has: value.toLowerCase() } },
+          ],
+        } : {}),
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+  }
+
+  async linkIndicator(user: AuthUser, caseId: string, indicatorId: string) {
+    const caseRecord = await this.scopedCase(user, caseId);
+    const indicator = await this.prisma.indicator.findFirst({
+      where: { id: indicatorId, tenantId: caseRecord.tenantId },
+    });
+    if (!indicator) throw new NotFoundException('Indicator tidak ditemukan');
+    const existing = await this.prisma.caseIndicator.findUnique({
+      where: { caseId_indicatorId: { caseId, indicatorId } },
+    });
+    if (existing) throw new ConflictException('Indicator sudah terhubung ke Case');
+
+    return this.prisma.$transaction(async (tx) => {
+      const link = await tx.caseIndicator.create({
+        data: { tenantId: caseRecord.tenantId, caseId, indicatorId, createdBy: user.sub },
+        include: { indicator: true },
+      });
+      const metadata = { indicatorId, value: indicator.value, type: indicator.type };
+      await tx.caseActivity.create({
+        data: { caseId, tenantId: caseRecord.tenantId, actorId: user.sub, action: 'INDICATOR_LINKED', metadata },
+      });
+      await tx.auditLog.create({
+        data: { userId: user.sub, tenantId: caseRecord.tenantId, action: 'CASE_INDICATOR_LINKED', metadata: { caseId, ...metadata } },
+      });
+      return link.indicator;
+    });
+  }
+
+  async unlinkIndicator(user: AuthUser, caseId: string, indicatorId: string) {
+    const caseRecord = await this.scopedCase(user, caseId);
+    const link = await this.prisma.caseIndicator.findUnique({
+      where: { caseId_indicatorId: { caseId, indicatorId } },
+      include: { indicator: true },
+    });
+    if (!link || link.tenantId !== caseRecord.tenantId) throw new NotFoundException('Indicator tidak terhubung ke Case');
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.caseIndicator.delete({ where: { caseId_indicatorId: { caseId, indicatorId } } });
+      const metadata = { indicatorId, value: link.indicator.value, type: link.indicator.type };
+      await tx.caseActivity.create({
+        data: { caseId, tenantId: caseRecord.tenantId, actorId: user.sub, action: 'INDICATOR_UNLINKED', metadata },
+      });
+      await tx.auditLog.create({
+        data: { userId: user.sub, tenantId: caseRecord.tenantId, action: 'CASE_INDICATOR_UNLINKED', metadata: { caseId, ...metadata } },
+      });
+      return { success: true };
+    });
+  }
+
+  async getThreatActors(user: AuthUser, caseId: string) {
+    const caseRecord = await this.scopedCase(user, caseId);
+    const links = await this.prisma.caseThreatActor.findMany({
+      where: { caseId, tenantId: caseRecord.tenantId },
+      include: { threatActor: { include: { entity: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
+    return links.map((link) => link.threatActor);
+  }
+
+  async getAvailableThreatActors(user: AuthUser, caseId: string, search?: string) {
+    const caseRecord = await this.scopedCase(user, caseId);
+    const value = search?.trim();
+    return this.prisma.threatActor.findMany({
+      where: {
+        tenantId: caseRecord.tenantId,
+        cases: { none: { caseId } },
+        ...(value ? {
+          OR: [
+            { entity: { name: { contains: value, mode: 'insensitive' } } },
+            { aliases: { has: value } },
+            { motivation: { contains: value, mode: 'insensitive' } },
+            { country: { contains: value, mode: 'insensitive' } },
+          ],
+        } : {}),
+      },
+      include: { entity: true },
+      orderBy: { updatedAt: 'desc' },
+      take: 50,
+    });
+  }
+
+  async linkThreatActor(user: AuthUser, caseId: string, threatActorId: string) {
+    const caseRecord = await this.scopedCase(user, caseId);
+    const threatActor = await this.prisma.threatActor.findFirst({
+      where: { id: threatActorId, tenantId: caseRecord.tenantId },
+      include: { entity: true },
+    });
+    if (!threatActor) throw new NotFoundException('Threat Actor tidak ditemukan');
+    const existing = await this.prisma.caseThreatActor.findUnique({
+      where: { caseId_threatActorId: { caseId, threatActorId } },
+    });
+    if (existing) throw new ConflictException('Threat Actor sudah terhubung ke Case');
+
+    return this.prisma.$transaction(async (tx) => {
+      const link = await tx.caseThreatActor.create({
+        data: { tenantId: caseRecord.tenantId, caseId, threatActorId, createdBy: user.sub },
+        include: { threatActor: { include: { entity: true } } },
+      });
+      const metadata = { threatActorId, name: threatActor.entity.name };
+      await tx.caseActivity.create({
+        data: { caseId, tenantId: caseRecord.tenantId, actorId: user.sub, action: 'THREAT_ACTOR_LINKED', metadata },
+      });
+      await tx.auditLog.create({
+        data: { userId: user.sub, tenantId: caseRecord.tenantId, action: 'CASE_THREAT_ACTOR_LINKED', metadata: { caseId, ...metadata } },
+      });
+      return link.threatActor;
+    });
+  }
+
+  async unlinkThreatActor(user: AuthUser, caseId: string, threatActorId: string) {
+    const caseRecord = await this.scopedCase(user, caseId);
+    const link = await this.prisma.caseThreatActor.findUnique({
+      where: { caseId_threatActorId: { caseId, threatActorId } },
+      include: { threatActor: { include: { entity: true } } },
+    });
+    if (!link || link.tenantId !== caseRecord.tenantId) throw new NotFoundException('Threat Actor tidak terhubung ke Case');
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.caseThreatActor.delete({ where: { caseId_threatActorId: { caseId, threatActorId } } });
+      const metadata = { threatActorId, name: link.threatActor.entity.name };
+      await tx.caseActivity.create({
+        data: { caseId, tenantId: caseRecord.tenantId, actorId: user.sub, action: 'THREAT_ACTOR_UNLINKED', metadata },
+      });
+      await tx.auditLog.create({
+        data: { userId: user.sub, tenantId: caseRecord.tenantId, action: 'CASE_THREAT_ACTOR_UNLINKED', metadata: { caseId, ...metadata } },
+      });
+      return { success: true };
+    });
+  }
+
+  async getCampaigns(user: AuthUser, caseId: string) {
+    const caseRecord = await this.scopedCase(user, caseId);
+    const links = await this.prisma.caseCampaign.findMany({
+      where: { caseId, tenantId: caseRecord.tenantId },
+      include: { campaign: { include: { threatActor: { include: { entity: true } } } } },
+      orderBy: { createdAt: 'desc' },
+    });
+    return links.map((link) => link.campaign);
+  }
+
+  async getAvailableCampaigns(user: AuthUser, caseId: string, search?: string) {
+    const caseRecord = await this.scopedCase(user, caseId);
+    const value = search?.trim();
+    return this.prisma.campaign.findMany({
+      where: {
+        tenantId: caseRecord.tenantId,
+        cases: { none: { caseId } },
+        ...(value ? {
+          OR: [
+            { name: { contains: value, mode: 'insensitive' } },
+            { description: { contains: value, mode: 'insensitive' } },
+            { objective: { contains: value, mode: 'insensitive' } },
+            { externalId: { contains: value, mode: 'insensitive' } },
+          ],
+        } : {}),
+      },
+      include: { threatActor: { include: { entity: true } } },
+      orderBy: { updatedAt: 'desc' },
+      take: 50,
+    });
+  }
+
+  async linkCampaign(user: AuthUser, caseId: string, campaignId: string) {
+    const caseRecord = await this.scopedCase(user, caseId);
+    const campaign = await this.prisma.campaign.findFirst({
+      where: { id: campaignId, tenantId: caseRecord.tenantId },
+      include: { threatActor: { include: { entity: true } } },
+    });
+    if (!campaign) throw new NotFoundException('Campaign tidak ditemukan');
+    const existing = await this.prisma.caseCampaign.findUnique({ where: { caseId_campaignId: { caseId, campaignId } } });
+    if (existing) throw new ConflictException('Campaign sudah terhubung ke Case');
+
+    return this.prisma.$transaction(async (tx) => {
+      const link = await tx.caseCampaign.create({
+        data: { tenantId: caseRecord.tenantId, caseId, campaignId, createdBy: user.sub },
+        include: { campaign: { include: { threatActor: { include: { entity: true } } } } },
+      });
+      const metadata = { campaignId, name: campaign.name };
+      await tx.caseActivity.create({ data: { caseId, tenantId: caseRecord.tenantId, actorId: user.sub, action: 'CAMPAIGN_LINKED', metadata } });
+      await tx.auditLog.create({ data: { userId: user.sub, tenantId: caseRecord.tenantId, action: 'CASE_CAMPAIGN_LINKED', metadata: { caseId, ...metadata } } });
+      return link.campaign;
+    });
+  }
+
+  async unlinkCampaign(user: AuthUser, caseId: string, campaignId: string) {
+    const caseRecord = await this.scopedCase(user, caseId);
+    const link = await this.prisma.caseCampaign.findUnique({
+      where: { caseId_campaignId: { caseId, campaignId } },
+      include: { campaign: true },
+    });
+    if (!link || link.tenantId !== caseRecord.tenantId) throw new NotFoundException('Campaign tidak terhubung ke Case');
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.caseCampaign.delete({ where: { caseId_campaignId: { caseId, campaignId } } });
+      const metadata = { campaignId, name: link.campaign.name };
+      await tx.caseActivity.create({ data: { caseId, tenantId: caseRecord.tenantId, actorId: user.sub, action: 'CAMPAIGN_UNLINKED', metadata } });
+      await tx.auditLog.create({ data: { userId: user.sub, tenantId: caseRecord.tenantId, action: 'CASE_CAMPAIGN_UNLINKED', metadata: { caseId, ...metadata } } });
+      return { success: true };
     });
   }
 

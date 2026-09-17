@@ -156,12 +156,12 @@ enum SubscriptionStatus {
 }
 
 model Tenant {
-  id                         String                     @id @default(cuid())
+  id                         String                            @id @default(cuid())
   name                       String
-  slug                       String                     @unique
-  isActive                   Boolean                    @default(true)
+  slug                       String                            @unique
+  isActive                   Boolean                           @default(true)
   deactivatedAt              DateTime?
-  createdAt                  DateTime                   @default(now())
+  createdAt                  DateTime                          @default(now())
   users                      User[]
   auditLogs                  AuditLog[]
   indicators                 Indicator[]
@@ -169,6 +169,7 @@ model Tenant {
   intelligenceSources        IntelligenceSource[]
   threatActors               ThreatActor[]
   campaigns                  Campaign[]
+  caseCampaigns              CaseCampaign[]
   campaignIndicators         CampaignIndicator[]
   mitreTechniques            MitreTechnique[]
   campaignMitreTechniques    CampaignMitreTechnique[]
@@ -192,6 +193,8 @@ model Tenant {
   caseInvestigationNotes     CaseInvestigationNote[]
   caseEvidence               CaseEvidence[]
   caseActivities             CaseActivity[]
+  caseIndicators             CaseIndicator[]
+  caseThreatActors           CaseThreatActor[]
   alerts                     Alert[]
   moduleSettings             TenantModule[]
   subscription               TenantSubscription?
@@ -306,22 +309,22 @@ model ModuleRoleAccess {
 }
 
 model User {
-  id               String             @id @default(cuid())
-  email            String             @unique
-  name             String
-  passwordHash     String
-  role             Role               @default(USER)
-  isActive         Boolean            @default(true)
-  deactivatedAt    DateTime?
-  tenantId         String?
-  tenant           Tenant?            @relation(fields: [tenantId], references: [id])
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
-  moduleAccess     UserModuleAccess[]
-  casesCreated     Case[]             @relation("CaseCreator")
-  casesAssigned    Case[]             @relation("CaseAssignee")
+  id                 String                  @id @default(cuid())
+  email              String                  @unique
+  name               String
+  passwordHash       String
+  role               Role                    @default(USER)
+  isActive           Boolean                 @default(true)
+  deactivatedAt      DateTime?
+  tenantId           String?
+  tenant             Tenant?                 @relation(fields: [tenantId], references: [id])
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+  moduleAccess       UserModuleAccess[]
+  casesCreated       Case[]                  @relation("CaseCreator")
+  casesAssigned      Case[]                  @relation("CaseAssignee")
   investigationNotes CaseInvestigationNote[] @relation("CaseNoteAuthor")
-  evidenceCreated  CaseEvidence[]     @relation("CaseEvidenceCreator")
+  evidenceCreated    CaseEvidence[]          @relation("CaseEvidenceCreator")
 }
 
 model UserModuleAccess {
@@ -360,28 +363,29 @@ model PasswordResetToken {
 }
 
 model Indicator {
-  id                   String              @id @default(cuid())
+  id                   String                        @id @default(cuid())
   tenantId             String
-  tenant               Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant               Tenant                        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   value                String
   type                 IndicatorType
-  severity             IndicatorSeverity   @default(MEDIUM)
-  confidence           Int                 @default(50)
-  status               IndicatorStatus     @default(ACTIVE)
-  tags                 String[]            @default([])
+  severity             IndicatorSeverity             @default(MEDIUM)
+  confidence           Int                           @default(50)
+  status               IndicatorStatus               @default(ACTIVE)
+  tags                 String[]                      @default([])
   source               String?
   intelligenceSourceId String?
-  intelligenceSource   IntelligenceSource? @relation(fields: [intelligenceSourceId], references: [id], onDelete: SetNull)
+  intelligenceSource   IntelligenceSource?           @relation(fields: [intelligenceSourceId], references: [id], onDelete: SetNull)
   description          String?
   expiresAt            DateTime?
   createdById          String?
   intelligenceEntityId String?
-  intelligenceEntity   IntelligenceEntity? @relation(fields: [intelligenceEntityId], references: [id], onDelete: SetNull)
+  intelligenceEntity   IntelligenceEntity?           @relation(fields: [intelligenceEntityId], references: [id], onDelete: SetNull)
   campaigns            CampaignIndicator[]
   intelligenceReports  IntelligenceReportIndicator[]
   enrichments          IndicatorEnrichment[]
-  createdAt            DateTime            @default(now())
-  updatedAt            DateTime            @updatedAt
+  cases                CaseIndicator[]
+  createdAt            DateTime                      @default(now())
+  updatedAt            DateTime                      @updatedAt
 
   @@unique([tenantId, type, value])
   @@unique([id, tenantId])
@@ -407,23 +411,23 @@ model IndicatorEnrichment {
 }
 
 model IntelligenceSource {
-  id          String                        @id @default(cuid())
-  tenantId    String
-  tenant      Tenant                        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  name        String
-  description String?
-  sourceType  IntelligenceSourceType
-  provider    String?
-  url         String?
-  reliability IntelligenceSourceReliability @default(C)
-  confidence  Int                           @default(50)
-  tlp         TlpLevel                      @default(AMBER)
-  status      IntelligenceSourceStatus      @default(ACTIVE)
-  lastSyncAt  DateTime?
-  createdBy   String
-  createdAt   DateTime                      @default(now())
-  updatedAt   DateTime                      @updatedAt
-  indicators  Indicator[]
+  id                  String                        @id @default(cuid())
+  tenantId            String
+  tenant              Tenant                        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name                String
+  description         String?
+  sourceType          IntelligenceSourceType
+  provider            String?
+  url                 String?
+  reliability         IntelligenceSourceReliability @default(C)
+  confidence          Int                           @default(50)
+  tlp                 TlpLevel                      @default(AMBER)
+  status              IntelligenceSourceStatus      @default(ACTIVE)
+  lastSyncAt          DateTime?
+  createdBy           String
+  createdAt           DateTime                      @default(now())
+  updatedAt           DateTime                      @updatedAt
+  indicators          Indicator[]
   intelligenceReports IntelligenceReportSource[]
 
   @@unique([tenantId, name])
@@ -457,24 +461,25 @@ model IntelligenceEntity {
 }
 
 model ThreatActor {
-  id              String                     @id @default(cuid())
-  tenantId        String
-  tenant          Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  entityId        String                     @unique
-  entity          IntelligenceEntity         @relation(fields: [entityId], references: [id], onDelete: Cascade)
-  aliases         String[]                   @default([])
-  motivation      String?
-  targetSectors   String[]                   @default([])
-  country         String?
-  region          String?
-  status          ThreatActorStatus          @default(ACTIVE)
-  createdBy       String
-  createdAt       DateTime                   @default(now())
-  updatedAt       DateTime                   @updatedAt
-  campaigns       Campaign[]
-  malwareTools    ThreatActorMalwareTool[]
-  vulnerabilities ThreatActorVulnerability[]
+  id                  String                          @id @default(cuid())
+  tenantId            String
+  tenant              Tenant                          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  entityId            String                          @unique
+  entity              IntelligenceEntity              @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  aliases             String[]                        @default([])
+  motivation          String?
+  targetSectors       String[]                        @default([])
+  country             String?
+  region              String?
+  status              ThreatActorStatus               @default(ACTIVE)
+  createdBy           String
+  createdAt           DateTime                        @default(now())
+  updatedAt           DateTime                        @updatedAt
+  campaigns           Campaign[]
+  malwareTools        ThreatActorMalwareTool[]
+  vulnerabilities     ThreatActorVulnerability[]
   intelligenceReports IntelligenceReportThreatActor[]
+  cases               CaseThreatActor[]
 
   @@unique([tenantId, entityId])
   @@unique([id, tenantId])
@@ -482,29 +487,30 @@ model ThreatActor {
 }
 
 model Campaign {
-  id              String                   @id @default(cuid())
-  tenantId        String
-  tenant          Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  name            String
-  description     String?
-  objective       String?
-  status          CampaignStatus           @default(PLANNED)
-  severity        IndicatorSeverity        @default(MEDIUM)
-  confidence      Int                      @default(50)
-  startDate       DateTime?
-  endDate         DateTime?
-  externalId      String?
-  referenceUrl    String?
-  threatActorId   String
-  threatActor     ThreatActor              @relation(fields: [threatActorId], references: [id], onDelete: Restrict)
-  indicators      CampaignIndicator[]
-  mitreTechniques CampaignMitreTechnique[]
-  malwareTools    CampaignMalwareTool[]
-  vulnerabilities CampaignVulnerability[]
+  id                  String                       @id @default(cuid())
+  tenantId            String
+  tenant              Tenant                       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name                String
+  description         String?
+  objective           String?
+  status              CampaignStatus               @default(PLANNED)
+  severity            IndicatorSeverity            @default(MEDIUM)
+  confidence          Int                          @default(50)
+  startDate           DateTime?
+  endDate             DateTime?
+  externalId          String?
+  referenceUrl        String?
+  threatActorId       String
+  threatActor         ThreatActor                  @relation(fields: [threatActorId], references: [id], onDelete: Restrict)
+  indicators          CampaignIndicator[]
+  mitreTechniques     CampaignMitreTechnique[]
+  malwareTools        CampaignMalwareTool[]
+  vulnerabilities     CampaignVulnerability[]
   intelligenceReports IntelligenceReportCampaign[]
-  createdBy       String
-  createdAt       DateTime                 @default(now())
-  updatedAt       DateTime                 @updatedAt
+  cases               CaseCampaign[]
+  createdBy           String
+  createdAt           DateTime                     @default(now())
+  updatedAt           DateTime                     @updatedAt
 
   @@unique([tenantId, name])
   @@unique([id, tenantId])
@@ -513,20 +519,20 @@ model Campaign {
 }
 
 model MalwareTool {
-  id              String                     @id @default(cuid())
-  tenantId        String
-  tenant          Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  name            String
-  type            MalwareToolType
-  description     String?
-  externalId      String?
-  url             String?
-  threatActors    ThreatActorMalwareTool[]
-  campaigns       CampaignMalwareTool[]
-  vulnerabilities MalwareToolVulnerability[]
+  id                  String                          @id @default(cuid())
+  tenantId            String
+  tenant              Tenant                          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name                String
+  type                MalwareToolType
+  description         String?
+  externalId          String?
+  url                 String?
+  threatActors        ThreatActorMalwareTool[]
+  campaigns           CampaignMalwareTool[]
+  vulnerabilities     MalwareToolVulnerability[]
   intelligenceReports IntelligenceReportMalwareTool[]
-  createdAt       DateTime                   @default(now())
-  updatedAt       DateTime                   @updatedAt
+  createdAt           DateTime                        @default(now())
+  updatedAt           DateTime                        @updatedAt
 
   @@unique([tenantId, name])
   @@unique([id, tenantId])
@@ -534,21 +540,21 @@ model MalwareTool {
 }
 
 model Vulnerability {
-  id           String                     @id @default(cuid())
-  tenantId     String
-  tenant       Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  cveId        String
-  name         String
-  description  String?
-  severity     IndicatorSeverity          @default(MEDIUM)
-  cvssScore    Float?
-  url          String?
-  threatActors ThreatActorVulnerability[]
-  campaigns    CampaignVulnerability[]
-  malwareTools MalwareToolVulnerability[]
+  id                  String                            @id @default(cuid())
+  tenantId            String
+  tenant              Tenant                            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  cveId               String
+  name                String
+  description         String?
+  severity            IndicatorSeverity                 @default(MEDIUM)
+  cvssScore           Float?
+  url                 String?
+  threatActors        ThreatActorVulnerability[]
+  campaigns           CampaignVulnerability[]
+  malwareTools        MalwareToolVulnerability[]
   intelligenceReports IntelligenceReportVulnerability[]
-  createdAt    DateTime                   @default(now())
-  updatedAt    DateTime                   @updatedAt
+  createdAt           DateTime                          @default(now())
+  updatedAt           DateTime                          @updatedAt
 
   @@unique([tenantId, cveId])
   @@unique([id, tenantId])
@@ -589,42 +595,46 @@ model IntelligenceReportThreatActor {
   threatActor   ThreatActor        @relation(fields: [threatActorId, tenantId], references: [id, tenantId], onDelete: Cascade)
   tenant        Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdAt     DateTime           @default(now())
+
   @@id([reportId, threatActorId])
   @@index([tenantId, threatActorId])
 }
 
 model IntelligenceReportCampaign {
-  reportId  String
+  reportId   String
   campaignId String
-  tenantId  String
-  report    IntelligenceReport @relation(fields: [reportId, tenantId], references: [id, tenantId], onDelete: Cascade)
-  campaign  Campaign           @relation(fields: [campaignId, tenantId], references: [id, tenantId], onDelete: Cascade)
-  tenant    Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  createdAt DateTime           @default(now())
+  tenantId   String
+  report     IntelligenceReport @relation(fields: [reportId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  campaign   Campaign           @relation(fields: [campaignId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  tenant     Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt  DateTime           @default(now())
+
   @@id([reportId, campaignId])
   @@index([tenantId, campaignId])
 }
 
 model IntelligenceReportIndicator {
-  reportId   String
+  reportId    String
   indicatorId String
-  tenantId   String
-  report     IntelligenceReport @relation(fields: [reportId, tenantId], references: [id, tenantId], onDelete: Cascade)
-  indicator  Indicator          @relation(fields: [indicatorId, tenantId], references: [id, tenantId], onDelete: Cascade)
-  tenant     Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  createdAt  DateTime           @default(now())
+  tenantId    String
+  report      IntelligenceReport @relation(fields: [reportId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  indicator   Indicator          @relation(fields: [indicatorId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  tenant      Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt   DateTime           @default(now())
+
   @@id([reportId, indicatorId])
   @@index([tenantId, indicatorId])
 }
 
 model IntelligenceReportMalwareTool {
-  reportId     String
+  reportId      String
   malwareToolId String
-  tenantId     String
-  report       IntelligenceReport @relation(fields: [reportId, tenantId], references: [id, tenantId], onDelete: Cascade)
-  malwareTool  MalwareTool        @relation(fields: [malwareToolId, tenantId], references: [id, tenantId], onDelete: Cascade)
-  tenant       Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  createdAt    DateTime           @default(now())
+  tenantId      String
+  report        IntelligenceReport @relation(fields: [reportId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  malwareTool   MalwareTool        @relation(fields: [malwareToolId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  tenant        Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt     DateTime           @default(now())
+
   @@id([reportId, malwareToolId])
   @@index([tenantId, malwareToolId])
 }
@@ -637,6 +647,7 @@ model IntelligenceReportVulnerability {
   vulnerability   Vulnerability      @relation(fields: [vulnerabilityId, tenantId], references: [id, tenantId], onDelete: Cascade)
   tenant          Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdAt       DateTime           @default(now())
+
   @@id([reportId, vulnerabilityId])
   @@index([tenantId, vulnerabilityId])
 }
@@ -649,6 +660,7 @@ model IntelligenceReportSource {
   source    IntelligenceSource @relation(fields: [sourceId, tenantId], references: [id, tenantId], onDelete: Cascade)
   tenant    Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdAt DateTime           @default(now())
+
   @@id([reportId, sourceId])
   @@index([tenantId, sourceId])
 }
@@ -782,31 +794,79 @@ model IntelligenceRelationship {
 }
 
 model Case {
-  id          String            @id @default(cuid())
-  tenantId    String
-  tenant      Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  caseNumber  String
-  title       String
-  description String?
-  status      CaseStatus        @default(OPEN)
-  priority    CasePriority      @default(MEDIUM)
-  severity    IndicatorSeverity @default(MEDIUM)
-  assigneeId  String?
-  assignee    User?             @relation("CaseAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
-  createdBy   String
-  creator     User              @relation("CaseCreator", fields: [createdBy], references: [id], onDelete: Restrict)
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-  entities    CaseEntity[]
-  alerts      Alert[]
+  id                 String                  @id @default(cuid())
+  tenantId           String
+  tenant             Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  caseNumber         String
+  title              String
+  description        String?
+  status             CaseStatus              @default(OPEN)
+  priority           CasePriority            @default(MEDIUM)
+  severity           IndicatorSeverity       @default(MEDIUM)
+  assigneeId         String?
+  assignee           User?                   @relation("CaseAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  createdBy          String
+  creator            User                    @relation("CaseCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+  entities           CaseEntity[]
+  alerts             Alert[]
   investigationNotes CaseInvestigationNote[]
-  evidence    CaseEvidence[]
-  activities  CaseActivity[]
+  evidence           CaseEvidence[]
+  activities         CaseActivity[]
+  indicators         CaseIndicator[]
+  threatActors       CaseThreatActor[]
+  campaigns          CaseCampaign[]
 
   @@unique([tenantId, caseNumber])
   @@unique([id, tenantId])
   @@index([tenantId, status, priority, severity])
   @@index([tenantId, createdAt])
+}
+
+model CaseCampaign {
+  tenantId  String
+  caseId    String
+  campaignId String
+  createdBy String
+  createdAt DateTime @default(now())
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  case      Case     @relation(fields: [caseId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  campaign  Campaign @relation(fields: [campaignId, tenantId], references: [id, tenantId], onDelete: Cascade)
+
+  @@id([caseId, campaignId])
+  @@index([tenantId, caseId, createdAt])
+  @@index([tenantId, campaignId])
+}
+
+model CaseIndicator {
+  tenantId    String
+  caseId      String
+  indicatorId String
+  createdBy   String
+  createdAt   DateTime  @default(now())
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  case        Case      @relation(fields: [caseId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  indicator   Indicator @relation(fields: [indicatorId, tenantId], references: [id, tenantId], onDelete: Cascade)
+
+  @@id([caseId, indicatorId])
+  @@index([tenantId, caseId, createdAt])
+  @@index([tenantId, indicatorId])
+}
+
+model CaseThreatActor {
+  tenantId      String
+  caseId        String
+  threatActorId String
+  createdBy     String
+  createdAt     DateTime    @default(now())
+  tenant        Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  case          Case        @relation(fields: [caseId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  threatActor   ThreatActor @relation(fields: [threatActorId, tenantId], references: [id, tenantId], onDelete: Cascade)
+
+  @@id([caseId, threatActorId])
+  @@index([tenantId, caseId, createdAt])
+  @@index([tenantId, threatActorId])
 }
 
 model CaseInvestigationNote {

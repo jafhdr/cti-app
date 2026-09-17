@@ -19,6 +19,8 @@ const actionLabel: Readonly<Record<string, string>> = {
   CASE_REASSIGNED: 'Case ditugaskan ulang',
   NOTE_ADDED: 'Catatan investigasi ditambahkan',
   EVIDENCE_ADDED: 'Evidence ditambahkan',
+  INDICATOR_LINKED: 'Indicator dihubungkan',
+  INDICATOR_UNLINKED: 'Indicator dilepas',
 };
 
 export function InvestigationPanel({ caseId }: { readonly caseId: string }) {

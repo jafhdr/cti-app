@@ -10,6 +10,7 @@ import { IndicatorsService } from './indicators.service';
 import { IndicatorFeedsService } from './indicator-feeds.service';
 import { SyncIndicatorFeedsDto } from './indicator-feeds.types';
 import { IndicatorEnrichmentService } from './indicator-enrichment.service';
+import type { IndicatorEnrichmentInput } from './indicator-enrichment.types';
 import { ThreatActorAttributionService } from './threat-actor-attribution.service';
 
 @Controller('indicators')
@@ -45,7 +46,7 @@ export class IndicatorsController {
 
   @Post(':id/enrich')
   @Roles('SUPER_ADMIN', 'ADMIN')
-  enrich(@Req() req: { user: AuthUser }, @Param('id') id: string) { return this.enrichment.run(req.user, id); }
+  enrich(@Req() req: { user: AuthUser }, @Param('id') id: string, @Body() body: IndicatorEnrichmentInput = { provider: 'AUTO' }) { return this.enrichment.run(req.user, id, body); }
 
   @Post(':id/correlate-threat-actor')
   @Roles('SUPER_ADMIN', 'ADMIN')

@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 const app = process.env.SOURCES_APP_URL || 'http://localhost:3000';
 const indicator = { id: 'indicator-1', value: 'example.com', type: 'DOMAIN', severity: 'HIGH', confidence: 90, status: 'ACTIVE', tags: ['phishing'], source: 'analyst', description: 'Suspicious domain', expiresAt: null, tenant: { id: 'tenant-a', name: 'Tenant A' }, intelligenceEntity: null };
-const enrichment = { id: 'enrichment-1', provider: 'CLOUDFLARE_DNS', status: 'SUCCESS', error: null, createdAt: '2026-09-14T08:00:00.000Z', data: { host: 'example.com', responseCode: 0, records: [{ type: 1, ttl: 300, value: '93.184.216.34' }] } };
+const enrichment = { id: 'enrichment-1', provider: 'VIRUSTOTAL', status: 'SUCCESS', error: null, createdAt: '2026-09-14T08:00:00.000Z', data: { reputation: -7, detections: { malicious: 3, suspicious: 2, harmless: 67, undetected: 8, timeout: 1, total: 81 }, analysisAt: '2026-09-14T07:55:00.000Z' } };
 
 async function session(page: Page): Promise<{ readonly runCount: () => number }> {
   let enriched = false;
@@ -11,7 +11,8 @@ async function session(page: Page): Promise<{ readonly runCount: () => number }>
   await page.route(/\/intelligence\/overview(?:\?.*)?$/, route => route.fulfill({ json: { entities: [] } }));
   await page.route(/\/indicators\?.+$/, route => route.fulfill({ json: { items: [indicator], total: 1, page: 1, limit: 100 } }));
   await page.route(/\/indicators\/indicator-1\/enrichments$/, route => route.fulfill({ json: enriched ? [enrichment] : [] }));
-  await page.route(/\/indicators\/indicator-1\/enrich$/, route => {
+  await page.route(/\/indicators\/indicator-1\/enrich$/, async route => {
+    expect(route.request().postDataJSON()).toEqual({ provider: 'VIRUSTOTAL' });
     enriched = true;
     runs += 1;
     return route.fulfill({ json: enrichment });
@@ -33,11 +34,11 @@ test('indicator detail runs enrichment and keeps the saved provider context visi
   await page.getByRole('button', { name: 'Detail' }).click();
   await expect(page.getByText('No enrichment yet')).toBeVisible();
 
-  await page.getByRole('button', { name: 'Enrich', exact: true }).click();
+  await page.getByRole('button', { name: 'Enrich with VirusTotal', exact: true }).click();
 
   await expect(page.getByText('Enrichment berhasil disimpan.')).toBeVisible();
-  await expect(page.getByText('CLOUDFLARE_DNS')).toBeVisible();
-  await expect(page.getByText('93.184.216.34')).toBeVisible();
+  await expect(page.getByText('VIRUSTOTAL', { exact: true })).toBeVisible();
+  await expect(page.getByText('5 / 81')).toBeVisible();
   expect(state.runCount()).toBe(1);
 });
 
@@ -45,8 +46,8 @@ test('indicator enrichment detail is readable at desktop, tablet, and mobile wid
   await session(page);
   await page.goto(`${app}/indicators`);
   await page.getByRole('button', { name: 'Detail' }).click();
-  await page.getByRole('button', { name: 'Enrich', exact: true }).click();
-  await expect(page.getByText('93.184.216.34')).toBeVisible();
+  await page.getByRole('button', { name: 'Enrich with VirusTotal', exact: true }).click();
+  await expect(page.getByText('5 / 81')).toBeVisible();
   for (const viewport of [{ name: 'desktop', width: 1280, height: 900 }, { name: 'tablet', width: 768, height: 900 }, { name: 'mobile', width: 375, height: 812 }]) {
     await page.setViewportSize(viewport);
     await page.screenshot({ path: `../.omo/evidence/indicator-enrichment/${viewport.name}.png`, fullPage: true });
@@ -65,7 +66,7 @@ test('indicator enrichment exposes busy, hover, focus, close, and API error stat
   await page.goto(`${app}/indicators`);
   await page.getByRole('button', { name: 'Detail' }).click();
 
-  const enrichButton = page.getByRole('button', { name: 'Enrich', exact: true });
+  const enrichButton = page.getByRole('button', { name: 'Enrich with VirusTotal', exact: true });
   await enrichButton.hover();
   await page.screenshot({ path: '../.omo/evidence/indicator-enrichment/hover.png', fullPage: true });
   const request = enrichButton.click();

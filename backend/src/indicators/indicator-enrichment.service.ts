@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
 import type { AuthUser } from '../users/users.types';
 import { IndicatorEnrichmentClient } from './indicator-enrichment.client';
+import { indicatorEnrichmentInputSchema, type IndicatorEnrichmentInput } from './indicator-enrichment.types';
 
 @Injectable()
 export class IndicatorEnrichmentService {
@@ -16,17 +17,18 @@ export class IndicatorEnrichmentService {
     });
   }
 
-  async run(currentUser: AuthUser, indicatorId: string) {
+  async run(currentUser: AuthUser, indicatorId: string, input: IndicatorEnrichmentInput = { provider: 'AUTO' }) {
     const indicator = await this.scopedIndicator(currentUser, indicatorId);
+    const { provider } = indicatorEnrichmentInputSchema.parse(input);
     try {
-      const result = await this.client.enrich(indicator.type, indicator.value);
+      const result = await this.client.enrich(indicator.type, indicator.value, provider);
       return this.prisma.indicatorEnrichment.create({
         data: { tenantId: indicator.tenantId, indicatorId, provider: result.provider, data: result.data, status: 'SUCCESS' },
       });
     } catch (cause) {
       const error = cause instanceof Error ? cause.message : 'Enrichment gagal';
       return this.prisma.indicatorEnrichment.create({
-        data: { tenantId: indicator.tenantId, indicatorId, provider: this.client.provider(indicator.type), data: Prisma.JsonNull, status: 'FAILED', error },
+        data: { tenantId: indicator.tenantId, indicatorId, provider: this.client.provider(indicator.type, provider), data: Prisma.JsonNull, status: 'FAILED', error },
       });
     }
   }

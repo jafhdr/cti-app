@@ -73,7 +73,7 @@ export default function CaseDetailPage() {
 
   if (loading) {
     return (
-      <div role="status" aria-label="Memuat detail case" className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div role="status" aria-label="Memuat detail case" className="case-page flex items-center justify-center">
         <Loader className="h-8 w-8 animate-spin text-blue-600" />
       </div>
     );
@@ -81,57 +81,57 @@ export default function CaseDetailPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-slate-50 p-6">
+      <main className="case-page">
         <div className="max-w-4xl mx-auto">
-          <Link href="/cases" className="flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-6">
+          <Link href="/cases" className="case-back-link mb-6 flex items-center gap-2">
             <ArrowLeft size={20} />
             Back
           </Link>
-          <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-lg">
+          <div className="error rounded px-6 py-4">
             {error}
           </div>
         </div>
-      </div>
+      </main>
     );
   }
 
   if (!caseDetail) {
     return (
-      <div className="min-h-screen bg-slate-50 p-6">
+      <main className="case-page">
         <div className="max-w-4xl mx-auto">
-          <Link href="/cases" className="flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-6">
+          <Link href="/cases" className="case-back-link mb-6 flex items-center gap-2">
             <ArrowLeft size={20} />
             Back
           </Link>
-          <div className="bg-gray-50 rounded-lg p-12 text-center text-gray-600">
+          <div className="case-panel p-12 text-center text-muted-foreground">
             Case not found
           </div>
         </div>
-      </div>
+      </main>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6" style={{ colorScheme: 'light' }}>
+    <main className="case-page">
       <div className="max-w-4xl mx-auto">
-        <Link href="/cases" className="mb-6 flex items-center gap-2 !text-blue-600 hover:!text-blue-700">
+        <Link href="/cases" className="case-back-link mb-6 flex items-center gap-2">
           <ArrowLeft size={20} />
           Back
         </Link>
 
-        <div className="bg-white rounded-lg shadow-lg p-8">
+        <section className="case-panel p-8">
           <div className="border-b pb-6 mb-6">
-            <p className="text-sm text-gray-600 mb-2">{caseDetail.caseNumber}</p>
-            <h1 className="text-3xl font-bold text-slate-900">{caseDetail.title}</h1>
+            <p className="mb-2 text-sm text-muted-foreground">{caseDetail.caseNumber}</p>
+            <h1 className="case-title">{caseDetail.title}</h1>
 
             <div className="flex gap-3 flex-wrap mt-4">
-              <span className="px-4 py-2 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+              <span className="case-badge case-badge-info">
                 {caseDetail.status}
               </span>
-              <span className="px-4 py-2 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
+              <span className="case-badge case-badge-warning">
                 {caseDetail.priority}
               </span>
-              <span className="px-4 py-2 rounded-full text-sm font-medium bg-orange-100 text-orange-800">
+              <span className="case-badge case-badge-danger">
                 {caseDetail.severity}
               </span>
             </div>
@@ -139,15 +139,15 @@ export default function CaseDetailPage() {
 
           {caseDetail.description && (
             <div className="mb-8">
-              <h2 className="mb-3 text-lg font-semibold !text-slate-900">Description</h2>
-              <p className="!text-slate-700">{caseDetail.description}</p>
+              <h2 className="mb-3 text-lg font-semibold text-card-foreground">Description</h2>
+              <p className="text-foreground">{caseDetail.description}</p>
             </div>
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-            <div className="bg-gray-50 rounded-lg p-6">
+            <div className="case-subpanel p-6">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="font-semibold !text-slate-900">Assigned To</h3>
+                <h3 className="font-semibold text-card-foreground">Assigned To</h3>
                 {canMutateCases && (
                   <button
                     onClick={() => setShowAssignModal(true)}
@@ -158,22 +158,22 @@ export default function CaseDetailPage() {
                   </button>
                 )}
               </div>
-              <p className="text-sm !text-slate-700">
+              <p className="text-sm text-foreground">
                 {caseDetail.assignee ? caseDetail.assignee.name : 'Unassigned'}
               </p>
             </div>
 
-            <div className="bg-gray-50 rounded-lg p-6">
-              <h3 className="mb-2 font-semibold !text-slate-900">Created By</h3>
-              <p className="text-sm !text-slate-700">{caseDetail.creator.name}</p>
+            <div className="case-subpanel p-6">
+              <h3 className="mb-2 font-semibold text-card-foreground">Created By</h3>
+              <p className="text-sm text-foreground">{caseDetail.creator.name}</p>
             </div>
           </div>
 
-          <div className="bg-gray-50 rounded-lg p-6">
-            <p className="text-xs text-gray-600 mb-1">Created: {new Date(caseDetail.createdAt).toLocaleString('id-ID')}</p>
-            <p className="text-xs text-gray-600">Updated: {new Date(caseDetail.updatedAt).toLocaleString('id-ID')}</p>
+          <div className="case-subpanel p-6">
+            <p className="mb-1 text-xs text-muted-foreground">Created: {new Date(caseDetail.createdAt).toLocaleString('id-ID')}</p>
+            <p className="text-xs text-muted-foreground">Updated: {new Date(caseDetail.updatedAt).toLocaleString('id-ID')}</p>
           </div>
-        </div>
+        </section>
         <RelatedIndicators caseId={caseDetail.id} canMutate={canMutateCases} />
         <RelatedThreatActors caseId={caseDetail.id} canMutate={canMutateCases} />
         <RelatedCampaigns caseId={caseDetail.id} canMutate={canMutateCases} />
@@ -188,6 +188,6 @@ export default function CaseDetailPage() {
           onSuccess={handleAssignSuccess}
         />
       )}
-    </div>
+    </main>
   );
 }

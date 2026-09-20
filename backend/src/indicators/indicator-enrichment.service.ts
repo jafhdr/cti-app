@@ -2,7 +2,15 @@ import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/commo
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
 import type { AuthUser } from '../users/users.types';
-import { IndicatorEnrichmentClient } from './indicator-enrichment.client';
+import {
+  EnrichmentConfigurationError,
+  IndicatorEnrichmentClient,
+  InvalidIndicatorValueError,
+  ProviderHttpError,
+  ProviderNetworkError,
+  ProviderTimeoutError,
+  UnsupportedIndicatorTypeError,
+} from './indicator-enrichment.client';
 import { indicatorEnrichmentInputSchema, type IndicatorEnrichmentInput } from './indicator-enrichment.types';
 
 @Injectable()
@@ -30,6 +38,38 @@ export class IndicatorEnrichmentService {
       return this.prisma.indicatorEnrichment.create({
         data: { tenantId: indicator.tenantId, indicatorId, provider: this.client.provider(indicator.type, provider), data: Prisma.JsonNull, status: 'FAILED', error },
       });
+    }
+  }
+
+  async runVirusTotalAutomation(tenantId: string, indicatorId: string, cooldownMs: number) {
+    const indicator = await this.prisma.indicator.findFirst({ where: { id: indicatorId, tenantId }, select: { id: true, tenantId: true, type: true, value: true } });
+    if (!indicator) throw new NotFoundException('Indicator tidak ditemukan');
+    const fresh = await this.prisma.indicatorEnrichment.findFirst({
+      where: { tenantId, indicatorId, provider: 'VIRUSTOTAL', status: 'SUCCESS', createdAt: { gte: new Date(Date.now() - cooldownMs) } },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true },
+    });
+    if (fresh) return { kind: 'fresh' as const, enrichmentId: fresh.id };
+    try {
+      const result = await this.client.enrich(indicator.type, indicator.value, 'VIRUSTOTAL');
+      const enrichment = await this.prisma.indicatorEnrichment.create({
+        data: { tenantId, indicatorId, provider: result.provider, data: result.data, status: 'SUCCESS' },
+      });
+      return { kind: 'success' as const, enrichmentId: enrichment.id };
+    } catch (cause) {
+      const error = cause instanceof Error ? cause.message : 'Enrichment gagal';
+      await this.prisma.indicatorEnrichment.create({
+        data: { tenantId, indicatorId, provider: 'VIRUSTOTAL', data: Prisma.JsonNull, status: 'FAILED', error },
+      });
+      return {
+        kind: 'failure' as const,
+        retryable: cause instanceof ProviderTimeoutError
+          || cause instanceof ProviderNetworkError
+          || (cause instanceof ProviderHttpError && (cause.statusCode === 429 || cause.statusCode >= 500)),
+        retryAfterMs: cause instanceof ProviderHttpError ? cause.retryAfterMs : null,
+        message: error,
+        permanent: cause instanceof EnrichmentConfigurationError || cause instanceof UnsupportedIndicatorTypeError || cause instanceof InvalidIndicatorValueError,
+      };
     }
   }
 

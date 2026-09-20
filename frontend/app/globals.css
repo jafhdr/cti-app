@@ -714,6 +714,16 @@ html.dark input, html.dark select, html.dark textarea, html.dark .ioc-form input
 .source-detail dd { margin: 5px 0 0; color: var(--soc-ink); overflow-wrap: anywhere; }
 .source-detail-wide { grid-column: 1/-1; }
 .source-state { display: grid; place-items: center; gap: 6px; min-height: 220px; color: var(--soc-muted); text-align: center; }
+.candidate-value,.candidate-raw { display:block; overflow-wrap:anywhere; }
+.candidate-value { color:var(--soc-ink); font:650 12px/1.5 "SFMono-Regular",Consolas,monospace; }
+.candidate-raw { margin-top:3px; color:var(--soc-muted); font-size:10px; }
+.candidate-type,.candidate-confidence { display:inline-flex; padding:4px 7px; border:1px solid var(--soc-border); border-radius:4px; color:var(--soc-blue); font:700 10px/1.2 "SFMono-Regular",Consolas,monospace; }
+.candidate-confidence.is-low { color:var(--soc-yellow); }
+.candidate-review-notice { display:flex; align-items:center; gap:8px; margin-bottom:16px; padding:11px 12px; border-color:rgba(63,185,80,.3); background:rgba(63,185,80,.1); color:var(--soc-green); font-size:12px; }
+.candidate-review-notice a { margin-left:auto; color:var(--soc-blue); font-family:"SFMono-Regular",Consolas,monospace; overflow-wrap:anywhere; }
+@media(max-width:640px){.candidate-review-notice{align-items:flex-start;flex-wrap:wrap}.candidate-review-notice a{width:100%;margin-left:24px}}
+.candidate-source { color:var(--soc-blue); font-weight:650; text-decoration:none; }
+.candidate-source:hover { text-decoration:underline; }
 .indicator-enrichment-panel .source-panel-heading { align-items: flex-start; }
 .indicator-enrichment-panel button:focus-visible { outline: 2px solid var(--soc-blue) !important; outline-offset: 2px; box-shadow: 0 0 0 3px var(--soc-focus); }
 .indicator-enrichment-type { color: var(--soc-muted); font: 600 11px/1.2 "SFMono-Regular",Consolas,monospace; }

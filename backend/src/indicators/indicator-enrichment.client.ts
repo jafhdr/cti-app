@@ -57,6 +57,27 @@ export class InvalidIndicatorValueError extends Error {
   }
 }
 
+export class ProviderHttpError extends Error {
+  readonly name = 'ProviderHttpError';
+  constructor(readonly statusCode: number, readonly retryAfterMs: number | null) {
+    super(`Provider HTTP status ${statusCode}`);
+  }
+}
+
+export class ProviderTimeoutError extends Error {
+  readonly name = 'ProviderTimeoutError';
+  constructor(readonly timeoutMs: number) {
+    super(`Provider timeout setelah ${timeoutMs} ms`);
+  }
+}
+
+export class ProviderNetworkError extends Error {
+  readonly name = 'ProviderNetworkError';
+  constructor(readonly cause: Error) {
+    super(`Provider network error: ${cause.message}`);
+  }
+}
+
 @Injectable()
 export class IndicatorEnrichmentClient {
   provider(type: IndicatorType, provider: EnrichmentProvider = 'AUTO'): string {
@@ -169,10 +190,22 @@ export class IndicatorEnrichmentClient {
     try {
       response = await request(url, { method: 'GET', headers, headersTimeout: timeout, bodyTimeout: timeout, signal: AbortSignal.timeout(timeout) });
     } catch (cause) {
-      if (cause instanceof Error && /timeout/i.test(`${cause.name} ${cause.message}`)) throw new Error(`Provider timeout setelah ${timeout} ms`);
+      if (cause instanceof Error && /timeout|abort/i.test(`${cause.name} ${cause.message}`)) throw new ProviderTimeoutError(timeout);
+      if (cause instanceof Error) throw new ProviderNetworkError(cause);
       throw cause;
     }
-    if (response.statusCode < 200 || response.statusCode >= 300) throw new Error(`Provider HTTP status ${response.statusCode}`);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw new ProviderHttpError(response.statusCode, this.retryAfterMs(response.headers['retry-after']));
+    }
     return response.body.json();
+  }
+
+  private retryAfterMs(value: string | readonly string[] | undefined): number | null {
+    const raw = Array.isArray(value) ? value[0] : value;
+    if (!raw) return null;
+    const seconds = Number(raw);
+    if (Number.isFinite(seconds) && seconds >= 0) return seconds * 1_000;
+    const date = Date.parse(raw);
+    return Number.isFinite(date) ? Math.max(0, date - Date.now()) : null;
   }
 }

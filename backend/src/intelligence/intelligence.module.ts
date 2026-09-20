@@ -20,11 +20,14 @@ import { ReportsService } from './reports.service';
 import { MitreAttackStixClient } from './mitre-attack-stix.client';
 import { MitreThreatActorIngestionService } from './mitre-threat-actor-ingestion.service';
 import { MitreThreatActorIngestionScheduler } from './mitre-threat-actor-ingestion.scheduler';
+import { TelegramWorker } from '../telegram/telegram.worker';
+import { IocCandidatesController } from '../telegram/ioc-candidates.controller';
+import { IocCandidatesService } from '../telegram/ioc-candidates.service';
 
 @Module({
   imports: [AuthModule],
-  controllers: [IntelligenceController, SourcesController, ThreatActorsController, CampaignsController, MitreTechniquesController, MalwareToolsController, VulnerabilitiesController, ReportsController],
-  providers: [IntelligenceService, SourcesService, ThreatActorsService, CampaignsService, MitreTechniquesService, MalwareToolsService, VulnerabilitiesService, ReportsService, MitreAttackStixClient, MitreThreatActorIngestionService, MitreThreatActorIngestionScheduler, PrismaService],
+  controllers: [IntelligenceController, SourcesController, ThreatActorsController, CampaignsController, MitreTechniquesController, MalwareToolsController, VulnerabilitiesController, ReportsController, IocCandidatesController],
+  providers: [IntelligenceService, SourcesService, ThreatActorsService, CampaignsService, MitreTechniquesService, MalwareToolsService, VulnerabilitiesService, ReportsService, MitreAttackStixClient, MitreThreatActorIngestionService, MitreThreatActorIngestionScheduler, IocCandidatesService, TelegramWorker, PrismaService],
   exports: [MitreAttackStixClient],
 })
 export class IntelligenceModule {}

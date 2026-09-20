@@ -45,6 +45,13 @@ enum IndicatorEnrichmentStatus {
   FAILED
 }
 
+enum IndicatorEnrichmentJobStatus {
+  PENDING
+  PROCESSING
+  SUCCESS
+  FAILED
+}
+
 enum IntelligenceSourceType {
   OPEN_SOURCE
   COMMERCIAL
@@ -73,6 +80,28 @@ enum TlpLevel {
 enum IntelligenceSourceStatus {
   ACTIVE
   INACTIVE
+}
+
+enum TelegramProcessingStatus {
+  PENDING
+  PROCESSED
+  FAILED
+}
+
+enum IocCandidateStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum IocCandidateType {
+  IPV4
+  IPV6
+  DOMAIN
+  URL
+  MD5
+  SHA1
+  SHA256
 }
 
 enum ThreatActorStatus {
@@ -166,7 +195,12 @@ model Tenant {
   auditLogs                  AuditLog[]
   indicators                 Indicator[]
   indicatorEnrichments       IndicatorEnrichment[]
+  indicatorEnrichmentJobs    IndicatorEnrichmentJob[]
   intelligenceSources        IntelligenceSource[]
+  telegramStagingMessages    TelegramStagingMessage[]
+  telegramPollingStates      TelegramPollingState[]
+  iocCandidates              IocCandidate[]
+  iocObservations            IocObservation[]
   threatActors               ThreatActor[]
   campaigns                  Campaign[]
   caseCampaigns              CaseCampaign[]
@@ -383,7 +417,9 @@ model Indicator {
   campaigns            CampaignIndicator[]
   intelligenceReports  IntelligenceReportIndicator[]
   enrichments          IndicatorEnrichment[]
+  enrichmentJobs       IndicatorEnrichmentJob[]
   cases                CaseIndicator[]
+  iocCandidates        IocCandidate[]
   createdAt            DateTime                      @default(now())
   updatedAt            DateTime                      @updatedAt
 
@@ -410,29 +446,144 @@ model IndicatorEnrichment {
   @@index([tenantId, indicatorId, createdAt])
 }
 
+model IndicatorEnrichmentJob {
+  id            String                       @id @default(cuid())
+  tenantId      String
+  indicatorId   String
+  provider      String                       @default("VIRUSTOTAL")
+  trigger       String                       @default("TELEGRAM_APPROVAL")
+  requestedById String?
+  status        IndicatorEnrichmentJobStatus @default(PENDING)
+  attempts      Int                          @default(0)
+  availableAt   DateTime                     @default(now())
+  lockedAt      DateTime?
+  lastError     String?
+  createdAt     DateTime                     @default(now())
+  updatedAt     DateTime                     @updatedAt
+  tenant        Tenant                       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  indicator     Indicator                    @relation(fields: [indicatorId, tenantId], references: [id, tenantId], onDelete: Cascade)
+
+  @@unique([tenantId, indicatorId, provider])
+  @@index([status, availableAt])
+  @@index([tenantId, status, availableAt])
+}
+
 model IntelligenceSource {
-  id                  String                        @id @default(cuid())
-  tenantId            String
-  tenant              Tenant                        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  name                String
-  description         String?
-  sourceType          IntelligenceSourceType
-  provider            String?
-  url                 String?
-  reliability         IntelligenceSourceReliability @default(C)
-  confidence          Int                           @default(50)
-  tlp                 TlpLevel                      @default(AMBER)
-  status              IntelligenceSourceStatus      @default(ACTIVE)
-  lastSyncAt          DateTime?
-  createdBy           String
-  createdAt           DateTime                      @default(now())
-  updatedAt           DateTime                      @updatedAt
-  indicators          Indicator[]
-  intelligenceReports IntelligenceReportSource[]
+  id                   String                        @id @default(cuid())
+  tenantId             String
+  tenant               Tenant                        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name                 String
+  description          String?
+  sourceType           IntelligenceSourceType
+  provider             String?
+  url                  String?
+  reliability          IntelligenceSourceReliability @default(C)
+  confidence           Int                           @default(50)
+  tlp                  TlpLevel                      @default(AMBER)
+  status               IntelligenceSourceStatus      @default(ACTIVE)
+  lastSyncAt           DateTime?
+  telegramChatId       String?
+  createdBy            String
+  createdAt            DateTime                      @default(now())
+  updatedAt            DateTime                      @updatedAt
+  indicators           Indicator[]
+  intelligenceReports  IntelligenceReportSource[]
+  telegramMessages     TelegramStagingMessage[]
+  iocCandidates        IocCandidate[]
+  telegramPollingState TelegramPollingState?
 
   @@unique([tenantId, name])
   @@unique([id, tenantId])
+  @@unique([telegramChatId])
   @@index([tenantId, sourceType, status, tlp])
+  @@index([tenantId, updatedAt])
+}
+
+model TelegramStagingMessage {
+  id                   String                   @id @default(cuid())
+  tenantId             String
+  intelligenceSourceId String
+  telegramChatId       String
+  channelUsername      String?
+  channelTitle         String
+  messageId            String
+  updateId             String
+  messageTimestamp     DateTime
+  editTimestamp        DateTime?
+  content              String
+  text                 String?
+  caption              String?
+  entities             Json?
+  messageUrl           String?
+  ingestedAt           DateTime                 @default(now())
+  processingStatus     TelegramProcessingStatus @default(PENDING)
+  processingError      String?
+  contentHash          String
+  tenant               Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  intelligenceSource   IntelligenceSource       @relation(fields: [intelligenceSourceId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  iocObservations      IocObservation[]
+
+  @@unique([tenantId, telegramChatId, messageId])
+  @@unique([tenantId, updateId])
+  @@index([tenantId, processingStatus, ingestedAt])
+  @@index([tenantId, intelligenceSourceId, messageTimestamp])
+}
+
+model IocCandidate {
+  id                   String             @id @default(cuid())
+  tenantId             String
+  intelligenceSourceId String
+  indicatorId          String?
+  type                 IocCandidateType
+  rawValue             String
+  normalizedValue      String
+  confidence           Int
+  status               IocCandidateStatus @default(PENDING)
+  reviewedBy           String?
+  reviewedAt           DateTime?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  tenant               Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  intelligenceSource   IntelligenceSource @relation(fields: [intelligenceSourceId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  indicator            Indicator?         @relation(fields: [indicatorId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  observations         IocObservation[]
+
+  @@unique([tenantId, type, normalizedValue])
+  @@unique([id, tenantId])
+  @@index([tenantId, status, createdAt])
+  @@index([tenantId, intelligenceSourceId])
+  @@index([tenantId, indicatorId])
+}
+
+model IocObservation {
+  id                       String                 @id @default(cuid())
+  tenantId                 String
+  candidateId              String
+  telegramStagingMessageId String
+  rawValue                 String
+  extractionMethod         String
+  spanStart                Int?
+  spanEnd                  Int?
+  observedAt               DateTime               @default(now())
+  tenant                   Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  candidate                IocCandidate           @relation(fields: [candidateId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  telegramStagingMessage   TelegramStagingMessage @relation(fields: [telegramStagingMessageId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, candidateId, telegramStagingMessageId, extractionMethod, spanStart, spanEnd])
+  @@index([tenantId, telegramStagingMessageId])
+}
+
+model TelegramPollingState {
+  id                   String             @id @default(cuid())
+  tenantId             String
+  intelligenceSourceId String
+  lastUpdateId         String?
+  updatedAt            DateTime           @updatedAt
+  tenant               Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  intelligenceSource   IntelligenceSource @relation(fields: [intelligenceSourceId, tenantId], references: [id, tenantId], onDelete: Cascade)
+
+  @@unique([id, tenantId])
+  @@unique([intelligenceSourceId, tenantId])
   @@index([tenantId, updatedAt])
 }
 
@@ -825,14 +976,14 @@ model Case {
 }
 
 model CaseCampaign {
-  tenantId  String
-  caseId    String
+  tenantId   String
+  caseId     String
   campaignId String
-  createdBy String
-  createdAt DateTime @default(now())
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  case      Case     @relation(fields: [caseId, tenantId], references: [id, tenantId], onDelete: Cascade)
-  campaign  Campaign @relation(fields: [campaignId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  createdBy  String
+  createdAt  DateTime @default(now())
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  case       Case     @relation(fields: [caseId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  campaign   Campaign @relation(fields: [campaignId, tenantId], references: [id, tenantId], onDelete: Cascade)
 
   @@id([caseId, campaignId])
   @@index([tenantId, caseId, createdAt])

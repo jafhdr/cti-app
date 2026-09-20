@@ -25,6 +25,7 @@ export class CreateSourceDto {
   @IsOptional() @IsEnum(TlpLevel) tlp?: TlpLevel;
   @IsOptional() @IsEnum(IntelligenceSourceStatus) status?: IntelligenceSourceStatus;
   @IsOptional() @IsString() lastSyncAt?: string;
+  @IsOptional() @IsString() @MaxLength(32) telegramChatId?: string;
 }
 
 export class UpdateSourceDto {
@@ -38,4 +39,5 @@ export class UpdateSourceDto {
   @IsOptional() @IsEnum(TlpLevel) tlp?: TlpLevel;
   @IsOptional() @IsEnum(IntelligenceSourceStatus) status?: IntelligenceSourceStatus;
   @IsOptional() @IsString() lastSyncAt?: string;
+  @IsOptional() @IsString() @MaxLength(32) telegramChatId?: string;
 }

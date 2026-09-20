@@ -46,6 +46,7 @@ export class SourcesService {
         reliability: input.reliability ?? IntelligenceSourceReliability.C, confidence: input.confidence ?? 50,
         tlp: input.tlp ?? TlpLevel.AMBER, status: input.status ?? IntelligenceSourceStatus.ACTIVE,
         lastSyncAt, createdBy: user.sub,
+        telegramChatId: input.telegramChatId?.trim() || null,
       } });
       await this.audit(user, tenantId, 'SOURCE_CREATED', source.id, { name: source.name });
       return source;
@@ -64,6 +65,7 @@ export class SourcesService {
       ...(input.url !== undefined ? { url: input.url.trim() || null } : {}), ...(input.reliability !== undefined ? { reliability: input.reliability } : {}),
       ...(input.confidence !== undefined ? { confidence: input.confidence } : {}), ...(input.tlp !== undefined ? { tlp: input.tlp } : {}),
       ...(input.status !== undefined ? { status: input.status } : {}), ...(input.lastSyncAt !== undefined ? { lastSyncAt: this.date(input.lastSyncAt) } : {}),
+      ...(input.telegramChatId !== undefined ? { telegramChatId: input.telegramChatId.trim() || null } : {}),
     };
     try {
       const source = await this.prisma.intelligenceSource.update({ where: { id }, data });

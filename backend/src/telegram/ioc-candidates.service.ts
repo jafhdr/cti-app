@@ -10,12 +10,27 @@ export class IocCandidatesService {
 
   async processPending(limit = 100): Promise<{ readonly processed: number; readonly failed: number }> {
     const messages = await this.prisma.telegramStagingMessage.findMany({ where: { processingStatus: 'PENDING' }, orderBy: { ingestedAt: 'asc' }, take: limit });
+    
+    if (messages.length > 0) {
+      console.log('[telegram.ioc_candidates.processing_start]', {
+        messagesCount: messages.length,
+      });
+    }
+    
     let processed = 0;
     let failed = 0;
     for (const message of messages) {
       try {
         const entities = parseEntities(message.entities);
         const extracted = extractIocs({ text: message.text ?? message.content, caption: message.caption, entities });
+        
+        console.log('[telegram.ioc_candidates.extracted]', {
+          messageId: message.id,
+          updateId: message.updateId,
+          extractedCount: extracted.length,
+          types: extracted.map(ioc => ioc.type),
+        });
+        
         await this.prisma.$transaction(async transaction => {
           for (const ioc of extracted) {
             const candidate = await transaction.iocCandidate.upsert({
@@ -31,12 +46,34 @@ export class IocCandidatesService {
           }
           await transaction.telegramStagingMessage.update({ where: { id: message.id }, data: { processingStatus: 'PROCESSED', processingError: null } });
         });
+        
+        console.log('[telegram.ioc_candidates.message_processed]', {
+          messageId: message.id,
+          updateId: message.updateId,
+          extractedCount: extracted.length,
+        });
+        
         processed += 1;
       } catch (cause) {
         failed += 1;
-        await this.prisma.telegramStagingMessage.update({ where: { id: message.id }, data: { processingStatus: 'FAILED', processingError: cause instanceof Error ? cause.message.slice(0, 500) : 'Unknown processing error' } });
+        const errorMsg = cause instanceof Error ? cause.message.slice(0, 500) : 'Unknown processing error';
+        console.log('[telegram.ioc_candidates.processing_failed]', {
+          messageId: message.id,
+          updateId: message.updateId,
+          error: errorMsg,
+        });
+        await this.prisma.telegramStagingMessage.update({ where: { id: message.id }, data: { processingStatus: 'FAILED', processingError: errorMsg } });
       }
     }
+    
+    if (processed > 0 || failed > 0) {
+      console.log('[telegram.ioc_candidates.processing_complete]', {
+        processed,
+        failed,
+        total: messages.length,
+      });
+    }
+    
     return { processed, failed };
   }
 

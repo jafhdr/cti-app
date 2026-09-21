@@ -17,6 +17,7 @@ test('analyst adds an investigation note and evidence and sees timeline activity
   await page.route('http://localhost:3001/cases/case-1/notes', async (route) => {
     if (route.request().method() === 'POST') {
       const body = route.request().postDataJSON();
+      expect(body.requestId).toBeTruthy();
       const item = { id: 'note-1', content: body.content, author: person, createdAt: new Date().toISOString() };
       notes.unshift(item);
       activity.unshift({ id: 'activity-note', action: 'NOTE_ADDED', createdAt: new Date().toISOString() });
@@ -28,6 +29,7 @@ test('analyst adds an investigation note and evidence and sees timeline activity
   await page.route('http://localhost:3001/cases/case-1/evidence', async (route) => {
     if (route.request().method() === 'POST') {
       const body = route.request().postDataJSON();
+      expect(body.requestId).toBeTruthy();
       const item = { id: 'evidence-1', ...body, creator: person, createdAt: new Date().toISOString() };
       evidence.unshift(item);
       activity.unshift({ id: 'activity-evidence', action: 'EVIDENCE_ADDED', createdAt: new Date().toISOString() });
@@ -37,8 +39,12 @@ test('analyst adds an investigation note and evidence and sees timeline activity
     await route.fulfill({ json: evidence });
   });
   await page.route('http://localhost:3001/cases/case-1/activity', async (route) => route.fulfill({ json: activity }));
+  await page.route('http://localhost:3001/cases/case-1/indicators', async (route) => route.fulfill({ json: [] }));
+  await page.route('http://localhost:3001/cases/case-1/threat-actors', async (route) => route.fulfill({ json: [] }));
+  await page.route('http://localhost:3001/cases/case-1/campaigns', async (route) => route.fulfill({ json: [] }));
 
   await page.goto('http://localhost:3000/cases/case-1');
+  await expect(page.getByRole('navigation', { name: 'Bagian detail case' })).toBeVisible();
   await expect(page.getByText('Belum ada catatan investigasi.')).toBeVisible();
   await page.getByLabel('Catatan investigasi').fill('IP sumber telah divalidasi');
   await page.getByLabel('Tambah catatan').click();
@@ -50,10 +56,11 @@ test('analyst adds an investigation note and evidence and sees timeline activity
   await expect(page.getByText('auth.log')).toBeVisible();
   await expect(page.getByText('Evidence ditambahkan')).toBeVisible();
   await expect(page.getByText('Catatan investigasi ditambahkan')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Related Intelligence', exact: true })).toBeVisible();
   await page.screenshot({ path: '../.omo/evidence/cases/investigation-desktop.png', fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.getByRole('heading', { name: 'Investigation Notes' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Evidence' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Evidence', exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.screenshot({ path: '../.omo/evidence/cases/investigation-mobile.png', fullPage: true });
 });

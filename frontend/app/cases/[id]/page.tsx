@@ -8,7 +8,8 @@ import { InvestigationPanel } from './investigation-panel';
 import { RelatedIndicators } from './related-indicators';
 import { RelatedThreatActors } from './related-threat-actors';
 import { RelatedCampaigns } from './related-campaigns';
-import { useCaseMutationAccess } from '../layout';
+import { useCaseMutationAccess } from '../case-access';
+import { Button } from '@/components/ui/button';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -119,10 +120,16 @@ export default function CaseDetailPage() {
           Back
         </Link>
 
-        <section className="case-panel p-8">
+        <nav aria-label="Bagian detail case" className="case-panel mb-4 flex gap-2 overflow-x-auto p-2">
+          <a href="#overview" className="case-detail-tab">Overview</a>
+          <a href="#investigation" className="case-detail-tab">Investigation</a>
+          <a href="#related-intelligence" className="case-detail-tab">Related Intelligence</a>
+        </nav>
+
+        <section id="overview" aria-labelledby="overview-heading" className="case-panel scroll-mt-4 p-8">
           <div className="border-b pb-6 mb-6">
             <p className="mb-2 text-sm text-muted-foreground">{caseDetail.caseNumber}</p>
-            <h1 className="case-title">{caseDetail.title}</h1>
+            <h1 id="overview-heading" className="case-title">{caseDetail.title}</h1>
 
             <div className="flex gap-3 flex-wrap mt-4">
               <span className="case-badge case-badge-info">
@@ -149,13 +156,15 @@ export default function CaseDetailPage() {
               <div className="flex justify-between items-center mb-4">
                 <h3 className="font-semibold text-card-foreground">Assigned To</h3>
                 {canMutateCases && (
-                  <button
+                  <Button
+                    type="button"
+                    size="s"
                     onClick={() => setShowAssignModal(true)}
-                    className="flex items-center gap-2 px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                    className="gap-2"
                   >
                     <Edit2 size={14} />
                     Change
-                  </button>
+                  </Button>
                 )}
               </div>
               <p className="text-sm text-foreground">
@@ -174,10 +183,16 @@ export default function CaseDetailPage() {
             <p className="text-xs text-muted-foreground">Updated: {new Date(caseDetail.updatedAt).toLocaleString('id-ID')}</p>
           </div>
         </section>
-        <RelatedIndicators caseId={caseDetail.id} canMutate={canMutateCases} />
-        <RelatedThreatActors caseId={caseDetail.id} canMutate={canMutateCases} />
-        <RelatedCampaigns caseId={caseDetail.id} canMutate={canMutateCases} />
         <InvestigationPanel caseId={caseDetail.id} />
+        <section id="related-intelligence" aria-labelledby="related-intelligence-heading" className="scroll-mt-4">
+          <div className="mt-8">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Case intelligence</p>
+            <h2 id="related-intelligence-heading" className="mt-1 text-xl font-semibold text-card-foreground">Related Intelligence</h2>
+          </div>
+          <RelatedIndicators caseId={caseDetail.id} canMutate={canMutateCases} />
+          <RelatedThreatActors caseId={caseDetail.id} canMutate={canMutateCases} />
+          <RelatedCampaigns caseId={caseDetail.id} canMutate={canMutateCases} />
+        </section>
       </div>
 
       {showAssignModal && (

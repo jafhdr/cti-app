@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
 import CreateCaseModal from './create-case-modal';
-import { useCaseMutationAccess } from './layout';
+import { useCaseMutationAccess } from './case-access';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 

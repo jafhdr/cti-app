@@ -33,5 +33,18 @@ export function parseTelegramConfig(environment: NodeJS.ProcessEnv | Record<stri
   if (parsed.data.TELEGRAM_POLL_ENABLED && (!botToken || allowedChatIds.size === 0)) {
     throw new TelegramConfigError('Telegram polling requires a bot credential and at least one allowed chat');
   }
-  return { enabled: parsed.data.TELEGRAM_POLL_ENABLED, botToken, allowedChatIds, timeoutSeconds: parsed.data.TELEGRAM_POLL_TIMEOUT_SECONDS, batchLimit: parsed.data.TELEGRAM_POLL_BATCH_LIMIT };
+  const config = { enabled: parsed.data.TELEGRAM_POLL_ENABLED, botToken, allowedChatIds, timeoutSeconds: parsed.data.TELEGRAM_POLL_TIMEOUT_SECONDS, batchLimit: parsed.data.TELEGRAM_POLL_BATCH_LIMIT };
+  
+  // Debug logging: config berhasil diparsing (jangan log token)
+  if (typeof console !== 'undefined' && process.env.NODE_ENV !== 'production') {
+    console.log('[telegram.config.parsed]', {
+      enabled: config.enabled,
+      allowedChatIds: Array.from(config.allowedChatIds),
+      timeoutSeconds: config.timeoutSeconds,
+      batchLimit: config.batchLimit,
+      hasBotToken: botToken.length > 0,
+    });
+  }
+  
+  return config;
 }

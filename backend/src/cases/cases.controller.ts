@@ -140,6 +140,16 @@ export class CasesController {
     return this.casesService.create(req.user, body);
   }
 
+  @Post('from-indicator/:indicatorId')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  createFromIndicator(
+    @Req() req: { user: AuthUser },
+    @Param('indicatorId') indicatorId: string,
+    @Body() body: CreateCaseInput,
+  ) {
+    return this.casesService.createFromIndicator(req.user, indicatorId, body);
+  }
+
   @Patch(':id')
   @Roles('SUPER_ADMIN', 'ADMIN')
   update(@Req() req: { user: AuthUser }, @Param('id') id: string, @Body() body: UpdateCaseInput) {

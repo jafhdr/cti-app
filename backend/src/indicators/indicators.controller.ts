@@ -1,11 +1,11 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '../auth/auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { ModuleAccessGuard } from '../auth/module-access.guard';
 import { RequiresModule } from '../auth/module-access.decorator';
 import { AuthUser } from '../users/users.types';
-import { IndicatorInput, ThreatActorAttributionInput } from './indicators.types';
+import { IndicatorInput, LinkCaseInput, ThreatActorAttributionInput } from './indicators.types';
 import { IndicatorsService } from './indicators.service';
 import { IndicatorFeedsService } from './indicator-feeds.service';
 import { SyncIndicatorFeedsDto } from './indicator-feeds.types';
@@ -66,9 +66,37 @@ export class IndicatorsController {
      return this.attribution.attribute(req.user, id, body.threatActorId);
    }
 
-   @Post(':id/discover-threat-actors')
+  @Post(':id/discover-threat-actors')
    @Roles('SUPER_ADMIN', 'ADMIN')
    discoverThreatActors(@Req() req: { user: AuthUser }, @Param('id') id: string) { return this.attribution.discover(req.user, id); }
+
+  @Get(':id/cases/available')
+  @Roles('SUPER_ADMIN', 'ADMIN', 'USER')
+  @RequiresModule('case-management')
+  getAvailableCases(@Req() req: { user: AuthUser }, @Param('id') id: string, @Query('search') search?: string) {
+    return this.indicators.getAvailableCases(req.user, id, search);
+  }
+
+  @Get(':id/cases')
+  @Roles('SUPER_ADMIN', 'ADMIN', 'USER')
+  @RequiresModule('case-management')
+  getCases(@Req() req: { user: AuthUser }, @Param('id') id: string) {
+    return this.indicators.getCases(req.user, id);
+  }
+
+  @Post(':id/cases')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  @RequiresModule('case-management')
+  linkCase(@Req() req: { user: AuthUser }, @Param('id') id: string, @Body() body: LinkCaseInput) {
+    return this.indicators.linkCase(req.user, id, body.caseId);
+  }
+
+  @Delete(':id/cases/:caseId')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  @RequiresModule('case-management')
+  unlinkCase(@Req() req: { user: AuthUser }, @Param('id') id: string, @Param('caseId') caseId: string) {
+    return this.indicators.unlinkCase(req.user, id, caseId);
+  }
 
   @Patch(':id')
   @Roles('SUPER_ADMIN', 'ADMIN')

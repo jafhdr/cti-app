@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ThreatActorDiscoveryPanel } from './ThreatActorDiscoveryPanel';
+import { RelatedCases } from './RelatedCases';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -17,9 +18,10 @@ type Enrichment = {
   readonly createdAt: string;
 };
 
-export function IndicatorEnrichmentPanel({ indicator, canManage, onClose }: {
+export function IndicatorEnrichmentPanel({ indicator, canManage, canAccessCases, onClose }: {
   readonly indicator: IndicatorSummary;
   readonly canManage: boolean;
+  readonly canAccessCases: boolean;
   readonly onClose: () => void;
 }) {
   const [items, setItems] = useState<readonly Enrichment[]>([]);
@@ -76,6 +78,7 @@ export function IndicatorEnrichmentPanel({ indicator, canManage, onClose }: {
     {error && <div className="error" role="alert">{error}</div>}
     {notice && <div className="success" role="status">{notice}</div>}
     {canManage && <ThreatActorDiscoveryPanel indicatorId={indicator.id} />}
+    {canAccessCases && <RelatedCases indicatorId={indicator.id} canMutate={canManage} />}
     {loading ? <div className="source-state" aria-live="polite">Loading enrichment history...</div> : items.length === 0 ? <div className="source-state"><strong>No enrichment yet</strong><span>{canManage ? 'Run enrichment to collect provider context.' : 'An administrator has not enriched this indicator yet.'}</span></div> : <div className="indicator-enrichment-history">{items.map(item => <article key={item.id} className={`indicator-enrichment-entry is-${item.status.toLowerCase()}`}>
       <header><strong>{item.provider}</strong><span className={`cti-status ${item.status === 'SUCCESS' ? 'is-active' : 'is-inactive'}`}>{item.status}</span><time dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleString('id-ID')}</time></header>
       {item.error ? <p className="indicator-enrichment-error">{item.error}</p> : item.provider === 'VIRUSTOTAL' ? <VirusTotalSummary data={item.data} /> : <pre>{JSON.stringify(item.data, null, 2)}</pre>}

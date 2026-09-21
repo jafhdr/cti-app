@@ -73,6 +73,101 @@ export class IndicatorsService {
     return updated;
   }
 
+  async getCases(currentUser: AuthUser, indicatorId: string) {
+    const indicator = await this.scopedIndicator(currentUser, indicatorId);
+    const links = await this.prisma.caseIndicator.findMany({
+      where: { indicatorId, tenantId: indicator.tenantId },
+      include: { case: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    return links.map((link) => link.case);
+  }
+
+  async getAvailableCases(currentUser: AuthUser, indicatorId: string, search?: string) {
+    const indicator = await this.scopedIndicator(currentUser, indicatorId);
+    const value = search?.trim();
+    return this.prisma.case.findMany({
+      where: {
+        tenantId: indicator.tenantId,
+        indicators: { none: { indicatorId } },
+        ...(value ? {
+          OR: [
+            { caseNumber: { contains: value, mode: 'insensitive' } },
+            { title: { contains: value, mode: 'insensitive' } },
+            { description: { contains: value, mode: 'insensitive' } },
+          ],
+        } : {}),
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: 50,
+    });
+  }
+
+  async linkCase(currentUser: AuthUser, indicatorId: string, caseId: string) {
+    const indicator = await this.scopedIndicator(currentUser, indicatorId);
+    const caseRecord = await this.prisma.case.findFirst({
+      where: { id: caseId, tenantId: indicator.tenantId },
+    });
+    if (!caseRecord) throw new NotFoundException('Case tidak ditemukan');
+    const existing = await this.prisma.caseIndicator.findUnique({
+      where: { caseId_indicatorId: { caseId, indicatorId } },
+    });
+    if (existing) throw new ConflictException('Case sudah terhubung ke Indicator');
+
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+      const link = await tx.caseIndicator.create({
+        data: { tenantId: indicator.tenantId, caseId, indicatorId, createdBy: currentUser.sub },
+        include: { case: true },
+      });
+      const metadata = { indicatorId, value: indicator.value, type: indicator.type };
+      await tx.caseActivity.create({
+        data: { caseId, tenantId: indicator.tenantId, actorId: currentUser.sub, action: 'INDICATOR_LINKED', metadata },
+      });
+      await tx.auditLog.create({
+        data: {
+          userId: currentUser.sub,
+          tenantId: indicator.tenantId,
+          action: 'INDICATOR_CASE_LINKED',
+          metadata: { caseId, caseNumber: caseRecord.caseNumber, ...metadata },
+        },
+      });
+        return link.case;
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException('Case sudah terhubung ke Indicator');
+      }
+      throw error;
+    }
+  }
+
+  async unlinkCase(currentUser: AuthUser, indicatorId: string, caseId: string) {
+    const indicator = await this.scopedIndicator(currentUser, indicatorId);
+    const link = await this.prisma.caseIndicator.findUnique({
+      where: { caseId_indicatorId: { caseId, indicatorId } },
+      include: { case: true },
+    });
+    if (!link || link.tenantId !== indicator.tenantId) throw new NotFoundException('Case tidak terhubung ke Indicator');
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.caseIndicator.delete({ where: { caseId_indicatorId: { caseId, indicatorId } } });
+      const metadata = { indicatorId, value: indicator.value, type: indicator.type };
+      await tx.caseActivity.create({
+        data: { caseId, tenantId: indicator.tenantId, actorId: currentUser.sub, action: 'INDICATOR_UNLINKED', metadata },
+      });
+      await tx.auditLog.create({
+        data: {
+          userId: currentUser.sub,
+          tenantId: indicator.tenantId,
+          action: 'INDICATOR_CASE_UNLINKED',
+          metadata: { caseId, caseNumber: link.case.caseNumber, ...metadata },
+        },
+      });
+      return { success: true };
+    });
+  }
+
   async correlateThreatActor(currentUser: AuthUser, id: string) {
     const indicator = await this.scopedIndicator(currentUser, id);
     if (indicator.intelligenceEntityId) {
@@ -154,7 +249,7 @@ export class IndicatorsService {
   private async scopedIndicator(currentUser: AuthUser, id: string) {
     const indicator = await this.prisma.indicator.findUnique({ where: { id } });
     if (!indicator) throw new NotFoundException('Indicator tidak ditemukan');
-    if (currentUser.role !== 'SUPER_ADMIN' && indicator.tenantId !== this.tenantId(currentUser)) throw new ForbiddenException('Indicator berada di tenant lain');
+    if (currentUser.role !== 'SUPER_ADMIN' && indicator.tenantId !== this.tenantId(currentUser)) throw new NotFoundException('Indicator tidak ditemukan');
     return indicator;
   }
 

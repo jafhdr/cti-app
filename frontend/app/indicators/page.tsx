@@ -45,6 +45,7 @@ export default function IndicatorsPage() {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(true);
   const canManage = currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN';
+  const canAccessCases = currentUser?.role === 'SUPER_ADMIN' || currentUser?.moduleAccess.some(module => module.assigned && module.moduleSlug === 'case-management') === true;
 
   async function loadIndicators() {
     const params = new URLSearchParams({ limit: '100' });
@@ -145,7 +146,7 @@ export default function IndicatorsPage() {
           {error && <div className="error" style={{ marginBottom: 16 }}>{error}</div>}
           {success && <div className="success" style={{ marginBottom: 16 }}>{success}</div>}
 
-          {selected && <IndicatorEnrichmentPanel indicator={selected} canManage={canManage} onClose={() => setSelected(null)} />}
+          {selected && <IndicatorEnrichmentPanel indicator={selected} canManage={canManage} canAccessCases={canAccessCases} onClose={() => setSelected(null)} />}
 
           {showForm && (
             <Card view="outlined" style={{ padding: 28, marginBottom: 24 }}>

@@ -83,11 +83,21 @@ export class ListCaseQuery {
 export class CreateInvestigationNoteInput {
   @IsString()
   @MinLength(1)
+  @MaxLength(100)
+  requestId: string = '';
+
+  @IsString()
+  @MinLength(1)
   @MaxLength(10000)
   content: string = '';
 }
 
 export class CreateEvidenceInput {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(100)
+  requestId: string = '';
+
   @IsString()
   @MinLength(1)
   @MaxLength(255)

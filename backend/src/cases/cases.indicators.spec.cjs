@@ -3,6 +3,7 @@ const test = require('node:test');
 require('reflect-metadata');
 const { CasesService } = require('../../dist/src/cases/cases.service.js');
 const { CasesController } = require('../../dist/src/cases/cases.controller.js');
+const { Prisma } = require('@prisma/client');
 
 const actor = { sub: 'user-1', role: 'ADMIN', tenantId: 'tenant-1' };
 const baseCase = { id: 'case-1', tenantId: 'tenant-1', caseNumber: 'CASE-1' };
@@ -91,6 +92,13 @@ test('Given an existing relation, when the same indicator is linked again, then 
   await service.linkIndicator(actor, baseCase.id, indicator.id);
   await assert.rejects(() => service.linkIndicator(actor, baseCase.id, indicator.id), /sudah terhubung/);
   assert.equal(prisma.links.length, 1);
+});
+
+test('Given concurrent duplicate linking, when the database rejects the second create, then a conflict response is returned', async () => {
+  const prisma = fakePrisma();
+  prisma.caseIndicator.findUnique = async () => null;
+  prisma.$transaction = async () => { throw new Prisma.PrismaClientKnownRequestError('duplicate link', { code: 'P2002', clientVersion: '6.14.0' }); };
+  await assert.rejects(() => new CasesService(prisma).linkIndicator(actor, baseCase.id, indicator.id), (error) => error?.status === 409);
 });
 
 test('Given Case Indicator routes, then module access and mutation roles remain enforced', () => {

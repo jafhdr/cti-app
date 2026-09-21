@@ -19,8 +19,16 @@ export class TelegramWorker implements OnApplicationBootstrap, OnApplicationShut
   }
 
   onApplicationBootstrap(): void {
-    if (!this.config.enabled) return;
+    if (!this.config.enabled) {
+      this.logger.debug('telegram.worker.disabled', { reason: 'TELEGRAM_POLL_ENABLED is not true' });
+      return;
+    }
     this.active = true;
+    this.logger.log('telegram.worker.started', {
+      allowedChatIds: Array.from(this.config.allowedChatIds),
+      timeoutSeconds: this.config.timeoutSeconds,
+      batchLimit: this.config.batchLimit,
+    });
     void this.loop();
   }
 
@@ -36,14 +44,41 @@ export class TelegramWorker implements OnApplicationBootstrap, OnApplicationShut
         where: { telegramChatId: { not: null }, status: 'ACTIVE' },
         select: { id: true, tenantId: true },
       });
-      if (sources.length === 0) return true;
+      
+      // Log: sources ditemukan
+      this.logger.debug('telegram.poll.sources_found', {
+        count: sources.length,
+      });
+      
+      if (sources.length === 0) {
+        this.logger.warn('telegram.poll.no_sources', {
+          message: 'No ACTIVE IntelligenceSource with telegramChatId found. Check if sources are mapped correctly.',
+        });
+        return true;
+      }
+      
       const states = await transaction.telegramPollingState.findMany({ where: { intelligenceSourceId: { in: sources.map(source => source.id) } } });
       const lastUpdateIds = states.flatMap(state => state.lastUpdateId === null ? [] : [Number(state.lastUpdateId)]);
       const offset = lastUpdateIds.length === 0 ? 0 : Math.min(...lastUpdateIds) + 1;
       const updates = await client.getUpdates(offset, this.config.timeoutSeconds, this.config.batchLimit);
+      
+      // Log: updates diterima
+      if (updates.length > 0) {
+        this.logger.debug('telegram.poll.updates_received', {
+          count: updates.length,
+          updateIds: updates.map(u => u.update_id),
+        });
+      }
+      
       const ingestion = new TelegramIngestion(transaction, this.config.allowedChatIds);
+      let stagingCount = 0;
+      let rejectionCount = 0;
+      
       for (const update of updates) {
-        await ingestion.process(update);
+        const result = await ingestion.process(update);
+        if (result === 'staged') stagingCount += 1;
+        if (result === 'rejected') rejectionCount += 1;
+        
         for (const source of sources) {
           await transaction.telegramPollingState.upsert({
             where: { intelligenceSourceId_tenantId: { intelligenceSourceId: source.id, tenantId: source.tenantId } },
@@ -52,9 +87,28 @@ export class TelegramWorker implements OnApplicationBootstrap, OnApplicationShut
           });
         }
       }
+      
+      // Log: hasil ingestion
+      if (stagingCount > 0 || rejectionCount > 0) {
+        this.logger.debug('telegram.poll.ingestion_summary', {
+          staged: stagingCount,
+          rejected: rejectionCount,
+          total: updates.length,
+        });
+      }
+      
       return true;
     }, { timeout: (this.config.timeoutSeconds + 15) * 1_000 });
-    if (polled && this.iocCandidates) await this.iocCandidates.processPending();
+    
+    if (polled && this.iocCandidates) {
+      const result = await this.iocCandidates.processPending();
+      if (result.processed > 0 || result.failed > 0) {
+        this.logger.debug('telegram.ingestion.ioc_processing', {
+          processed: result.processed,
+          failed: result.failed,
+        });
+      }
+    }
     return polled;
   }
 

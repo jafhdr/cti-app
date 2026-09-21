@@ -3,6 +3,7 @@ const test = require('node:test');
 require('reflect-metadata');
 const { CasesService } = require('../../dist/src/cases/cases.service.js');
 const { CasesController } = require('../../dist/src/cases/cases.controller.js');
+const { Prisma } = require('@prisma/client');
 
 const actor = { sub: 'user-1', role: 'USER', tenantId: 'tenant-1' };
 const baseCase = { id: 'case-1', tenantId: 'tenant-1', caseNumber: 'CASE-1', assigneeId: null };
@@ -14,6 +15,7 @@ function fakePrisma() {
   const audits = [];
   const tx = {
     caseInvestigationNote: {
+      findUnique: async ({ where }) => notes.find((item) => item.id === where.id) || null,
       create: async ({ data }) => {
         const value = { id: `note-${notes.length + 1}`, ...data, createdAt: new Date(), author: { id: actor.sub, name: 'Analyst', email: 'analyst@test' } };
         notes.push(value);
@@ -21,6 +23,7 @@ function fakePrisma() {
       },
     },
     caseEvidence: {
+      findUnique: async ({ where }) => evidence.find((item) => item.id === where.id) || null,
       create: async ({ data }) => {
         const value = { id: `evidence-${evidence.length + 1}`, ...data, createdAt: new Date(), creator: { id: actor.sub, name: 'Analyst', email: 'analyst@test' } };
         evidence.push(value);
@@ -45,7 +48,7 @@ function fakePrisma() {
 
 test('Given a tenant case, when an analyst adds a note, then author, activity, and audit are persisted', async () => {
   const prisma = fakePrisma();
-  const note = await new CasesService(prisma).addNote(actor, baseCase.id, { content: '  IOC tervalidasi  ' });
+  const note = await new CasesService(prisma).addNote(actor, baseCase.id, { requestId: 'note-request-1', content: '  IOC tervalidasi  ' });
   assert.equal(note.content, 'IOC tervalidasi');
   assert.equal(note.authorId, actor.sub);
   assert.equal(prisma.activities[0].action, 'NOTE_ADDED');
@@ -54,13 +57,13 @@ test('Given a tenant case, when an analyst adds a note, then author, activity, a
 
 test('Given existing notes, when notes are requested, then only scoped case notes are returned', async () => {
   const prisma = fakePrisma();
-  await new CasesService(prisma).addNote(actor, baseCase.id, { content: 'Temuan' });
+  await new CasesService(prisma).addNote(actor, baseCase.id, { requestId: 'note-request-2', content: 'Temuan' });
   assert.equal((await new CasesService(prisma).getNotes(actor, baseCase.id)).length, 1);
 });
 
 test('Given a tenant case, when evidence is added, then required fields and creator are persisted', async () => {
   const prisma = fakePrisma();
-  const item = await new CasesService(prisma).addEvidence(actor, baseCase.id, { name: 'auth.log', type: 'log', description: 'Login gagal', source: 'SIEM' });
+  const item = await new CasesService(prisma).addEvidence(actor, baseCase.id, { requestId: 'evidence-request-1', name: 'auth.log', type: 'log', description: 'Login gagal', source: 'SIEM' });
   assert.equal(item.name, 'auth.log');
   assert.equal(item.createdBy, actor.sub);
   assert.equal(prisma.activities[0].action, 'EVIDENCE_ADDED');
@@ -69,7 +72,7 @@ test('Given a tenant case, when evidence is added, then required fields and crea
 test('Given existing evidence, when evidence is requested, then scoped evidence is returned', async () => {
   const prisma = fakePrisma();
   const service = new CasesService(prisma);
-  await service.addEvidence(actor, baseCase.id, { name: 'sample.bin', type: 'file' });
+  await service.addEvidence(actor, baseCase.id, { requestId: 'evidence-request-2', name: 'sample.bin', type: 'file' });
   assert.equal((await service.getEvidence(actor, baseCase.id))[0].type, 'file');
 });
 
@@ -97,9 +100,63 @@ test('Given investigation routes, then authentication module and analyst role au
 test('Given investigation changes, when timeline is requested, then note and evidence activities are ordered data', async () => {
   const prisma = fakePrisma();
   const service = new CasesService(prisma);
-  await service.addNote(actor, baseCase.id, { content: 'Temuan' });
-  await service.addEvidence(actor, baseCase.id, { name: 'trace.json', type: 'file' });
+  await service.addNote(actor, baseCase.id, { requestId: 'note-request-3', content: 'Temuan' });
+  await service.addEvidence(actor, baseCase.id, { requestId: 'evidence-request-3', name: 'trace.json', type: 'file' });
   assert.deepEqual((await service.getActivity(actor, baseCase.id)).map((item) => item.action), ['NOTE_ADDED', 'EVIDENCE_ADDED']);
+});
+
+test('Given the same request id, when a note retry arrives, then no duplicate note or activity is created', async () => {
+  const prisma = fakePrisma();
+  const service = new CasesService(prisma);
+  const input = { requestId: 'note-retry-1', content: 'Temuan tunggal' };
+  const first = await service.addNote(actor, baseCase.id, input);
+  const retry = await service.addNote(actor, baseCase.id, input);
+  assert.equal(retry.id, first.id);
+  assert.equal(prisma.notes.length, 1);
+  assert.equal(prisma.activities.length, 1);
+});
+
+test('Given the same request id, when an evidence retry arrives, then no duplicate evidence or activity is created', async () => {
+  const prisma = fakePrisma();
+  const service = new CasesService(prisma);
+  const input = { requestId: 'evidence-retry-1', name: 'trace.json', type: 'file' };
+  const first = await service.addEvidence(actor, baseCase.id, input);
+  const retry = await service.addEvidence(actor, baseCase.id, input);
+  assert.equal(retry.id, first.id);
+  assert.equal(prisma.evidence.length, 1);
+  assert.equal(prisma.activities.length, 1);
+});
+
+test('Given overlapping note retries, when the database reports a duplicate request id, then the committed note is returned', async () => {
+  const prisma = fakePrisma();
+  const committed = { id: 'note-race-1', caseId: baseCase.id, tenantId: baseCase.tenantId, authorId: actor.sub, content: 'Temuan tunggal', author: { id: actor.sub } };
+  prisma.caseInvestigationNote.findUnique = async () => committed;
+  prisma.$transaction = async () => { throw new Prisma.PrismaClientKnownRequestError('duplicate note', { code: 'P2002', clientVersion: '6.14.0' }); };
+  assert.equal((await new CasesService(prisma).addNote(actor, baseCase.id, { requestId: committed.id, content: committed.content })).id, committed.id);
+});
+
+test('Given overlapping evidence retries, when the database reports a duplicate request id, then the committed evidence is returned', async () => {
+  const prisma = fakePrisma();
+  const committed = { id: 'evidence-race-1', caseId: baseCase.id, tenantId: baseCase.tenantId, createdBy: actor.sub, name: 'trace.json', type: 'file', creator: { id: actor.sub } };
+  prisma.caseEvidence.findUnique = async () => committed;
+  prisma.$transaction = async () => { throw new Prisma.PrismaClientKnownRequestError('duplicate evidence', { code: 'P2002', clientVersion: '6.14.0' }); };
+  assert.equal((await new CasesService(prisma).addEvidence(actor, baseCase.id, { requestId: committed.id, name: committed.name, type: committed.type })).id, committed.id);
+});
+
+test('Given an activity write failure, when note creation is attempted, then the transaction exposes the failure', async () => {
+  const prisma = fakePrisma();
+  prisma.$transaction = async (operation) => operation({
+    caseInvestigationNote: {
+      findUnique: async () => null,
+      create: async ({ data }) => ({ id: data.id, ...data }),
+    },
+    caseActivity: { create: async () => { throw new Error('activity write failed'); } },
+    auditLog: { create: async () => ({}) },
+  });
+  await assert.rejects(
+    () => new CasesService(prisma).addNote(actor, baseCase.id, { requestId: 'note-failure-1', content: 'Tidak boleh parsial' }),
+    /activity write failed/,
+  );
 });
 
 test('Given list filters and pagination, when cases are listed, then tenant scope and query options are applied', async () => {

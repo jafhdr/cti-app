@@ -24,8 +24,11 @@ export class CasesService {
     return caseRecord;
   }
 
-  private async generateCaseNumber(tenantId: string): Promise<string> {
-    const count = await this.prisma.case.count({ where: { tenantId } });
+  private async generateCaseNumber(
+    tenantId: string,
+    client: Pick<Prisma.TransactionClient, 'case'> = this.prisma,
+  ): Promise<string> {
+    const count = await client.case.count({ where: { tenantId } });
     const year = new Date().getFullYear();
     return `CASE-${year}-${String(count + 1).padStart(5, '0')}`;
   }
@@ -124,9 +127,20 @@ export class CasesService {
     const content = input.content.trim();
     if (!content) throw new BadRequestException('Catatan investigasi wajib diisi');
 
-    return this.prisma.$transaction(async (tx) => {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+      const existing = await tx.caseInvestigationNote.findUnique({
+        where: { id: input.requestId },
+        include: { author: { select: { id: true, name: true, email: true } } },
+      });
+      if (existing) {
+        if (existing.caseId !== caseId || existing.tenantId !== caseRecord.tenantId || existing.authorId !== user.sub) {
+          throw new ConflictException('Request ID catatan sudah digunakan');
+        }
+        return existing;
+      }
       const note = await tx.caseInvestigationNote.create({
-        data: { caseId, tenantId: caseRecord.tenantId, content, authorId: user.sub },
+        data: { id: input.requestId, caseId, tenantId: caseRecord.tenantId, content, authorId: user.sub },
         include: { author: { select: { id: true, name: true, email: true } } },
       });
       await tx.caseActivity.create({
@@ -135,8 +149,19 @@ export class CasesService {
       await tx.auditLog.create({
         data: { userId: user.sub, tenantId: caseRecord.tenantId, action: 'CASE_NOTE_ADDED', metadata: { caseId, noteId: note.id } },
       });
-      return note;
-    });
+        return note;
+      });
+    } catch (error) {
+      if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') throw error;
+      const existing = await this.prisma.caseInvestigationNote.findUnique({
+        where: { id: input.requestId },
+        include: { author: { select: { id: true, name: true, email: true } } },
+      });
+      if (!existing || existing.caseId !== caseId || existing.tenantId !== caseRecord.tenantId || existing.authorId !== user.sub) {
+        throw new ConflictException('Request ID catatan sudah digunakan');
+      }
+      return existing;
+    }
   }
 
   async getEvidence(user: AuthUser, caseId: string) {
@@ -154,9 +179,21 @@ export class CasesService {
     const type = input.type.trim();
     if (!name || !type) throw new BadRequestException('Nama dan tipe evidence wajib diisi');
 
-    return this.prisma.$transaction(async (tx) => {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+      const existing = await tx.caseEvidence.findUnique({
+        where: { id: input.requestId },
+        include: { creator: { select: { id: true, name: true, email: true } } },
+      });
+      if (existing) {
+        if (existing.caseId !== caseId || existing.tenantId !== caseRecord.tenantId || existing.createdBy !== user.sub) {
+          throw new ConflictException('Request ID evidence sudah digunakan');
+        }
+        return existing;
+      }
       const evidence = await tx.caseEvidence.create({
         data: {
+          id: input.requestId,
           caseId,
           tenantId: caseRecord.tenantId,
           name,
@@ -173,15 +210,26 @@ export class CasesService {
       await tx.auditLog.create({
         data: { userId: user.sub, tenantId: caseRecord.tenantId, action: 'CASE_EVIDENCE_ADDED', metadata: { caseId, evidenceId: evidence.id, name } },
       });
-      return evidence;
-    });
+        return evidence;
+      });
+    } catch (error) {
+      if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') throw error;
+      const existing = await this.prisma.caseEvidence.findUnique({
+        where: { id: input.requestId },
+        include: { creator: { select: { id: true, name: true, email: true } } },
+      });
+      if (!existing || existing.caseId !== caseId || existing.tenantId !== caseRecord.tenantId || existing.createdBy !== user.sub) {
+        throw new ConflictException('Request ID evidence sudah digunakan');
+      }
+      return existing;
+    }
   }
 
   async getActivity(user: AuthUser, caseId: string) {
     const caseRecord = await this.scopedCase(user, caseId);
     return this.prisma.caseActivity.findMany({
       where: { caseId, tenantId: caseRecord.tenantId },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     });
   }
 
@@ -226,7 +274,8 @@ export class CasesService {
     });
     if (existing) throw new ConflictException('Indicator sudah terhubung ke Case');
 
-    return this.prisma.$transaction(async (tx) => {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
       const link = await tx.caseIndicator.create({
         data: { tenantId: caseRecord.tenantId, caseId, indicatorId, createdBy: user.sub },
         include: { indicator: true },
@@ -238,8 +287,14 @@ export class CasesService {
       await tx.auditLog.create({
         data: { userId: user.sub, tenantId: caseRecord.tenantId, action: 'CASE_INDICATOR_LINKED', metadata: { caseId, ...metadata } },
       });
-      return link.indicator;
-    });
+        return link.indicator;
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException('Indicator sudah terhubung ke Case');
+      }
+      throw error;
+    }
   }
 
   async unlinkIndicator(user: AuthUser, caseId: string, indicatorId: string) {
@@ -574,6 +629,87 @@ export class CasesService {
         action,
         metadata,
       },
+    });
+  }
+
+  async createFromIndicator(user: AuthUser, indicatorId: string, input: CreateCaseInput) {
+    const indicator = await this.prisma.indicator.findFirst({
+      where: {
+        id: indicatorId,
+        ...(user.role === 'SUPER_ADMIN' ? {} : { tenantId: this.tenantId(user) }),
+      },
+    });
+    if (!indicator) throw new NotFoundException('Indicator tidak ditemukan');
+
+    const title = input.title.trim();
+    if (!title) throw new BadRequestException('Judul Case wajib diisi');
+
+    if (input.assigneeId) {
+      const assignee = await this.prisma.user.findUnique({ where: { id: input.assigneeId } });
+      if (!assignee || assignee.tenantId !== indicator.tenantId) {
+        throw new NotFoundException('Assignee tidak ditemukan di tenant ini');
+      }
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const caseNumber = await this.generateCaseNumber(indicator.tenantId, tx);
+      const newCase = await tx.case.create({
+        data: {
+          tenantId: indicator.tenantId,
+          caseNumber,
+          title,
+          description: input.description?.trim() || null,
+          status: input.status || CaseStatus.OPEN,
+          priority: input.priority || CasePriority.MEDIUM,
+          severity: input.severity,
+          assigneeId: input.assigneeId,
+          createdBy: user.sub,
+        },
+        include: {
+          tenant: { select: { id: true, name: true, slug: true } },
+          creator: { select: { id: true, name: true, email: true } },
+          assignee: { select: { id: true, name: true, email: true } },
+        },
+      });
+
+      const existingLink = await tx.caseIndicator.findUnique({
+        where: { caseId_indicatorId: { caseId: newCase.id, indicatorId } },
+      });
+      if (existingLink) throw new ConflictException('Case sudah terhubung ke Indicator');
+
+      await tx.caseIndicator.create({
+        data: { tenantId: indicator.tenantId, caseId: newCase.id, indicatorId, createdBy: user.sub },
+      });
+      await tx.caseActivity.create({
+        data: { caseId: newCase.id, tenantId: indicator.tenantId, actorId: user.sub, action: 'CASE_CREATED', metadata: { caseNumber } },
+      });
+      await tx.caseActivity.create({
+        data: {
+          caseId: newCase.id,
+          tenantId: indicator.tenantId,
+          actorId: user.sub,
+          action: 'INDICATOR_LINKED',
+          metadata: { indicatorId, value: indicator.value, type: indicator.type },
+        },
+      });
+      await tx.auditLog.create({
+        data: {
+          userId: user.sub,
+          tenantId: indicator.tenantId,
+          action: 'CASE_CREATED',
+          metadata: { caseId: newCase.id, caseNumber, title, sourceIndicatorId: indicatorId },
+        },
+      });
+      await tx.auditLog.create({
+        data: {
+          userId: user.sub,
+          tenantId: indicator.tenantId,
+          action: 'INDICATOR_CASE_LINKED',
+          metadata: { caseId: newCase.id, caseNumber, indicatorId, value: indicator.value, type: indicator.type },
+        },
+      });
+
+      return newCase;
     });
   }
 

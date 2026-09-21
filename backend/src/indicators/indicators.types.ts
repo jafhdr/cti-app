@@ -20,3 +20,7 @@ export type IndicatorInput = {
 export type ThreatActorAttributionInput = {
   readonly threatActorId: string;
 };
+
+export type LinkCaseInput = {
+  readonly caseId: string;
+};

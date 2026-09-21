@@ -1,11 +1,12 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { createContext, useContext, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Sidebar from '../../components/dashboard/Sidebar';
 import type { ModuleAccess } from '../../lib/module-access';
+import { CaseMutationAccessContext } from './case-access';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -16,12 +17,6 @@ type CurrentUser = {
   readonly role: Role;
   readonly moduleAccess: readonly ModuleAccess[];
 };
-
-const CaseMutationAccessContext = createContext(false);
-
-export function useCaseMutationAccess(): boolean {
-  return useContext(CaseMutationAccessContext);
-}
 
 export default function CasesLayout({ children }: { readonly children: ReactNode }) {
   const router = useRouter();

@@ -57,6 +57,15 @@ test('user with all assignments sees every catalog module', async ({ page }) => 
   await expect(nav.getByRole('link')).toHaveCount(1);
 });
 
+test('super admin sees Attack Surface Management without tenant assignments', async ({ page }) => {
+  await session(page, 'SUPER_ADMIN', []);
+  await page.goto(`${app}/dashboard`);
+  const nav = page.getByRole('navigation', { name: 'Navigasi utama' });
+
+  await nav.getByRole('button', { name: 'Attack Surface Management' }).click();
+  await expect(nav.getByRole('link', { name: 'Assets', exact: true })).toHaveAttribute('href', '/attack-surface/assets');
+});
+
 test('API subscription denial blocks assigned user without rendering workspace', async ({ page }) => {
   await session(page, 'USER');
   await page.route('**/intelligence/overview', route => route.fulfill({ status: 403, json: { message: 'Subscription tenant tidak aktif' } }));

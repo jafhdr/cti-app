@@ -128,6 +128,9 @@ export default function Sidebar({
     }));
   const modules: readonly NavigationModule[] = [
     ...catalogModules,
+    ...(role === 'SUPER_ADMIN' && !catalogModules.some(module => module.id === 'attack-surface-management')
+      ? [{ id: 'attack-surface-management', label: 'Attack Surface Management', items: attackSurfaceItems }]
+      : []),
     ...(canAccessThreatIntelligence ? [{ id: 'threat-intelligence', label: 'Threat Intelligence', items: threatIntelligenceItems }] : []),
     ...(administrationItemsForRole(role).length > 0 ? [{ id: 'administration', label: 'Administration', items: administrationItemsForRole(role) }] : []),
   ].sort((left, right) => moduleOrder(left.id) - moduleOrder(right.id));

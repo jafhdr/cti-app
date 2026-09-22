@@ -1,6 +1,12 @@
 import { PrismaClient, Role } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
+const seedAdminPassword = process.env.SEED_ADMIN_PASSWORD ?? '';
+
+if (!seedAdminPassword) {
+  throw new Error('Missing required environment variable: SEED_ADMIN_PASSWORD');
+}
+
 const prisma = new PrismaClient();
 
 async function main() {
@@ -10,7 +16,7 @@ async function main() {
     create: { name: 'Demo Organization', slug: 'demo-tenant' },
   });
 
-  const passwordHash = await bcrypt.hash('Admin123!', 10);
+  const passwordHash = await bcrypt.hash(seedAdminPassword, 10);
 
   await prisma.user.upsert({
     where: { email: 'admin@cti.local' },
@@ -28,6 +34,7 @@ async function main() {
     { slug: 'threat-intelligence', name: 'Threat Intelligence', description: 'Kelola indikator, intelijen ancaman, dan enrichment.', category: 'CTI' as const },
     { slug: 'appsec-posture', name: 'AppSec Posture', description: 'Pantau temuan keamanan aplikasi dan risiko deployment.', category: 'APPSEC' as const },
     { slug: 'case-management', name: 'Case Management', description: 'Koordinasikan investigasi dan respons insiden.', category: 'CTI' as const },
+    { slug: 'attack-surface-management', name: 'Attack Surface Management', description: 'Kelola aset, temukan permukaan serangan, dan monitor risiko.', category: 'APPSEC' as const },
   ].map((module) => prisma.appModule.upsert({ where: { slug: module.slug }, update: module, create: module })),
   );
 
@@ -45,6 +52,10 @@ async function main() {
       { key: 'case-workflow', name: 'Case Workflow', description: 'Kelola siklus investigasi insiden.' },
       { key: 'alert-triage', name: 'Alert Triage', description: 'Prioritaskan dan tindak lanjuti alert.' },
     ],
+    'attack-surface-management': [
+      { key: 'asset-management', name: 'Asset Management', description: 'Kelola aset dan detail inventaris.' },
+      { key: 'asset-discovery', name: 'Asset Discovery', description: 'Temukan dan monitor aset baru.' },
+    ],
   };
   await Promise.all(modules.flatMap((module) => (featuresBySlug[module.slug] ?? []).map((feature) =>
     prisma.moduleFeature.upsert({
@@ -57,7 +68,7 @@ async function main() {
   const packageDefinitions = [
     { name: 'Community', description: 'Fondasi CTI untuk tim yang baru memulai.', priceMonthly: 0, priceYearly: 0, moduleSlugs: ['threat-intelligence'] },
     { name: 'Professional', description: 'Perlindungan terpadu untuk operasi keamanan berkembang.', priceMonthly: 1_500_000, priceYearly: 15_000_000, moduleSlugs: ['threat-intelligence', 'case-management'] },
-    { name: 'Team', description: 'Seluruh kapabilitas platform untuk kolaborasi lintas tim.', priceMonthly: 4_000_000, priceYearly: 40_000_000, moduleSlugs: ['threat-intelligence', 'case-management', 'appsec-posture'] },
+    { name: 'Team', description: 'Seluruh kapabilitas platform untuk kolaborasi lintas tim.', priceMonthly: 4_000_000, priceYearly: 40_000_000, moduleSlugs: ['threat-intelligence', 'case-management', 'appsec-posture', 'attack-surface-management'] },
   ];
   for (const definition of packageDefinitions) {
     const subscriptionPackage = await prisma.subscriptionPackage.upsert({
@@ -82,6 +93,7 @@ async function main() {
     'threat-intelligence': { monthly: 750_000, yearly: 7_500_000 },
     'case-management': { monthly: 600_000, yearly: 6_000_000 },
     'appsec-posture': { monthly: 900_000, yearly: 9_000_000 },
+    'attack-surface-management': { monthly: 800_000, yearly: 8_000_000 },
   };
   await Promise.all(modules.map((module) => prisma.packageModule.upsert({
     where: { packageId_moduleId: { packageId: customPackage.id, moduleId: module.id } },
@@ -110,7 +122,7 @@ async function main() {
     ]);
   })));
 
-  const superAdminPasswordHash = await bcrypt.hash('SuperAdmin123!', 10);
+  const superAdminPasswordHash = await bcrypt.hash(seedAdminPassword, 10);
 
   await prisma.user.upsert({
     where: { email: 'superadmin@cti.local' },
@@ -123,7 +135,7 @@ async function main() {
     },
   });
 
-  console.log('Seed completed: admin@cti.local / Admin123!');
+  console.log('Seed completed.');
 }
 
 main()

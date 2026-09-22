@@ -161,6 +161,30 @@ enum CaseStatus {
   CLOSED
 }
 
+enum AssetType {
+  DOMAIN
+  SUBDOMAIN
+  IP_ADDRESS
+  HOST
+  URL
+  API
+  CERTIFICATE
+  CLOUD_ASSET
+}
+
+enum AssetStatus {
+  ACTIVE
+  INACTIVE
+  UNKNOWN
+}
+
+enum AssetCriticality {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
 enum AlertStatus {
   OPEN
   ACKNOWLEDGED
@@ -230,6 +254,7 @@ model Tenant {
   caseIndicators             CaseIndicator[]
   caseThreatActors           CaseThreatActor[]
   alerts                     Alert[]
+  assets                     Asset[]
   moduleSettings             TenantModule[]
   subscription               TenantSubscription?
   userModuleAccess           UserModuleAccess[]
@@ -1098,4 +1123,28 @@ model AlertEntity {
   entity   IntelligenceEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
 
   @@id([alertId, entityId])
+}
+
+model Asset {
+  id            String             @id @default(cuid())
+  tenantId      String
+  name          String
+  type          AssetType
+  value         String
+  status        AssetStatus        @default(UNKNOWN)
+  criticality   AssetCriticality   @default(MEDIUM)
+  description   String?
+  owner         String?
+  firstSeenAt   DateTime?
+  lastSeenAt    DateTime?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  tenant        Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, type, value])
+  @@index([tenantId])
+  @@index([tenantId, type])
+  @@index([tenantId, value])
+  @@index([tenantId, status])
+  @@index([tenantId, criticality])
 }

@@ -1,11 +1,17 @@
 import { PrismaClient, Role } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
+const password = process.env.SUPER_ADMIN_PASSWORD;
+
+if (!password) {
+  console.error('Missing required environment variable: SUPER_ADMIN_PASSWORD');
+  process.exit(1);
+}
+
 const prisma = new PrismaClient();
 
-async function main() {
+async function main(configuredPassword: string) {
   const email = 'superadmin@cti.local';
-  const password = 'SuperAdmin123!';
   const name = 'Super Administrator';
 
   console.log('Creating SUPER_ADMIN...');
@@ -30,7 +36,7 @@ async function main() {
   }
 
   // SUPER_ADMIN tidak membutuhkan tenant
-  const passwordHash = await bcrypt.hash(password, 12);
+  const passwordHash = await bcrypt.hash(configuredPassword, 12);
 
   const user = await prisma.user.create({
     data: {
@@ -59,11 +65,10 @@ async function main() {
   console.log(`Email    : ${user.email}`);
   console.log(`Role     : ${user.role}`);
   console.log(`Tenant   : ${user.tenantId ?? 'Tidak terikat tenant'}`);
-  console.log(`Password : ${password}`);
   console.log('========================================');
 }
 
-main()
+main(password)
   .catch((error) => {
     console.error('');
     console.error('Gagal membuat SUPER_ADMIN:');

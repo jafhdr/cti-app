@@ -60,6 +60,10 @@ const caseManagementItems: readonly NavigationItem[] = [
   { label: 'Cases', href: '/cases', icon: ClipboardList, matchDescendants: true },
 ];
 
+const attackSurfaceItems: readonly NavigationItem[] = [
+  { label: 'Assets', href: '/attack-surface/assets', icon: Radar, matchDescendants: true },
+];
+
 const threatIntelligenceItems: readonly NavigationItem[] = [
   { label: 'Overview', href: '/threat-intelligence', icon: Shield },
   { label: 'Indicators', href: '/threat-intelligence/indicators', icon: Radar, aliases: ['/indicators'] },
@@ -85,6 +89,8 @@ export default function Sidebar({
     ? 'threat-intelligence'
     : pathname === '/cases' || pathname.startsWith('/cases/')
       ? 'case-management'
+    : pathname.startsWith('/attack-surface')
+      ? 'attack-surface-management'
     : administrationItemsForRole(role).some(item => isItemActive(item, pathname))
       ? 'administration'
       : null;
@@ -118,7 +124,7 @@ export default function Sidebar({
     .map(module => ({
       id: module.moduleSlug,
       label: module.moduleName,
-      items: module.moduleSlug === 'case-management' ? caseManagementItems : [],
+      items: module.moduleSlug === 'case-management' ? caseManagementItems : module.moduleSlug === 'attack-surface-management' ? attackSurfaceItems : [],
     }));
   const modules: readonly NavigationModule[] = [
     ...catalogModules,
@@ -211,6 +217,6 @@ function administrationItemsForRole(role?: Role): readonly NavigationItem[] {
 }
 
 function moduleOrder(id: string): number {
-  const order: Readonly<Record<string, number>> = { 'case-management': 10, 'threat-intelligence': 20, 'appsec-posture': 30, administration: 100 };
+  const order: Readonly<Record<string, number>> = { 'case-management': 10, 'threat-intelligence': 20, 'attack-surface-management': 30, 'appsec-posture': 40, administration: 100 };
   return order[id] ?? 50;
 }

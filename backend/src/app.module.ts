@@ -11,6 +11,7 @@ import { ModulesModule } from './modules/modules.module';
 import { IntelligenceModule } from './intelligence/intelligence.module';
 import { SubscriptionModule } from './subscription/subscription.module';
 import { CasesModule } from './cases/cases.module';
+import { AttackSurfaceManagementModule } from './attack-surface-management/attack-surface-management.module';
 import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
@@ -26,10 +27,12 @@ import { ScheduleModule } from '@nestjs/schedule';
     IntelligenceModule,
     SubscriptionModule,
     CasesModule,
+    AttackSurfaceManagementModule,
     UsersModule,
   ],
   providers: [PrismaService],
   exports: [PrismaService],
 })
 export class AppModule {}
+
 

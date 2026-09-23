@@ -13,23 +13,31 @@ export class ModulesService {
 
   async listAvailable(user: AuthUser) {
     if (user.role === 'SUPER_ADMIN') {
-      const modules = await this.prisma.appModule.findMany({ where: { isActive: true }, orderBy: [{ category: 'asc' }, { name: 'asc' }] });
+      const modules = await this.prisma.appModule.findMany({
+        where: { isActive: true },
+        include: { features: { orderBy: { name: 'asc' } } },
+        orderBy: [{ category: 'asc' }, { name: 'asc' }],
+      });
       return modules.map((module) => ({ ...module, accessible: true }));
     }
     const modules = await this.prisma.appModule.findMany({
       where: { isActive: true },
-      include: { settings: { where: { tenantId: this.tenantId(user), isEnabled: true }, include: { access: { where: { role: user.role } } } } },
+      include: {
+        features: { orderBy: { name: 'asc' } },
+        settings: { where: { tenantId: this.tenantId(user), isEnabled: true }, include: { access: { where: { role: user.role } } } },
+      },
       orderBy: [{ category: 'asc' }, { name: 'asc' }],
     });
     return modules
       .filter((module) => module.settings.some((setting) => setting.access[0]?.isAllowed))
-      .map((module) => ({ id: module.id, slug: module.slug, name: module.name, description: module.description, category: module.category, isActive: module.isActive, accessible: true }));
+      .map((module) => ({ id: module.id, slug: module.slug, name: module.name, description: module.description, category: module.category, isActive: module.isActive, features: module.features, accessible: true }));
   }
 
   async listConfiguration(user: AuthUser, requestedTenantId?: string) {
     const tenantId = this.resolveTenant(user, requestedTenantId);
     const modules = await this.prisma.appModule.findMany({
       include: {
+        features: { orderBy: { name: 'asc' } },
         settings: {
           where: { tenantId },
           include: { access: { where: { role: { in: [...configurableRoles] } } } },
@@ -46,6 +54,7 @@ export class ModulesService {
         description: module.description,
         category: module.category,
         isActive: module.isActive,
+        features: module.features,
         tenantEnabled: setting?.isEnabled ?? false,
         access: {
           ADMIN: setting?.access.find((entry) => entry.role === Role.ADMIN)?.isAllowed ?? false,
@@ -89,20 +98,29 @@ export class ModulesService {
     if (input.isEnabled === undefined && !input.access) throw new BadRequestException('Status modul atau akses role wajib diisi');
     if (user.role === 'ADMIN' && input.access?.ADMIN !== undefined) throw new ForbiddenException('ADMIN tidak dapat mengubah akses role ADMIN');
 
-    const setting = await this.prisma.tenantModule.upsert({
-      where: { tenantId_moduleId: { tenantId, moduleId } },
-      create: { tenantId, moduleId, isEnabled: input.isEnabled ?? true },
-      update: input.isEnabled === undefined ? {} : { isEnabled: input.isEnabled },
+    await this.prisma.$transaction(async (transaction) => {
+      const setting = await transaction.tenantModule.upsert({
+        where: { tenantId_moduleId: { tenantId, moduleId } },
+        create: { tenantId, moduleId, isEnabled: input.isEnabled ?? true },
+        update: input.isEnabled === undefined ? {} : { isEnabled: input.isEnabled },
+      });
+      const roleUpdates = configurableRoles
+        .filter((role): role is ConfigurableRole => input.access?.[role] !== undefined)
+        .map((role) => transaction.moduleRoleAccess.upsert({
+          where: { tenantModuleId_role: { tenantModuleId: setting.id, role } },
+          create: { tenantModuleId: setting.id, role, isAllowed: input.access?.[role] ?? false },
+          update: { isAllowed: input.access?.[role] ?? false },
+        }));
+      await Promise.all(roleUpdates);
+      await transaction.auditLog.create({
+        data: {
+          userId: user.sub,
+          tenantId,
+          action: 'MODULE_TENANT_ACCESS_UPDATED',
+          metadata: { moduleId: module.id, isEnabled: input.isEnabled ?? null, access: input.access ?? {} },
+        },
+      });
     });
-    const roleUpdates = configurableRoles
-      .filter((role): role is ConfigurableRole => input.access?.[role] !== undefined)
-      .map((role) => this.prisma.moduleRoleAccess.upsert({
-        where: { tenantModuleId_role: { tenantModuleId: setting.id, role } },
-        create: { tenantModuleId: setting.id, role, isAllowed: input.access?.[role] ?? false },
-        update: { isAllowed: input.access?.[role] ?? false },
-      }));
-    await Promise.all(roleUpdates);
-    await this.audit(user, tenantId, 'MODULE_TENANT_ACCESS_UPDATED', { moduleId: module.id, isEnabled: input.isEnabled ?? null, access: input.access ?? {} });
     return this.listConfiguration(user, tenantId);
   }
 

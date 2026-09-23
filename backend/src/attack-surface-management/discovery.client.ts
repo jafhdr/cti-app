@@ -1,9 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { isIP } from 'node:net';
 import { request } from 'undici';
 import { z } from 'zod';
 
 // ─── Timeout constant ────────────────────────────────────────────────────────
 const DEFAULT_TIMEOUT_MS = 10_000;
+const MAX_DNS_ANSWERS = 500;
 
 // ─── Zod schemas ─────────────────────────────────────────────────────────────
 const dnsJsonResponseSchema = z.object({
@@ -52,6 +54,15 @@ export interface DiscoveryProviderResult {
   readonly error?: string;
 }
 
+export interface DnsResolutionResult {
+  readonly provider: string;
+  readonly hostname: string;
+  readonly ipv4: readonly string[];
+  readonly ipv6: readonly string[];
+  readonly cnames: readonly string[];
+  readonly errors: readonly string[];
+}
+
 // ─── Client ──────────────────────────────────────────────────────────────────
 @Injectable()
 export class DiscoveryClient {
@@ -61,6 +72,7 @@ export class DiscoveryClient {
   async discoverViaDns(domain: string): Promise<DiscoveryProviderResult> {
     const provider = 'CLOUDFLARE_DOH';
     const discovered = new Set<string>();
+    const errors: string[] = [];
     const recordTypes = [
       { type: 'NS', code: 2 },
       { type: 'MX', code: 15 },
@@ -85,10 +97,13 @@ export class DiscoveryClient {
           }
         }
       } catch (err) {
-        this.logger.warn(`DNS ${type} for ${domain} failed: ${err instanceof Error ? err.message : String(err)}`);
+        const message = err instanceof Error ? err.message : String(err);
+        errors.push(`[${type}] ${message}`);
+        this.logger.warn(`DNS ${type} for ${domain} failed: ${message}`);
       }
     }
-    return { provider, hostnames: [...discovered] };
+    const result = { provider, hostnames: [...discovered] };
+    return errors.length > 0 ? { ...result, error: errors.join('; ') } : result;
   }
 
   /** Certificate Transparency via crt.sh – no API key required. */
@@ -111,6 +126,45 @@ export class DiscoveryClient {
       this.logger.warn(`CRTSH for ${domain} failed: ${message}`);
       return { provider, hostnames: [], error: message };
     }
+  }
+
+  async resolveDns(hostname: string): Promise<DnsResolutionResult> {
+    const provider = 'CLOUDFLARE_DOH';
+    const recordTypes = [
+      { name: 'A', code: 1 },
+      { name: 'AAAA', code: 28 },
+      { name: 'CNAME', code: 5 },
+    ] as const;
+    const answers = await Promise.allSettled(recordTypes.map(async ({ name, code }) => {
+      const url = `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(hostname)}&type=${name}`;
+      const payload = await this.getJson(url, { Accept: 'application/dns-json' }, provider);
+      const response = dnsJsonResponseSchema.parse(payload);
+      if (response.Status !== 0) return { name, values: [] } as const;
+      const values = (response.Answer ?? [])
+        .filter((record) => record.type === code)
+        .slice(0, MAX_DNS_ANSWERS)
+        .map((record) => record.data.replace(/\.$/, '').toLowerCase().trim());
+      return { name, values } as const;
+    }));
+
+    const records = new Map<string, readonly string[]>();
+    const errors: string[] = [];
+    for (const answer of answers) {
+      if (answer.status === 'fulfilled') {
+        records.set(answer.value.name, answer.value.values);
+      } else {
+        errors.push(answer.reason instanceof Error ? answer.reason.message : String(answer.reason));
+      }
+    }
+
+    return {
+      provider,
+      hostname,
+      ipv4: [...new Set(records.get('A') ?? [])].filter((value) => isIP(value) === 4),
+      ipv6: [...new Set(records.get('AAAA') ?? [])].filter((value) => isIP(value) === 6),
+      cnames: [...new Set(records.get('CNAME') ?? [])].filter((value) => this.isValidHostname(value)),
+      errors,
+    };
   }
 
   /** True only if hostname is a strict subdomain of domain (not the root itself). */

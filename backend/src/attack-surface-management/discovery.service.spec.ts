@@ -18,12 +18,9 @@ function mockDomainAsset(overrides: Record<string, any> = {}) {
 }
 
 describe("DiscoveryService", () => {
-  let service: DiscoveryService;
-  let prisma: PrismaService;
-  let client: DiscoveryClient;
+  let service: DiscoveryService, prisma: PrismaService, client: DiscoveryClient;
 
-  const adminUser: AuthUser = { sub: "user-1", role: "ADMIN", tenantId: "tenant-123" };
-  const otherUser: AuthUser = { sub: "user-2", role: "ADMIN", tenantId: "tenant-OTHER" };
+  const adminUser: AuthUser = { sub: "user-1", role: "ADMIN", tenantId: "tenant-123" }, otherUser: AuthUser = { sub: "user-2", role: "ADMIN", tenantId: "tenant-OTHER" };
   const superAdmin: AuthUser = { sub: "sa-1", role: "SUPER_ADMIN", tenantId: null };
   const userRole: AuthUser = { sub: "user-3", role: "USER", tenantId: "tenant-123" };
 
@@ -32,13 +29,12 @@ describe("DiscoveryService", () => {
       providers: [
         DiscoveryService,
         { provide: PrismaService, useValue: { asset: { findFirst: jest.fn(), create: jest.fn(), update: jest.fn() }, tenant: { findUnique: jest.fn() }, auditLog: { create: jest.fn() } } },
-        { provide: DiscoveryClient, useValue: { discoverViaDns: jest.fn(), discoverViaCertTransparency: jest.fn(), isSubdomainOf: jest.fn(), isValidHostname: jest.fn() } },
+        { provide: DiscoveryClient, useValue: { discoverViaDns: jest.fn(), discoverViaCertTransparency: jest.fn(), resolveDns: jest.fn(), isSubdomainOf: jest.fn(), isValidHostname: jest.fn() } },
       ],
     }).compile();
-    service = module.get<DiscoveryService>(DiscoveryService);
-    prisma = module.get<PrismaService>(PrismaService);
-    client = module.get<DiscoveryClient>(DiscoveryClient);
+    service = module.get(DiscoveryService); prisma = module.get(PrismaService); client = module.get(DiscoveryClient);
     jest.spyOn(prisma.auditLog, "create").mockResolvedValue({} as any);
+    jest.spyOn(client, "resolveDns").mockResolvedValue({ provider: "CLOUDFLARE_DOH", hostname: "example.com", ipv4: [], ipv6: [], cnames: [], errors: [] });
   });
 
   describe("1. Asset type validation", () => {

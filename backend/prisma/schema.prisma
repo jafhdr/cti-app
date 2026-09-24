@@ -185,6 +185,18 @@ enum AssetCriticality {
   CRITICAL
 }
 
+enum NetworkProtocol {
+  TCP
+  UDP
+}
+
+enum PortDiscoveryStatus {
+  OPEN
+  CLOSED
+  FILTERED
+  UNKNOWN
+}
+
 enum AlertStatus {
   OPEN
   ACKNOWLEDGED
@@ -255,6 +267,7 @@ model Tenant {
   caseThreatActors           CaseThreatActor[]
   alerts                     Alert[]
   assets                     Asset[]
+  assetPortServices          AssetPortService[]
   moduleSettings             TenantModule[]
   subscription               TenantSubscription?
   userModuleAccess           UserModuleAccess[]
@@ -1140,11 +1153,33 @@ model Asset {
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
   tenant        Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  portServices  AssetPortService[]
 
   @@unique([tenantId, type, value])
+  @@unique([id, tenantId])
   @@index([tenantId])
   @@index([tenantId, type])
   @@index([tenantId, value])
   @@index([tenantId, status])
   @@index([tenantId, criticality])
+}
+
+model AssetPortService {
+  id          String              @id @default(cuid())
+  tenantId    String
+  assetId     String
+  port        Int
+  protocol    NetworkProtocol
+  service     String?
+  status      PortDiscoveryStatus @default(UNKNOWN)
+  firstSeenAt DateTime            @default(now())
+  lastSeenAt  DateTime            @default(now())
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  tenant      Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  asset       Asset               @relation(fields: [assetId, tenantId], references: [id, tenantId], onDelete: Cascade)
+
+  @@unique([tenantId, assetId, protocol, port])
+  @@index([tenantId, assetId, status])
+  @@index([tenantId, protocol, port])
 }

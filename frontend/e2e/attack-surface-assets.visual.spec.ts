@@ -22,7 +22,7 @@ test('captures responsive Attack Surface states', async ({ page }) => {
 test('captures forms and non-happy states', async ({ page }) => {
   let listState: 'ready' | 'loading' | 'empty' | 'error' | 'denied' = 'ready';
   let discoveryFails = false;
-  await page.route('**/auth/me', route => json(route, { email: 'admin@cti.local', role: 'ADMIN', moduleAccess: [] }));
+  await page.route('**/auth/me', route => json(route, { email: 'admin@cti.local', role: 'ADMIN', moduleAccess: [{ moduleId: 'asm', moduleName: 'Attack Surface Management', moduleSlug: 'attack-surface-management', assigned: true, featureKeys: ['asset-inventory', 'asset-discovery'] }] }));
   await page.route(/^http:\/\/localhost:3001\/attack-surface\/assets(?:\?.*)?$/, async route => {
     if (listState === 'loading') { await new Promise(resolve => setTimeout(resolve, 1_500)); await json(route, { items: [], total: 0, totalPages: 0 }); return; }
     if (listState === 'error') { await route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ message: 'Inventory service unavailable' }) }); return; }

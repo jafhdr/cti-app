@@ -46,7 +46,7 @@ test('lists, searches, filters, paginates, opens detail, and gates discovery by 
 });
 
 test('creates, edits, and deletes an asset', async ({ page }) => {
-  await page.route('**/auth/me', route => json(route, { email: 'admin@cti.local', role: 'ADMIN', moduleAccess: [] }));
+  await page.route('**/auth/me', route => json(route, { email: 'admin@cti.local', role: 'ADMIN', moduleAccess: [{ moduleId: 'asm', moduleName: 'Attack Surface Management', moduleSlug: 'attack-surface-management', assigned: true, featureKeys: ['asset-inventory', 'asset-discovery'] }] }));
   let listCalls = 0; let created = false; let edited = false; let deleted = false;
   await page.route(assetsApi, route => {
     if (route.request().method() === 'POST') { created = true; return json(route, domain, 201); }
@@ -87,4 +87,22 @@ test('renders loading, empty, API error, API 403, and module denial states', asy
   mode = 'error'; await page.reload(); await expect(page.locator('.error[role="alert"]')).toContainText('Inventory service unavailable');
   mode = 'denied'; await page.reload(); await expect(page.getByText('Module access required')).toBeVisible();
   await page.unrouteAll(); await mockSession(page, false); await page.goto(`${app}/attack-surface/assets`); await expect(page.getByText('Access denied')).toBeVisible();
+});
+
+
+test('discovers DNS/IP on subdomain and scans services on an IP asset', async ({ page }) => {
+  await mockSession(page);
+  const subdomain = { ...domain, id: 'sub-1', name: 'www.example.com', value: 'www.example.com', type: 'SUBDOMAIN' };
+  const ip = { ...domain, id: 'ip-1', name: '203.0.113.10', value: '203.0.113.10', type: 'IP_ADDRESS' };
+  await page.route(assetsApi, route => json(route, { items: [subdomain, ip], total: 2, totalPages: 1 }));
+  await page.route('**/attack-surface/assets/sub-1/discover', route => json(route, { rootDomain: 'www.example.com', discovered: 1, created: 1, updated: 0, skipped: 0, failed: 0, providers: ['DNS'], errors: [] }));
+  await page.route('**/attack-surface/assets/ip-1/port-services', route => json(route, [{ id: 'port-1', port: 443, protocol: 'TCP', service: 'https', status: 'OPEN', firstSeenAt: now, lastSeenAt: now }]));
+  await page.route('**/attack-surface/assets/ip-1/port-services/discover', route => json(route, { target: '203.0.113.10', scanned: 2, open: 1, closed: 0, timeout: 1, failed: 0, results: [{ port: 443, protocol: 'TCP', service: 'https', status: 'open' }, { port: 80, protocol: 'TCP', service: 'http', status: 'timeout' }] }));
+  await page.goto(`${app}/attack-surface/assets`);
+  await page.getByRole('button', { name: 'Discover DNS/IP' }).click();
+  await expect(page.getByLabel('Discovery results')).toContainText('www.example.com');
+  await page.getByRole('button', { name: 'Detail' }).nth(1).click();
+  await expect(page.getByLabel('Port and services')).toContainText('443');
+  await page.getByRole('button', { name: 'Discover ports' }).click();
+  await expect(page.getByLabel('Port discovery results')).toContainText('TIMEOUT');
 });

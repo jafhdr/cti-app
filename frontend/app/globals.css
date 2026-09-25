@@ -933,3 +933,18 @@ html.dark .module-card:hover, html.dark .module-card:focus-within { box-shadow: 
 .mitre-sync-metrics .is-danger svg,.mitre-sync-metrics .is-danger dd { color: var(--soc-red); }
 @media(max-width:900px){.mitre-sync-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.mitre-sync-metrics>div{border-bottom:1px solid var(--soc-border)}.mitre-sync-metrics>div:nth-child(even){border-right:0}.mitre-sync-metrics>div:last-child{border-bottom:0}}
 @media(max-width:600px){.mitre-sync-header{flex-direction:column;padding:16px}.mitre-sync-header .soc-button-primary{width:100%}.mitre-sync>.feed-feedback{margin-inline:16px}.mitre-sync-metrics{grid-template-columns:1fr}.mitre-sync-metrics>div{padding:14px 16px;border-right:0}.mitre-sync-metrics>div:last-child{border-bottom:0}}
+.asm-ports { padding:18px 20px; border-top:1px solid var(--soc-border); }
+.asm-ports>header { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.asm-ports h3 { margin:4px 0 0; color:var(--soc-ink); font-size:14px; overflow-wrap:anywhere; }
+.asm-ports p { color:var(--soc-muted); font-size:12px; }
+.asm-port-scroll { max-width:100%; overflow-x:auto; margin-top:12px; }
+.asm-port-scroll table { width:100%; min-width:540px; border-collapse:collapse; color:var(--soc-body); font-size:12px; text-align:left; }
+.asm-port-scroll th,.asm-port-scroll td { padding:9px 10px; border-bottom:1px solid var(--soc-border); white-space:nowrap; }
+.asm-port-scroll th { color:var(--soc-muted); font-size:10px; text-transform:uppercase; }
+.asm-port-result { margin-top:14px; padding:12px; border:1px solid var(--soc-border); border-radius:6px; background:var(--soc-nav); }
+.asm-port-result>p { margin:0 0 10px; color:var(--soc-ink); font-weight:700; }
+.asm-port-result dl { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin:0; }
+.asm-port-result dl>div { padding:9px; border:1px solid var(--soc-border); border-radius:4px; }
+.asm-port-result dt { color:var(--soc-muted); font-size:10px; text-transform:uppercase; }
+.asm-port-result dd { margin:4px 0 0; color:var(--soc-ink); font-size:18px; font-weight:700; }
+@media(max-width:640px){.asm-ports>header{align-items:flex-start;flex-direction:column}.asm-port-result dl{grid-template-columns:repeat(2,minmax(0,1fr))}}

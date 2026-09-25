@@ -56,6 +56,10 @@ describe('PortDiscoveryService', () => {
   let client: PortDiscoveryClient;
 
   beforeEach(async () => {
+    const transactionClient = {
+      assetPortService: { upsert: jest.fn() },
+      auditLog: { create: jest.fn() },
+    };
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PortDiscoveryService,
@@ -63,9 +67,10 @@ describe('PortDiscoveryService', () => {
           provide: PrismaService,
           useValue: {
             asset: { findFirst: jest.fn() },
-            assetPortService: { upsert: jest.fn() },
+            assetPortService: transactionClient.assetPortService,
             tenant: { findUnique: jest.fn() },
-            auditLog: { create: jest.fn() },
+            auditLog: transactionClient.auditLog,
+            $transaction: jest.fn((callback: (tx: typeof transactionClient) => Promise<unknown>) => callback(transactionClient)),
           },
         },
         { provide: PortDiscoveryClient, useValue: { probe: jest.fn() } },
@@ -234,6 +239,48 @@ describe('PortDiscoveryService', () => {
     }) });
   });
 
+  it('audits each persisted discovery result with the authenticated actor and tenant', async () => {
+    jest.spyOn(client, 'probe').mockImplementation(async (_target, port) => probe(port, 'open'));
+
+    await service.discover(admin, 'ip-1', 'tenant-foreign', [22, 443]);
+
+    const recorded = jest.mocked(prisma.auditLog.create).mock.calls
+      .map(([input]) => input.data)
+      .filter((data) => data.action === 'ASSET_PORT_SERVICE_RECORDED');
+    expect(recorded).toEqual([
+      expect.objectContaining({ userId: 'admin-1', tenantId: 'tenant-1', metadata: { assetId: 'ip-1', port: 22, protocol: 'TCP', status: 'OPEN' } }),
+      expect.objectContaining({ userId: 'admin-1', tenantId: 'tenant-1', metadata: { assetId: 'ip-1', port: 443, protocol: 'TCP', status: 'OPEN' } }),
+    ]);
+  });
+
+  it('rolls back the port record when its audit fails', async () => {
+    // Given: a transaction fake stages the port record until the callback succeeds.
+    let stored = false;
+    jest.mocked(prisma.auditLog.create)
+      .mockResolvedValueOnce(audit('ASSET_PORT_DISCOVERY_STARTED'))
+      .mockRejectedValueOnce(new Error('audit unavailable'));
+    const transaction = jest.mocked(prisma.$transaction);
+    transaction.mockImplementation(async (callback) => {
+      const previous = stored;
+      try {
+        const result = await callback(prisma);
+        stored = true;
+        return result;
+      } catch (error) {
+        stored = previous;
+        throw error;
+      }
+    });
+
+    // When
+    const result = await service.discover(admin, 'ip-1', undefined, [443]);
+
+    // Then
+    expect(transaction).toHaveBeenCalledTimes(1);
+    expect(result).toMatchObject({ failed: 1, open: 0 });
+    expect(stored).toBe(false);
+  });
+
   it('writes FAILED when discovery cannot complete', async () => {
     jest.spyOn(client, 'probe').mockResolvedValue(probe(443, 'open'));
     jest.spyOn(prisma.assetPortService, 'upsert').mockRejectedValue(new Error('database unavailable'));
@@ -246,9 +293,9 @@ describe('PortDiscoveryService', () => {
 });
 
 describe('PortServicesController discovery authorization', () => {
-  it('allows authenticated USER, ADMIN, and SUPER_ADMIN roles', () => {
+  it('allows only ADMIN and SUPER_ADMIN roles', () => {
     expect(Reflect.getMetadata(ROLES_KEY, PortServicesController.prototype.discover)).toEqual([
-      'SUPER_ADMIN', 'ADMIN', 'USER',
+      'SUPER_ADMIN', 'ADMIN',
     ]);
   });
 

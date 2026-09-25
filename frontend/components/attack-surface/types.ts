@@ -45,6 +45,26 @@ export type DiscoverySummary = {
   readonly errors: readonly string[];
 };
 
+export type PortService = {
+  readonly id: string;
+  readonly port: number;
+  readonly protocol: string;
+  readonly service: string | null;
+  readonly status: 'OPEN' | 'CLOSED' | 'FILTERED' | 'UNKNOWN';
+  readonly firstSeenAt: string;
+  readonly lastSeenAt: string;
+};
+
+export type PortDiscoverySummary = {
+  readonly target: string;
+  readonly scanned: number;
+  readonly open: number;
+  readonly closed: number;
+  readonly timeout: number;
+  readonly failed: number;
+  readonly results: readonly { readonly port: number; readonly protocol: string; readonly service: string | null; readonly status: 'open' | 'closed' | 'timeout' | 'failed'; readonly error?: string }[];
+};
+
 export const emptyAssetForm: AssetFormValue = {
   name: '', type: 'DOMAIN', value: '', status: 'UNKNOWN', criticality: 'MEDIUM',
   description: '', owner: '', firstSeenAt: '', lastSeenAt: '',

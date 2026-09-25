@@ -25,7 +25,7 @@ export class PortServicesController {
   }
 
   @Post('discover')
-  @Roles('SUPER_ADMIN', 'ADMIN', 'USER')
+  @Roles('SUPER_ADMIN', 'ADMIN')
   discover(@Req() req: { user: AuthUser }, @Param('assetId') assetId: string, @Query('tenantId') tenantId?: string) {
     return this.discovery.discover(req.user, assetId, tenantId);
   }

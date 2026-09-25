@@ -4,6 +4,7 @@ import { X } from 'lucide-react';
 import { useEffect, useRef, type FormEvent, type KeyboardEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { assetCriticalities, assetStatuses, assetTypes, type Asset, type AssetFormValue } from './types';
+import { PortServices } from './PortServices';
 
 type Props = {
   readonly asset: Asset | null;
@@ -13,9 +14,10 @@ type Props = {
   readonly onChange: (key: keyof AssetFormValue, value: string) => void;
   readonly onClose: () => void;
   readonly onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  readonly tenantQuery: string;
 };
 
-export function AssetPanel({ asset, form, mode, saving, onChange, onClose, onSubmit }: Props) {
+export function AssetPanel({ asset, form, mode, saving, onChange, onClose, onSubmit, tenantQuery }: Props) {
   const detail = mode === 'detail' && asset;
   const dialogRef = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -35,7 +37,7 @@ export function AssetPanel({ asset, form, mode, saving, onChange, onClose, onSub
   return <div className="asm-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}>
     <section ref={dialogRef} className="asm-dialog" role="dialog" aria-modal="true" aria-labelledby="asset-panel-title" onKeyDown={handleKeyDown}>
       <header><div><span className="source-eyebrow">ASSET REGISTRY</span><h2 id="asset-panel-title">{detail ? 'Asset Detail' : asset ? 'Edit Asset' : 'Create Asset'}</h2></div><Button view="flat" size="s" aria-label="Close asset panel" onClick={onClose}><X size={16} /></Button></header>
-      {detail ? <AssetDetails asset={asset} /> : <form className="asm-form" onSubmit={onSubmit}>
+      {detail ? <><AssetDetails asset={asset} />{asset.type === 'IP_ADDRESS' && <PortServices asset={asset} tenantQuery={tenantQuery} />}</> : <form className="asm-form" onSubmit={onSubmit}>
         <label>Name<input required maxLength={255} value={form.name} onChange={event => onChange('name', event.target.value)} /></label>
         <label>Type<select value={form.type} onChange={event => onChange('type', event.target.value)}>{assetTypes.map(value => <option key={value}>{value}</option>)}</select></label>
         <label className="asm-form-wide">Value<input required maxLength={1024} value={form.value} onChange={event => onChange('value', event.target.value)} /></label>

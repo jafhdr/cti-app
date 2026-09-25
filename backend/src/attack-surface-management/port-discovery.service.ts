@@ -94,16 +94,24 @@ export class PortDiscoveryService {
       const service = SERVICE_NAMES[probe.port] ?? null;
       const status = persistenceStatus(probe.outcome);
       try {
-        await this.prisma.assetPortService.upsert({
-          where: { tenantId_assetId_protocol_port: {
-            tenantId, assetId, protocol: NetworkProtocol.TCP, port: probe.port,
-          } },
-          create: {
-            tenantId, assetId, port: probe.port, protocol: NetworkProtocol.TCP,
-            service, status,
-            firstSeenAt: observedAt, lastSeenAt: observedAt,
-          },
-          update: { service, status, lastSeenAt: observedAt },
+        await this.prisma.$transaction(async (tx) => {
+          await tx.assetPortService.upsert({
+            where: { tenantId_assetId_protocol_port: {
+              tenantId, assetId, protocol: NetworkProtocol.TCP, port: probe.port,
+            } },
+            create: {
+              tenantId, assetId, port: probe.port, protocol: NetworkProtocol.TCP,
+              service, status,
+              firstSeenAt: observedAt, lastSeenAt: observedAt,
+            },
+            update: { service, status, lastSeenAt: observedAt },
+          });
+          await tx.auditLog.create({
+            data: {
+              userId: user.sub, tenantId, action: 'ASSET_PORT_SERVICE_RECORDED',
+              metadata: { assetId, port: probe.port, protocol: NetworkProtocol.TCP, status },
+            },
+          });
         });
         results.push(this.result(probe));
       } catch (error) {

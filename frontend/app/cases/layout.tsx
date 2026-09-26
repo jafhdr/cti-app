@@ -59,8 +59,7 @@ export default function CasesLayout({ children }: { readonly children: ReactNode
     );
   }
 
-  const canAccessCases = user.role === 'SUPER_ADMIN'
-    || user.moduleAccess.some(module => module.assigned && module.moduleSlug === 'case-management');
+  const canAccessCases = user.moduleAccess.some(module => module.accessible === true && module.moduleSlug === 'case-management');
 
   return (
     <div className="app">

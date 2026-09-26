@@ -7,7 +7,7 @@ import type { Asset, PortDiscoverySummary, PortService } from './types';
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 const formatDate = (value: string): string => new Date(value).toLocaleString('id-ID');
 
-export function PortServices({ asset, tenantQuery }: { readonly asset: Asset; readonly tenantQuery: string }) {
+export function PortServices({ asset, tenantQuery, canDiscover }: { readonly asset: Asset; readonly tenantQuery: string; readonly canDiscover: boolean }) {
   const [services, setServices] = useState<readonly PortService[]>([]);
   const [summary, setSummary] = useState<PortDiscoverySummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -40,7 +40,7 @@ export function PortServices({ asset, tenantQuery }: { readonly asset: Asset; re
   }
 
   return <section className="asm-ports" aria-label="Port and services">
-    <header><div><span className="source-eyebrow">PORT &amp; SERVICE</span><h3>{asset.value}</h3></div><Button view="outlined" size="s" disabled={discovering} onClick={() => void discover()}>{discovering ? 'Discovering ports...' : 'Discover ports'}</Button></header>
+    <header><div><span className="source-eyebrow">PORT &amp; SERVICE</span><h3>{asset.value}</h3></div>{canDiscover && <Button view="outlined" size="s" disabled={discovering} onClick={() => void discover()}>{discovering ? 'Discovering ports...' : 'Discover ports'}</Button>}</header>
     {discovering && <p role="status">Scanning common TCP ports. This may take a moment...</p>}
     {error && <p className="error" role="alert">{error} <button type="button" onClick={() => void load()}>Retry list</button></p>}
     {summary && <div className="asm-port-result" aria-label="Port discovery results"><p>Scan complete for {summary.target}: {summary.scanned} ports</p><dl>{([['Open', summary.open], ['Closed', summary.closed], ['Timeout', summary.timeout], ['Failed', summary.failed]] as const).map(([label, count]) => <div key={label}><dt>{label}</dt><dd>{count}</dd></div>)}</dl><div className="asm-port-scroll"><table><thead><tr><th>Port</th><th>Protocol</th><th>Service</th><th>Result</th></tr></thead><tbody>{summary.results.map(result => <tr key={`${result.protocol}-${result.port}`}><td>{result.port}</td><td>{result.protocol}</td><td>{result.service || '-'}</td><td title={result.error}>{result.status.toUpperCase()}</td></tr>)}</tbody></table></div></div>}

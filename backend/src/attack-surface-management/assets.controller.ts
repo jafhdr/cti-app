@@ -28,6 +28,11 @@ export class AssetsController {
     return this.assets.get(req.user, id, tenantId);
   }
 
+  @Get(':id/threat-intelligence') @Roles('SUPER_ADMIN', 'ADMIN', 'USER')
+  threatIntelligence(@Req() req: { user: AuthUser }, @Param('id') id: string, @Query('tenantId') tenantId?: string) {
+    return this.assets.threatIntelligence(req.user, id, tenantId);
+  }
+
   @Post() @Roles('SUPER_ADMIN', 'ADMIN')
   create(@Req() req: { user: AuthUser }, @Body() body: CreateAssetDto, @Query('tenantId') tenantId?: string) {
     return this.assets.create(req.user, body, tenantId);

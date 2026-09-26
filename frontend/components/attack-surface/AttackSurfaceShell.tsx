@@ -56,7 +56,7 @@ export function AttackSurfaceShell({ children }: { readonly children: ReactNode 
     router.replace('/');
   }
 
-  const hasAccess = user?.role === 'SUPER_ADMIN' || user?.moduleAccess.some(module => module.assigned && module.moduleSlug === 'attack-surface-management');
+  const hasAccess = user?.moduleAccess.some(module => module.accessible === true && module.moduleSlug === 'attack-surface-management');
   return <div className="app"><Sidebar role={user?.role} moduleAccess={user?.moduleAccess ?? []} onLogout={user ? logout : undefined} /><section className="main"><header className="topbar"><strong>Attack Surface Management / Assets</strong><span>{user?.role === 'SUPER_ADMIN' && <select aria-label="Tenant Attack Surface" value={tenantId} onChange={event => setTenantId(event.target.value)}>{tenants.map(tenant => <option key={tenant.id} value={tenant.id}>{tenant.name}</option>)}</select>}{user?.email}</span></header>
     {loading ? <main className="content"><div className="asm-state" aria-live="polite">Loading Attack Surface Management...</div></main>
       : sessionError ? <main className="content"><div className="asm-state asm-denied" role="alert"><strong>Unable to load Attack Surface Management</strong><span>{sessionError}</span><Link href="/dashboard">Back to Dashboard</Link></div></main>

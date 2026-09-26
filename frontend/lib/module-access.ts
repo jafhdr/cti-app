@@ -7,6 +7,7 @@ export type ModuleAccess = {
   readonly moduleName: string;
   readonly moduleSlug: string;
   readonly assigned: boolean;
+  readonly accessible?: boolean;
   readonly featureKeys: readonly string[];
 };
 

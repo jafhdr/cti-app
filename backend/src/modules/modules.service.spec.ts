@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import { Prisma, Role } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
 import { ModulesService } from './modules.service';
+import { ModuleAccessService } from '../auth/module-access.service';
 
 const superAdmin = { sub: 'super-1', tenantId: null, role: 'SUPER_ADMIN' } as const;
 const tenantAdmin = { sub: 'admin-1', tenantId: 'tenant-own', role: 'ADMIN' } as const;
@@ -20,7 +21,7 @@ describe('ModulesService', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     const moduleRef = await Test.createTestingModule({
-      providers: [ModulesService, { provide: PrismaService, useValue: prisma }],
+      providers: [ModulesService, { provide: PrismaService, useValue: prisma }, { provide: ModuleAccessService, useValue: { evaluate: jest.fn().mockResolvedValue({ accessible: true }) } }],
     }).compile();
     service = moduleRef.get(ModulesService);
   });
@@ -52,6 +53,25 @@ describe('ModulesService', () => {
     expect(prisma.appModule.findMany).toHaveBeenCalledWith(expect.objectContaining({
       include: { features: expect.any(Object) },
     }));
+  });
+
+  it('reports the shared access decision for each catalog module', async () => {
+    prisma.appModule.findMany.mockResolvedValue([
+      { id: 'asm', slug: 'attack-surface-management', features: [] },
+      { id: 'ti', slug: 'threat-intelligence', features: [] },
+    ]);
+    const evaluate = jest.fn()
+      .mockResolvedValueOnce({ accessible: true })
+      .mockResolvedValueOnce({ accessible: false, reason: 'Modul belum diberikan kepada user ini' });
+    const moduleRef = await Test.createTestingModule({
+      providers: [ModulesService, { provide: PrismaService, useValue: prisma }, { provide: ModuleAccessService, useValue: { evaluate } }],
+    }).compile();
+
+    const result = await moduleRef.get(ModulesService).listAvailable(tenantAdmin);
+
+    expect(result.map((entry) => entry.accessible)).toEqual([true, false]);
+    expect(evaluate).toHaveBeenNthCalledWith(1, tenantAdmin, 'attack-surface-management');
+    expect(evaluate).toHaveBeenNthCalledWith(2, tenantAdmin, 'threat-intelligence');
   });
 
   it('returns a clear conflict for a duplicate slug', async () => {

@@ -118,9 +118,9 @@ export default function Sidebar({
     setDarkMode(nextDarkMode);
   }
 
-  const canAccessThreatIntelligence = role === 'SUPER_ADMIN' || role === 'ADMIN' || moduleAccess.some(module => module.assigned && module.moduleSlug === 'threat-intelligence');
+  const canAccessThreatIntelligence = moduleAccess.some(module => module.accessible === true && module.moduleSlug === 'threat-intelligence');
   const catalogModules: readonly NavigationModule[] = moduleAccess
-    .filter(module => module.moduleSlug !== 'threat-intelligence' && (role === 'SUPER_ADMIN' || module.assigned))
+    .filter(module => module.moduleSlug !== 'threat-intelligence' && module.accessible === true)
     .map(module => ({
       id: module.moduleSlug,
       label: module.moduleName,
@@ -128,9 +128,6 @@ export default function Sidebar({
     }));
   const modules: readonly NavigationModule[] = [
     ...catalogModules,
-    ...(role === 'SUPER_ADMIN' && !catalogModules.some(module => module.id === 'attack-surface-management')
-      ? [{ id: 'attack-surface-management', label: 'Attack Surface Management', items: attackSurfaceItems }]
-      : []),
     ...(canAccessThreatIntelligence ? [{ id: 'threat-intelligence', label: 'Threat Intelligence', items: threatIntelligenceItems }] : []),
     ...(administrationItemsForRole(role).length > 0 ? [{ id: 'administration', label: 'Administration', items: administrationItemsForRole(role) }] : []),
   ].sort((left, right) => moduleOrder(left.id) - moduleOrder(right.id));

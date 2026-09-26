@@ -6,12 +6,13 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma.service';
+import { ModuleAccessService } from './module-access.service';
 import * as bcrypt from 'bcrypt';
 import { randomBytes, createHash } from 'crypto';
 
 @Injectable()
 export class AuthService {
-  constructor(private prisma: PrismaService, private jwt: JwtService) {}
+  constructor(private prisma: PrismaService, private jwt: JwtService, private moduleAccess: ModuleAccessService) {}
 
   async login(email: string, password: string) {
     const user = await this.prisma.user.findUnique({
@@ -122,13 +123,18 @@ export class AuthService {
       orderBy: { name: 'asc' },
     });
 
+    const accessResults = await Promise.all(modules.map((module) => this.moduleAccess.evaluate(
+      { sub: user.id, tenantId: user.tenant?.id ?? null, role: user.role }, module.slug,
+    )));
+
     return {
       ...user,
-      moduleAccess: modules.map((module) => ({
+      moduleAccess: modules.map((module, index) => ({
         moduleId: module.id,
         moduleName: module.name,
         moduleSlug: module.slug,
         assigned: user.role === 'SUPER_ADMIN' || module.userAccess.length > 0,
+        accessible: accessResults[index].accessible,
         featureKeys: module.userAccess[0]?.featureKeys ?? [],
       })),
     };

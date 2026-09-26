@@ -2,7 +2,7 @@ require('reflect-metadata');
 
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const { ForbiddenException } = require('@nestjs/common');
+const { NotFoundException } = require('@nestjs/common');
 const { IndicatorsService } = require('../../dist/src/indicators/indicators.service.js');
 
 const user = { sub: 'user-1', role: 'ADMIN', tenantId: 'tenant-1' };
@@ -61,13 +61,13 @@ test('Given no relation-backed actor, when correlating, then it returns no match
   assert.equal(prisma.audits.length, 0);
 });
 
-test('Given an indicator in another tenant, when correlating, then access is forbidden', async () => {
+test('Given an indicator in another tenant, when correlating, then the resource is hidden', async () => {
   const prisma = prismaFor({ id: 'indicator-2', tenantId: 'tenant-2', intelligenceEntityId: null });
   const service = new IndicatorsService(prisma);
 
   await assert.rejects(
     () => service.correlateThreatActor(user, 'indicator-2'),
-    error => error instanceof ForbiddenException,
+    error => error instanceof NotFoundException,
   );
   assert.equal(prisma.updates.length, 0);
 });

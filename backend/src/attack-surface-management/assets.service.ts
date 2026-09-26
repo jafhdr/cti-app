@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { AssetStatus, AssetType, Prisma } from '@prisma/client';
+import { AssetStatus, AssetType, IndicatorType, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
 import type { AuthUser } from '../users/users.types';
 import type { CreateAssetDto, ListAssetsQueryDto, UpdateAssetDto } from './assets.dto';
@@ -25,6 +25,25 @@ export class AssetsService {
     return this.scopedAsset(user, id, requestedTenantId);
   }
 
+  async threatIntelligence(user: AuthUser, id: string, requestedTenantId?: string) {
+    const asset = await this.scopedAsset(user, id, requestedTenantId);
+    const type = asset.type === AssetType.DOMAIN || asset.type === AssetType.SUBDOMAIN
+      ? IndicatorType.DOMAIN
+      : asset.type === AssetType.IP_ADDRESS ? IndicatorType.IP_ADDRESS : null;
+    const matches = type ? await this.prisma.indicator.findMany({
+      where: { tenantId: asset.tenantId, type, value: asset.value.trim() },
+      select: { id: true, type: true, value: true, source: true, confidence: true, enrichments: { orderBy: { createdAt: 'desc' }, take: 1, select: { provider: true, status: true, createdAt: true } } },
+    }) : [];
+    return {
+      assetId: asset.id, assetType: asset.type, assetValue: asset.value,
+      matches: matches.map(indicator => ({
+        id: indicator.id, type: indicator.type, value: indicator.value,
+        source: indicator.source, confidence: indicator.confidence,
+        enrichmentSummary: indicator.enrichments?.[0] ?? null,
+      })),
+    };
+  }
+
   async create(user: AuthUser, input: CreateAssetDto, requestedTenantId?: string) {
     const tenantId = await this.resolveTenant(user, requestedTenantId);
     const name = input.name.trim();
@@ -48,6 +67,10 @@ export class AssetsService {
     if (input.value) upd.value = input.value.trim();
     if (input.status) upd.status = input.status;
     if (input.criticality) upd.criticality = input.criticality;
+    if (input.description !== undefined) upd.description = input.description.trim() || null;
+    if (input.owner !== undefined) upd.owner = input.owner.trim() || null;
+    if (input.firstSeenAt !== undefined) upd.firstSeenAt = this.parseDate(input.firstSeenAt);
+    if (input.lastSeenAt !== undefined) upd.lastSeenAt = this.parseDate(input.lastSeenAt);
     try {
       const asset = await this.prisma.asset.update({ where: { id }, data: upd });
       await this.audit(user, existing.tenantId, 'ASSET_UPDATED', id, { name: asset.name });

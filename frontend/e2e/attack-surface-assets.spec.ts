@@ -15,7 +15,7 @@ async function json(route: Route, body: unknown, status = 200): Promise<void> {
 }
 
 async function mockSession(page: Page, assigned = true): Promise<void> {
-  await page.route('**/auth/me', route => json(route, { email: 'analyst@cti.local', role: 'USER', moduleAccess: [{ moduleId: 'asm', moduleName: 'Attack Surface Management', moduleSlug: 'attack-surface-management', assigned, featureKeys: ['asset-inventory', 'asset-discovery'] }] }));
+  await page.route('**/auth/me', route => json(route, { email: 'analyst@cti.local', role: 'USER', moduleAccess: [{ moduleId: 'asm', moduleName: 'Attack Surface Management', moduleSlug: 'attack-surface-management', assigned, accessible: assigned, featureKeys: ['asset-inventory', 'asset-discovery'] }] }));
 }
 
 test('lists, searches, filters, paginates, opens detail, and gates discovery by type', async ({ page }) => {
@@ -46,20 +46,22 @@ test('lists, searches, filters, paginates, opens detail, and gates discovery by 
 });
 
 test('creates, edits, and deletes an asset', async ({ page }) => {
-  await page.route('**/auth/me', route => json(route, { email: 'admin@cti.local', role: 'ADMIN', moduleAccess: [{ moduleId: 'asm', moduleName: 'Attack Surface Management', moduleSlug: 'attack-surface-management', assigned: true, featureKeys: ['asset-inventory', 'asset-discovery'] }] }));
+  await page.route('**/auth/me', route => json(route, { email: 'admin@cti.local', role: 'ADMIN', moduleAccess: [{ moduleId: 'asm', moduleName: 'Attack Surface Management', moduleSlug: 'attack-surface-management', assigned: true, accessible: true, featureKeys: ['asset-inventory', 'asset-discovery'] }] }));
   let listCalls = 0; let created = false; let edited = false; let deleted = false;
+  let editPayload: Record<string, string> | null = null;
   await page.route(assetsApi, route => {
     if (route.request().method() === 'POST') { created = true; return json(route, domain, 201); }
     listCalls += 1; return json(route, { items: [domain], total: 1, totalPages: 1 });
   });
-  await page.route('http://localhost:3001/attack-surface/assets/domain-1', route => { const method = route.request().method(); edited ||= method === 'PATCH'; deleted ||= method === 'DELETE'; return json(route, method === 'DELETE' ? { deleted: true, id: domain.id } : domain); });
+  await page.route('http://localhost:3001/attack-surface/assets/domain-1', route => { const method = route.request().method(); edited ||= method === 'PATCH'; deleted ||= method === 'DELETE'; if (method === 'PATCH') editPayload = route.request().postDataJSON(); return json(route, method === 'DELETE' ? { deleted: true, id: domain.id } : domain); });
   await page.goto(`${app}/attack-surface/assets`);
   await page.getByRole('button', { name: 'Create asset' }).click();
   await page.getByLabel('Name').fill('new.example.com'); await page.getByLabel('Value').fill('new.example.com');
   await page.getByRole('dialog').getByRole('button', { name: 'Create asset', exact: true }).click();
   await expect.poll(() => created).toBeTruthy();
-  await page.getByRole('button', { name: 'Edit' }).click(); await page.getByLabel('Name').fill('edited.example.com'); await page.getByRole('button', { name: 'Save changes' }).click();
+  await page.getByRole('button', { name: 'Edit' }).click(); await page.getByLabel('Name').fill('edited.example.com'); await page.getByLabel('Owner').fill(''); await page.getByLabel('Description').fill('Updated asset'); await page.getByLabel('Last seen').fill(''); await page.getByRole('button', { name: 'Save changes' }).click();
   await expect.poll(() => edited).toBeTruthy();
+  expect(editPayload).toMatchObject({ owner: '', description: 'Updated asset', lastSeenAt: '' });
   page.once('dialog', dialog => dialog.accept()); await page.getByRole('button', { name: 'Delete' }).click();
   await expect.poll(() => deleted).toBeTruthy(); expect(listCalls).toBeGreaterThan(2);
 });
@@ -91,7 +93,7 @@ test('renders loading, empty, API error, API 403, and module denial states', asy
 
 
 test('discovers DNS/IP on subdomain and scans services on an IP asset', async ({ page }) => {
-  await mockSession(page);
+  await page.route('**/auth/me', route => json(route, { email: 'admin@cti.local', role: 'ADMIN', moduleAccess: [{ moduleId: 'asm', moduleName: 'Attack Surface Management', moduleSlug: 'attack-surface-management', assigned: true, accessible: true, featureKeys: [] }] }));
   const subdomain = { ...domain, id: 'sub-1', name: 'www.example.com', value: 'www.example.com', type: 'SUBDOMAIN' };
   const ip = { ...domain, id: 'ip-1', name: '203.0.113.10', value: '203.0.113.10', type: 'IP_ADDRESS' };
   await page.route(assetsApi, route => json(route, { items: [subdomain, ip], total: 2, totalPages: 1 }));
@@ -105,4 +107,61 @@ test('discovers DNS/IP on subdomain and scans services on an IP asset', async ({
   await expect(page.getByLabel('Port and services')).toContainText('443');
   await page.getByRole('button', { name: 'Discover ports' }).click();
   await expect(page.getByLabel('Port discovery results')).toContainText('TIMEOUT');
+});
+
+test('assigned ASM stays hidden when backend access is denied', async ({ page }) => {
+  await page.route('**/auth/me', route => json(route, { email: 'cj-admin@cti.local', role: 'ADMIN', moduleAccess: [{ moduleId: 'asm', moduleName: 'Attack Surface Management', moduleSlug: 'attack-surface-management', assigned: true, accessible: false, featureKeys: [] }] }));
+  await page.goto(`${app}/attack-surface/assets`);
+  await expect(page.getByText('Access denied')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Assets' })).toHaveCount(0);
+});
+
+test('USER can inspect IP services without a port discovery action', async ({ page }) => {
+  await mockSession(page);
+  const ip = { ...domain, id: 'ip-1', name: '203.0.113.10', value: '203.0.113.10', type: 'IP_ADDRESS' };
+  await page.route(assetsApi, route => json(route, { items: [ip], total: 1, totalPages: 1 }));
+  await page.route('**/attack-surface/assets/ip-1/port-services', route => json(route, []));
+  await page.goto(`${app}/attack-surface/assets`);
+  await page.getByRole('button', { name: 'Detail' }).click();
+  await expect(page.getByLabel('Port and services')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Discover ports' })).toHaveCount(0);
+});
+
+test('USER empty state does not suggest creating an asset', async ({ page }) => {
+  await mockSession(page);
+  await page.route(assetsApi, route => json(route, { items: [], total: 0, totalPages: 0 }));
+  await page.goto(`${app}/attack-surface/assets`);
+  await expect(page.getByText('No assets found')).toBeVisible();
+  await expect(page.getByText('Adjust the filters or contact an administrator to add assets.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Create asset' })).toHaveCount(0);
+});
+
+test('SUPER_ADMIN selects tenant and can discover IP ports', async ({ page }) => {
+  const ip = { ...domain, id: 'ip-1', name: '203.0.113.10', value: '203.0.113.10', type: 'IP_ADDRESS' };
+  await page.route('**/auth/me', route => json(route, { email: 'root@cti.local', role: 'SUPER_ADMIN', moduleAccess: [{ moduleId: 'asm', moduleName: 'Attack Surface Management', moduleSlug: 'attack-surface-management', assigned: true, accessible: true, featureKeys: [] }] }));
+  await page.route('**/users/tenants', route => json(route, [{ id: 'tenant-1', name: 'Tenant One' }]));
+  await page.route(assetsApi, route => json(route, { items: [ip], total: 1, totalPages: 1 }));
+  await page.route('**/attack-surface/assets/ip-1/port-services?tenantId=tenant-1', route => json(route, []));
+  const discoveryTenants: string[] = [];
+  await page.route('**/attack-surface/assets/ip-1/port-services/discover?tenantId=tenant-1', route => { discoveryTenants.push(new URL(route.request().url()).searchParams.get('tenantId') ?? ''); return json(route, { target: ip.value, scanned: 1, open: 1, closed: 0, timeout: 0, failed: 0, results: [{ port: 443, protocol: 'TCP', service: 'https', status: 'open' }] }); });
+  await page.goto(`${app}/attack-surface/assets`);
+  await expect(page.getByLabel('Tenant Attack Surface')).toHaveValue('tenant-1');
+  await page.getByRole('button', { name: 'Detail' }).click();
+  await page.getByRole('button', { name: 'Discover ports' }).click();
+  await expect(page.getByLabel('Port discovery results')).toContainText('OPEN');
+  expect(discoveryTenants).toContain('tenant-1');
+});
+
+test('shows matching threat intelligence and an empty correlation state', async ({ page }) => {
+  await mockSession(page);
+  await page.route(assetsApi, route => json(route, { items: [domain, host], total: 2, totalPages: 1 }));
+  await page.route('**/attack-surface/assets/domain-1/threat-intelligence', route => json(route, { assetId: domain.id, assetType: domain.type, assetValue: domain.value, matches: [{ id: 'indicator-1', type: 'DOMAIN', value: 'example.com', source: 'feed', confidence: 80, enrichmentSummary: null }] }));
+  await page.route('**/attack-surface/assets/host-1/threat-intelligence', route => json(route, { assetId: host.id, assetType: host.type, assetValue: host.value, matches: [] }));
+  await page.goto(`${app}/attack-surface/assets`);
+  await page.getByRole('button', { name: 'Detail' }).first().click();
+  await expect(page.getByRole('region', { name: 'Threat Intelligence' })).toContainText('1 matched indicators');
+  await expect(page.getByRole('region', { name: 'Threat Intelligence' })).toContainText('feed');
+  await page.getByRole('button', { name: 'Close asset panel' }).click();
+  await page.getByRole('button', { name: 'Detail' }).last().click();
+  await expect(page.getByRole('region', { name: 'Threat Intelligence' })).toContainText('No matching threat intelligence indicators found.');
 });

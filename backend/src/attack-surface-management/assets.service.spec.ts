@@ -3,7 +3,7 @@ import { BadRequestException, ForbiddenException, NotFoundException } from '@nes
 import { PrismaService } from '../prisma.service';
 import { AssetsService } from './assets.service';
 import { AuthUser } from '../users/users.types';
-import { AssetType, AssetStatus } from '@prisma/client';
+import { AssetType, AssetStatus, IndicatorType, IndicatorSeverity, IndicatorStatus } from '@prisma/client';
 
 function mockAsset(overrides: Record<string, any> = {}) {
   return {
@@ -34,6 +34,7 @@ describe('AssetsService', () => {
               create: jest.fn(), findMany: jest.fn(), findFirst: jest.fn(),
               update: jest.fn(), delete: jest.fn(), count: jest.fn(),
             },
+            indicator: { findMany: jest.fn() },
             tenant: { findUnique: jest.fn() },
             auditLog: { create: jest.fn() },
             $transaction: jest.fn(),
@@ -45,8 +46,61 @@ describe('AssetsService', () => {
     prisma = module.get<PrismaService>(PrismaService);
   });
 
+  describe('threat intelligence correlation', () => {
+    it.each([
+      [AssetType.DOMAIN, 'example.com'],
+      [AssetType.SUBDOMAIN, 'sub.example.com'],
+      [AssetType.IP_ADDRESS, '192.0.2.1'],
+      [AssetType.IP_ADDRESS, '2001:db8::1'],
+    ])('matches %s value %s in the asset tenant', async (assetType, value) => {
+      jest.spyOn(prisma.asset, 'findFirst').mockResolvedValueOnce(mockAsset({ type: assetType, value }));
+      const indicator = { id: 'indicator-1', tenantId: 'tenant-123', type: assetType === AssetType.IP_ADDRESS ? IndicatorType.IP_ADDRESS : IndicatorType.DOMAIN, value, source: 'feed', confidence: 80, severity: IndicatorSeverity.MEDIUM, status: IndicatorStatus.ACTIVE, tags: [], description: null, expiresAt: null, createdById: null, intelligenceSourceId: null, intelligenceEntityId: null, createdAt: new Date(), updatedAt: new Date() };
+      jest.spyOn(prisma.indicator, 'findMany').mockResolvedValueOnce([indicator]);
+      const result = await service.threatIntelligence(adminUser, 'a1');
+      expect(result.matches).toHaveLength(1);
+      expect(result.matches[0]).toMatchObject({ id: 'indicator-1', value });
+      expect(prisma.indicator.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { tenantId: 'tenant-123', type: indicator.type, value } }));
+      expect(prisma.auditLog.create).not.toHaveBeenCalled();
+    });
+
+    it('returns an empty result when no indicator matches', async () => {
+      jest.spyOn(prisma.asset, 'findFirst').mockResolvedValueOnce(mockAsset());
+      jest.spyOn(prisma.indicator, 'findMany').mockResolvedValueOnce([]);
+      expect((await service.threatIntelligence(adminUser, 'a1')).matches).toEqual([]);
+    });
+
+    it('returns 404 for an asset outside the tenant without querying indicators', async () => {
+      jest.spyOn(prisma.asset, 'findFirst').mockResolvedValueOnce(null);
+      await expect(service.threatIntelligence(adminUser, 'other-asset')).rejects.toThrow(NotFoundException);
+      expect(prisma.indicator.findMany).not.toHaveBeenCalled();
+    });
+
+    it('uses the requested tenant for SUPER_ADMIN', async () => {
+      jest.spyOn(prisma.tenant, 'findUnique').mockResolvedValueOnce({ id: 'tenant-999', name: 'Tenant 999', slug: 'tenant-999', isActive: true, deactivatedAt: null, createdAt: new Date() });
+      jest.spyOn(prisma.asset, 'findFirst').mockResolvedValueOnce(mockAsset({ tenantId: 'tenant-999' }));
+      jest.spyOn(prisma.indicator, 'findMany').mockResolvedValueOnce([]);
+      await service.threatIntelligence(superAdmin, 'a1', 'tenant-999');
+      expect(prisma.asset.findFirst).toHaveBeenCalledWith({ where: { id: 'a1', tenantId: 'tenant-999' } });
+    });
+  });
+
   // ─── Basic Operations ───────────────────────────────────────────────────────
   describe('Basic Operations', () => {
+    it('persists editable metadata and clears optional values within the tenant', async () => {
+      jest.spyOn(prisma.asset, 'findFirst').mockResolvedValueOnce(mockAsset());
+      jest.spyOn(prisma.asset, 'update').mockResolvedValueOnce(mockAsset());
+      jest.spyOn(prisma.auditLog, 'create').mockResolvedValueOnce({} as any);
+      await service.update(adminUser, 'a1', {
+        description: '', owner: 'Operations', firstSeenAt: '2026-09-01T10:00:00.000Z', lastSeenAt: '',
+      });
+      expect(prisma.asset.update).toHaveBeenCalledWith({
+        where: { id: 'a1' },
+        data: {
+          description: null, owner: 'Operations',
+          firstSeenAt: new Date('2026-09-01T10:00:00.000Z'), lastSeenAt: null,
+        },
+      });
+    });
     it('should create asset with valid data', async () => {
       const dto = { name: 'example.com', type: AssetType.DOMAIN, value: 'example.com' };
       jest.spyOn(prisma.asset, 'create').mockResolvedValueOnce(mockAsset({ id: 'a1' }));

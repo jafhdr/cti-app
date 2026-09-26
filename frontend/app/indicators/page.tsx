@@ -45,7 +45,7 @@ export default function IndicatorsPage() {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(true);
   const canManage = currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN';
-  const canAccessCases = currentUser?.role === 'SUPER_ADMIN' || currentUser?.moduleAccess.some(module => module.assigned && module.moduleSlug === 'case-management') === true;
+  const canAccessCases = currentUser?.moduleAccess.some(module => module.accessible === true && module.moduleSlug === 'case-management') === true;
 
   async function loadIndicators() {
     const params = new URLSearchParams({ limit: '100' });

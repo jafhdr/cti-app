@@ -3,9 +3,9 @@ import type { Page } from '@playwright/test';
 
 const app = process.env.SIDEBAR_APP_URL || 'http://localhost:3000';
 const access = [
-  { moduleId: 'intel', moduleSlug: 'threat-intelligence', moduleName: 'Threat Intelligence', assigned: true, featureKeys: ['read'] },
-  { moduleId: 'case', moduleSlug: 'case-management', moduleName: 'Case Management', assigned: true, featureKeys: [] },
-  { moduleId: 'appsec', moduleSlug: 'appsec-posture', moduleName: 'AppSec Posture', assigned: true, featureKeys: [] },
+  { moduleId: 'intel', moduleSlug: 'threat-intelligence', moduleName: 'Threat Intelligence', assigned: true, accessible: true, featureKeys: ['read'] },
+  { moduleId: 'case', moduleSlug: 'case-management', moduleName: 'Case Management', assigned: true, accessible: true, featureKeys: [] },
+  { moduleId: 'appsec', moduleSlug: 'appsec-posture', moduleName: 'AppSec Posture', assigned: true, accessible: true, featureKeys: [] },
 ];
 
 async function session(page: Page, role: 'USER' | 'ADMIN' = 'USER'): Promise<void> {
@@ -37,7 +37,7 @@ test('active submenu automatically expands its module', async ({ page }) => {
   await session(page);
   await page.goto(`${app}/threat-intelligence/threat-actors`);
   await expect(page.getByRole('button', { name: 'Threat Intelligence' })).toHaveAttribute('aria-expanded', 'true');
-  await expect(page.getByRole('link', { name: 'Threat Actors', exact: true })).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByLabel('Navigasi utama').getByRole('link', { name: 'Threat Actors', exact: true })).toHaveAttribute('aria-current', 'page');
 });
 
 test('active administration page expands Administration only', async ({ page }) => {
@@ -45,7 +45,7 @@ test('active administration page expands Administration only', async ({ page }) 
   await page.goto(`${app}/users`);
   await expect(page.getByRole('button', { name: 'Administration' })).toHaveAttribute('aria-expanded', 'true');
   await expect(page.getByRole('link', { name: 'User Management', exact: true })).toHaveAttribute('aria-current', 'page');
-  await expect(page.getByRole('button', { name: 'Threat Intelligence' })).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.getByRole('button', { name: 'Threat Intelligence' })).toHaveCount(0);
 });
 
 test('expandable sidebar remains usable on mobile', async ({ page }) => {

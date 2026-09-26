@@ -192,12 +192,12 @@ test('Given two active candidates, when POST correlates, then it returns no_matc
   assert.equal(persisted.intelligenceEntityId, null);
 });
 
-test('Given an indicator in another tenant, when POST correlates, then access is rejected', async () => {
+test('Given an indicator in another tenant, when POST correlates, then the resource is hidden', async () => {
   const indicator = await createIndicator(secondaryTenantId, 'cross-tenant');
 
   const response = await correlate(indicator.id);
 
-  assert.equal(response.status, 403);
+  assert.equal(response.status, 404);
   const persisted = await prisma.indicator.findUniqueOrThrow({ where: { id: indicator.id } });
   assert.equal(persisted.intelligenceEntityId, null);
 });

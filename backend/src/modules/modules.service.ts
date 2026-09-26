@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, ForbiddenException, Injectable,
 import { ModuleCategory, Prisma, Role } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
 import { type AuthUser } from '../users/users.types';
+import { ModuleAccessService } from '../auth/module-access.service';
 import { type CreateModuleInput, type UpdateModuleInput, type UpdateTenantModuleInput } from './modules.types';
 
 const configurableRoles = [Role.ADMIN, Role.USER] as const;
@@ -9,28 +10,16 @@ type ConfigurableRole = (typeof configurableRoles)[number];
 
 @Injectable()
 export class ModulesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly moduleAccess: ModuleAccessService) {}
 
   async listAvailable(user: AuthUser) {
-    if (user.role === 'SUPER_ADMIN') {
-      const modules = await this.prisma.appModule.findMany({
-        where: { isActive: true },
-        include: { features: { orderBy: { name: 'asc' } } },
-        orderBy: [{ category: 'asc' }, { name: 'asc' }],
-      });
-      return modules.map((module) => ({ ...module, accessible: true }));
-    }
     const modules = await this.prisma.appModule.findMany({
       where: { isActive: true },
-      include: {
-        features: { orderBy: { name: 'asc' } },
-        settings: { where: { tenantId: this.tenantId(user), isEnabled: true }, include: { access: { where: { role: user.role } } } },
-      },
+      include: { features: { orderBy: { name: 'asc' } } },
       orderBy: [{ category: 'asc' }, { name: 'asc' }],
     });
-    return modules
-      .filter((module) => module.settings.some((setting) => setting.access[0]?.isAllowed))
-      .map((module) => ({ id: module.id, slug: module.slug, name: module.name, description: module.description, category: module.category, isActive: module.isActive, features: module.features, accessible: true }));
+    const access = await Promise.all(modules.map((module) => this.moduleAccess.evaluate(user, module.slug)));
+    return modules.map((module, index) => ({ ...module, accessible: access[index].accessible }));
   }
 
   async listConfiguration(user: AuthUser, requestedTenantId?: string) {

@@ -35,6 +35,7 @@ describe('AssetsService', () => {
               update: jest.fn(), delete: jest.fn(), count: jest.fn(),
             },
             indicator: { findMany: jest.fn() },
+            assetRelationship: { findMany: jest.fn() },
             tenant: { findUnique: jest.fn() },
             auditLog: { create: jest.fn() },
             $transaction: jest.fn(),
@@ -44,6 +45,30 @@ describe('AssetsService', () => {
     }).compile();
     service = module.get<AssetsService>(AssetsService);
     prisma = module.get<PrismaService>(PrismaService);
+  });
+
+  describe('discovery relationships', () => {
+    it('returns 404 before querying relationships for a foreign tenant asset', async () => {
+      // Given
+      jest.spyOn(prisma.asset, 'findFirst').mockResolvedValueOnce(null);
+      // When / Then
+      await expect(service.relationships(adminUser, 'foreign')).rejects.toThrow(NotFoundException);
+      expect(prisma.assetRelationship.findMany).not.toHaveBeenCalled();
+    });
+
+    it('scopes a super admin relationship query to the selected tenant', async () => {
+      // Given
+      jest.spyOn(prisma.tenant, 'findUnique').mockResolvedValueOnce({ id: 'tenant-123' } as never);
+      jest.spyOn(prisma.asset, 'findFirst').mockResolvedValueOnce(mockAsset());
+      jest.spyOn(prisma.assetRelationship, 'findMany').mockResolvedValueOnce([]);
+      // When
+      const result = await service.relationships(superAdmin, 'a1', 'tenant-123');
+      // Then
+      expect(result.relationships).toEqual([]);
+      expect(prisma.assetRelationship.findMany).toHaveBeenCalledWith(expect.objectContaining({
+        where: { tenantId: 'tenant-123', OR: [{ sourceAssetId: 'a1' }, { targetAssetId: 'a1' }] },
+      }));
+    });
   });
 
   describe('threat intelligence correlation', () => {

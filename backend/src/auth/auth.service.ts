@@ -109,33 +109,16 @@ export class AuthService {
     });
     if (!user) return null;
 
-    const modules = await this.prisma.appModule.findMany({
-      where: { isActive: true },
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        userAccess: {
-          where: { userId, tenantId: user.tenant?.id ?? '' },
-          select: { featureKeys: true },
-        },
-      },
-      orderBy: { name: 'asc' },
-    });
-
-    const accessResults = await Promise.all(modules.map((module) => this.moduleAccess.evaluate(
-      { sub: user.id, tenantId: user.tenant?.id ?? null, role: user.role }, module.slug,
-    )));
-
+    const modules = (await this.moduleAccess.listForUser({ sub: user.id, tenantId: user.tenant?.id ?? null, role: user.role }))
+      .filter(module => user.role !== 'SUPER_ADMIN' || module.isActive);
     return {
       ...user,
-      moduleAccess: modules.map((module, index) => ({
-        moduleId: module.id,
-        moduleName: module.name,
-        moduleSlug: module.slug,
-        assigned: user.role === 'SUPER_ADMIN' || module.userAccess.length > 0,
-        accessible: accessResults[index].accessible,
-        featureKeys: module.userAccess[0]?.featureKeys ?? [],
+      moduleAccess: modules.map(module => ({
+        moduleId: module.id, moduleName: module.name, moduleSlug: module.slug,
+        assigned: module.assigned, accessible: module.accessible, featureKeys: module.featureKeys,
+        features: module.effectiveFeatures, subscriptionIncluded: module.subscriptionIncluded,
+        subscriptionActive: module.subscriptionActive, isActive: module.isActive,
+        tenantEnabled: module.tenantEnabled, roleAllowed: module.roleAllowed, reason: module.reason,
       })),
     };
   }

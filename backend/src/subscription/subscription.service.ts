@@ -1,5 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { BillingCycle, Prisma, SubscriptionStatus } from '@prisma/client';
+import { ModuleAccessService } from '../auth/module-access.service';
 import { PrismaService } from '../prisma.service';
 import { type AuthUser } from '../users/users.types';
 import { type CreateSubscriptionInput, type UpdateSubscriptionStatusInput } from './subscription.types';
@@ -11,7 +12,7 @@ const subscriptionInclude = {
 
 @Injectable()
 export class SubscriptionService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly moduleAccess: ModuleAccessService) {}
 
   listPackages() {
     return this.prisma.subscriptionPackage.findMany({
@@ -24,7 +25,14 @@ export class SubscriptionService {
   async getMy(user: AuthUser, requestedTenantId?: string) {
     const tenantId = this.resolveTenant(user, requestedTenantId);
     const subscription = await this.prisma.tenantSubscription.findUnique({ where: { tenantId }, include: subscriptionInclude });
-    return subscription ?? null;
+    if (!subscription) return null;
+    const includedModules = await this.moduleAccess.listTenantPolicies(tenantId);
+    return {
+      ...subscription,
+      subscriptionActive: includedModules[0]?.subscriptionActive ?? false,
+      subscriptionSource: subscription.isCustom ? 'Custom Subscription' : subscription.package?.name ?? null,
+      includedModules: includedModules.map(module => ({ id: module.id, name: module.name, slug: module.slug, subscriptionIncluded: module.subscriptionIncluded })),
+    };
   }
 
   async subscribe(user: AuthUser, input: CreateSubscriptionInput) {
@@ -43,7 +51,12 @@ export class SubscriptionService {
     if (!input.status || !Object.values(SubscriptionStatus).includes(input.status)) {
       throw new BadRequestException('Status subscription wajib diisi');
     }
-    return this.prisma.tenantSubscription.update({ where: { tenantId }, data: { status: input.status }, include: subscriptionInclude });
+    return this.prisma.$transaction(async tx => {
+      const before = await tx.tenantSubscription.findUnique({ where: { tenantId } });
+      const subscription = await tx.tenantSubscription.update({ where: { tenantId }, data: { status: input.status }, include: subscriptionInclude });
+      await tx.auditLog.create({ data: { userId: user.sub, tenantId, action: 'SUBSCRIPTION_STATUS_UPDATED', metadata: { previousStatus: before?.status ?? null, status: subscription.status } } });
+      return subscription;
+    });
   }
 
   async modulePrice(moduleSlug: string) {
@@ -65,9 +78,9 @@ export class SubscriptionService {
         update: { packageId, isCustom: false, billingCycle: cycle, priceMonthly: selected.priceMonthly, priceYearly: selected.priceYearly, status: 'ACTIVE', subscribedAt: new Date(), renewalAt },
       });
       await tx.tenantCustomModule.deleteMany({ where: { subscriptionId: saved.id } });
+      await tx.auditLog.create({ data: { userId: user.sub, tenantId, action: 'SUBSCRIPTION_UPDATED', metadata: { packageId, isCustom: false, billingCycle: cycle } } });
       return tx.tenantSubscription.findUniqueOrThrow({ where: { id: saved.id }, include: subscriptionInclude });
     });
-    await this.audit(user, tenantId, 'SUBSCRIPTION_UPDATED', { packageId, isCustom: false, billingCycle: cycle });
     return subscription;
   }
 
@@ -89,9 +102,9 @@ export class SubscriptionService {
       });
       await tx.tenantCustomModule.deleteMany({ where: { subscriptionId: saved.id } });
       await tx.tenantCustomModule.createMany({ data: uniqueIds.map((moduleId) => ({ subscriptionId: saved.id, moduleId })) });
+      await tx.auditLog.create({ data: { userId: user.sub, tenantId, action: 'SUBSCRIPTION_UPDATED', metadata: { isCustom: true, billingCycle: cycle, moduleIds: uniqueIds } } });
       return tx.tenantSubscription.findUniqueOrThrow({ where: { id: saved.id }, include: subscriptionInclude });
     });
-    await this.audit(user, tenantId, 'SUBSCRIPTION_UPDATED', { isCustom: true, billingCycle: cycle, moduleIds: uniqueIds });
     return subscription;
   }
 
@@ -107,6 +120,7 @@ export class SubscriptionService {
       if (!requestedTenantId) throw new BadRequestException('Tenant wajib dipilih');
       return requestedTenantId;
     }
+    if (requestedTenantId && requestedTenantId !== user.tenantId) throw new ForbiddenException('Anda hanya dapat mengakses subscription tenant sendiri');
     if (!user.tenantId) throw new ForbiddenException('Tenant context wajib tersedia');
     return user.tenantId;
   }
@@ -118,7 +132,4 @@ export class SubscriptionService {
     return date;
   }
 
-  private audit(actor: AuthUser, tenantId: string, action: string, metadata: Record<string, unknown>) {
-    return this.prisma.auditLog.create({ data: { userId: actor.sub, tenantId, action, metadata: metadata as Prisma.InputJsonValue } });
-  }
 }

@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '../auth/auth.guard';
 import { ModuleAccessGuard } from '../auth/module-access.guard';
-import { RequiresModule } from '../auth/module-access.decorator';
+import { RequiresModule, RequiresModuleFeature } from '../auth/module-access.decorator';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import type { AuthUser } from '../users/users.types';
@@ -11,6 +11,7 @@ import { MitreTechniquesService } from './mitre-techniques.service';
 @Controller('intelligence/mitre-techniques')
 @UseGuards(AuthGuard, RolesGuard, ModuleAccessGuard)
 @RequiresModule('threat-intelligence')
+@RequiresModuleFeature('intelligence-hub')
 export class MitreTechniquesController {
   constructor(private readonly techniques: MitreTechniquesService) {}
   @Get() @Roles('SUPER_ADMIN', 'ADMIN', 'USER') list(@Req() req: { user: AuthUser }, @Query() query: ListMitreTechniquesQueryDto) { return this.techniques.list(req.user, query); }

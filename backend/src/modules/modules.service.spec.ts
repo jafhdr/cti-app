@@ -1,4 +1,4 @@
-import { ConflictException } from '@nestjs/common';
+import { ConflictException, ForbiddenException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { Prisma, Role } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
@@ -11,6 +11,7 @@ const tenantAdmin = { sub: 'admin-1', tenantId: 'tenant-own', role: 'ADMIN' } as
 describe('ModulesService', () => {
   const prisma = {
     appModule: { findMany: jest.fn(), create: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
+    tenantSubscription: { findFirst: jest.fn().mockResolvedValue({ isCustom: true, customModules: [{ moduleId: 'asm' }] }) },
     tenantModule: { upsert: jest.fn() },
     moduleRoleAccess: { upsert: jest.fn() },
     auditLog: { create: jest.fn() },
@@ -21,7 +22,7 @@ describe('ModulesService', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     const moduleRef = await Test.createTestingModule({
-      providers: [ModulesService, { provide: PrismaService, useValue: prisma }, { provide: ModuleAccessService, useValue: { evaluate: jest.fn().mockResolvedValue({ accessible: true }) } }],
+      providers: [ModulesService, { provide: PrismaService, useValue: prisma }, ModuleAccessService],
     }).compile();
     service = moduleRef.get(ModulesService);
   });
@@ -34,7 +35,7 @@ describe('ModulesService', () => {
       settings: [{ isEnabled: true, access: [{ role: Role.ADMIN, isAllowed: true }, { role: Role.USER, isAllowed: false }] }],
     }]);
 
-    await expect(service.listConfiguration(tenantAdmin, 'tenant-foreign')).resolves.toEqual([expect.objectContaining({
+    await expect(service.listConfiguration(tenantAdmin)).resolves.toEqual([expect.objectContaining({
       slug: 'attack-surface-management', tenantEnabled: true,
       access: { ADMIN: true, USER: false },
       features: [{ id: 'feature-1', key: 'asset-management', name: 'Asset Management', description: 'Kelola aset.' }],
@@ -45,6 +46,13 @@ describe('ModulesService', () => {
         settings: expect.objectContaining({ where: { tenantId: 'tenant-own' } }),
       }),
     }));
+  });
+
+  it('rejects configuration and mutation of a foreign tenant', async () => {
+    prisma.appModule.findUnique.mockResolvedValue({ id: 'asm' });
+    await expect(service.listConfiguration(tenantAdmin, 'foreign')).rejects.toThrow(ForbiddenException);
+    await expect(service.updateTenantAccess(tenantAdmin, 'asm', { tenantId: 'foreign', isEnabled: true })).rejects.toThrow(ForbiddenException);
+    expect(prisma.tenantModule.upsert).not.toHaveBeenCalled();
   });
 
   it('returns features with the module catalog', async () => {
@@ -92,7 +100,7 @@ describe('ModulesService', () => {
     prisma.appModule.findMany.mockResolvedValue([]);
 
     await service.updateTenantAccess(tenantAdmin, 'asm', {
-      tenantId: 'tenant-foreign', isEnabled: true, access: { USER: true },
+      tenantId: 'tenant-own', isEnabled: true, access: { USER: true },
     });
 
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);

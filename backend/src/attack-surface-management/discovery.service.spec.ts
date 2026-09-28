@@ -28,7 +28,7 @@ describe("DiscoveryService", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         DiscoveryService,
-        { provide: PrismaService, useValue: { asset: { findFirst: jest.fn(), create: jest.fn(), update: jest.fn() }, tenant: { findUnique: jest.fn() }, auditLog: { create: jest.fn() } } },
+        { provide: PrismaService, useValue: { asset: { findFirst: jest.fn(), create: jest.fn(), update: jest.fn() }, assetRelationship: { upsert: jest.fn() }, tenant: { findUnique: jest.fn() }, auditLog: { create: jest.fn() } } },
         { provide: DiscoveryClient, useValue: { discoverViaDns: jest.fn(), discoverViaCertTransparency: jest.fn(), resolveDns: jest.fn(), isSubdomainOf: jest.fn(), isValidHostname: jest.fn() } },
       ],
     }).compile();

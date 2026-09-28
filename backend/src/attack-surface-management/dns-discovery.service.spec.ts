@@ -38,7 +38,7 @@ describe('DiscoveryService DNS discovery', () => {
           provide: PrismaService,
           useValue: {
             asset: { findFirst: jest.fn(), create: jest.fn(), update: jest.fn() },
-            tenant: { findUnique: jest.fn() }, auditLog: { create: jest.fn() },
+            assetRelationship: { upsert: jest.fn() }, tenant: { findUnique: jest.fn() }, auditLog: { create: jest.fn() },
           },
         },
         {
@@ -287,4 +287,44 @@ describe('DiscoveryService DNS discovery', () => {
       metadata: expect.objectContaining({ rootAssetId: 'asset-1', discovered: 1, created: 1 }),
     }) });
   });
+  it('persists one subdomain asset with both provider relationships on rediscovery', async () => {
+    // Given
+    jest.spyOn(prisma.asset, 'findFirst').mockResolvedValueOnce(asset(AssetType.DOMAIN))
+      .mockResolvedValueOnce({ id: 'sub-1' } as never)
+      .mockResolvedValueOnce(asset(AssetType.DOMAIN))
+      .mockResolvedValue({ id: 'sub-1' } as never);
+    jest.spyOn(client, 'discoverViaDns').mockResolvedValue({ provider: 'CLOUDFLARE_DOH', hostnames: ['api.example.com'] });
+    jest.spyOn(client, 'discoverViaCertTransparency').mockResolvedValue({ provider: 'CRTSH', hostnames: ['api.example.com'] });
+    jest.spyOn(prisma.asset, 'update').mockResolvedValue(asset(AssetType.SUBDOMAIN));
+
+    // When
+    await service.runDiscovery(admin, 'asset-1');
+    await service.runDiscovery(admin, 'asset-1');
+
+    // Then
+    expect(prisma.asset.create).not.toHaveBeenCalled();
+    expect(prisma.assetRelationship.upsert).toHaveBeenCalledWith(expect.objectContaining({
+      where: { tenantId_sourceAssetId_targetAssetId_type_source: expect.objectContaining({
+        tenantId: 'tenant-1', sourceAssetId: 'asset-1', targetAssetId: 'sub-1', source: 'CRT_SH',
+      }) },
+    }));
+    expect(prisma.assetRelationship.upsert).toHaveBeenCalledTimes(4);
+  });
+
+  it('links a resolved IP to its subdomain with DNS provenance', async () => {
+    // Given
+    jest.spyOn(prisma.asset, 'findFirst').mockResolvedValueOnce(asset(AssetType.SUBDOMAIN)).mockResolvedValueOnce(null);
+    jest.spyOn(client, 'resolveDns').mockResolvedValue(resolution({ ipv4: ['203.0.113.10'] }));
+    jest.spyOn(prisma.asset, 'create').mockResolvedValue({ ...asset(AssetType.IP_ADDRESS), id: 'ip-1' });
+
+    // When
+    await service.runDiscovery(admin, 'asset-1');
+
+    // Then
+    expect(prisma.assetRelationship.upsert).toHaveBeenCalledWith(expect.objectContaining({
+      create: expect.objectContaining({ tenantId: 'tenant-1', sourceAssetId: 'asset-1',
+        targetAssetId: 'ip-1', type: 'RESOLVES_TO', source: 'DNS_RESOLUTION' }),
+    }));
+  });
+
 });

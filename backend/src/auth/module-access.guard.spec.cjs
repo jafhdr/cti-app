@@ -8,32 +8,31 @@ const slugs = ['attack-surface-management', 'threat-intelligence', 'case-managem
 function setup(options = {}) {
   const calls = [];
   const prisma = {
-    appModule: { findUnique: async ({ where }) => ({ id: where.slug, isActive: options.active !== false }) },
+    appModule: { findMany: async ({ where, include }) => {
+      const tenantId = include.settings.where.tenantId;
+      calls.push(tenantId);
+      return [{ id: where.slug, slug: where.slug, isActive: options.active !== false, features: [{ key: 'asset-management' }], settings: [{ isEnabled: options.enabled !== false && tenantId !== 'tenant-b', access: ['ADMIN', 'USER'].map(role => ({ role, isAllowed: options.allowed !== false })) }] }];
+    } },
     tenantSubscription: { findFirst: async ({ where }) => {
       calls.push(where.tenantId);
-      return options.subscription === false ? null : { isCustom: true, customModules: options.included === false ? [] : [{ moduleId: 'included' }] };
+      return options.subscription === false ? null : { isCustom: true, customModules: options.included === false ? [] : slugs.map(moduleId => ({ moduleId })) };
     } },
-    tenantModule: { findUnique: async ({ where }) => {
-      calls.push(where.tenantId_moduleId.tenantId);
-      return { isEnabled: options.enabled !== false && where.tenantId_moduleId.tenantId !== 'tenant-b', access: [{ isAllowed: options.allowed !== false }] };
-    } },
-    userModuleAccess: { findFirst: async ({ where }) => {
+    userModuleAccess: { findMany: async ({ where }) => {
       calls.push(where.tenantId);
-      return options.assigned === false ? null : { featureKeys: options.featureKeys ?? [] };
+      return options.assigned === false ? [] : slugs.map(moduleId => ({ moduleId, featureKeys: options.featureKeys ?? [] }));
     } },
   };
   return { access: new ModuleAccessService(prisma), calls };
 }
 function guarded(access, subject, slug) {
-  const reflector = { getAllAndOverride: (key) => key === 'requiredModule' ? slug : undefined };
+  const reflector = { getAllAndOverride: key => key === 'requiredModule' ? slug : undefined };
   const context = { getHandler: () => ({}), getClass: () => ({}), switchToHttp: () => ({ getRequest: () => ({ user: subject }) }) };
   return new ModuleAccessGuard(reflector, access).canActivate(context);
 }
 for (const slug of slugs) {
-  test(`ADMIN accesses ${slug} without individual assignment`, async () => {
-    const { access } = setup({ assigned: false });
-    assert.deepEqual(await access.evaluate(admin, slug), { accessible: true });
-    assert.equal(await guarded(access, admin, slug), true);
+  test(`ADMIN requires individual assignment for ${slug}`, async () => {
+    await assert.rejects(() => guarded(setup({ assigned: false }).access, admin, slug), /Modul belum diberikan/);
+    assert.equal(await guarded(setup().access, admin, slug), true);
   });
 }
 for (const [name, options, reason] of [
@@ -43,8 +42,7 @@ for (const [name, options, reason] of [
   ['subscription inactive', { subscription: false }, /Subscription tenant tidak aktif/],
 ]) {
   test(`ADMIN denied when ${name}`, async () => {
-    const { access } = setup(options);
-    await assert.rejects(() => guarded(access, admin, slugs[0]), reason);
+    await assert.rejects(() => guarded(setup(options).access, admin, slugs[0]), reason);
   });
 }
 test('USER requires individual assignment', async () => {

@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { CasesService } from './cases.service';
-import { CasesController } from './cases.controller';
+import type { AuditLog, Case, User } from '@prisma/client';
+import type { AuthUser } from '../users/users.types';
 import { PrismaService } from '../prisma.service';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 
@@ -8,14 +9,13 @@ describe('CasesService - Assignment', () => {
   let service: CasesService;
   let prisma: PrismaService;
 
-  const mockUser = {
+  const mockUser: AuthUser = {
     sub: 'user-1',
-    email: 'admin@test.com',
     role: 'ADMIN',
     tenantId: 'tenant-1',
   };
 
-  const mockCase = {
+  const mockCase: Case = {
     id: 'case-1',
     tenantId: 'tenant-1',
     caseNumber: 'CASE-2026-00001',
@@ -30,22 +30,36 @@ describe('CasesService - Assignment', () => {
     updatedAt: new Date(),
   };
 
-  const mockUser1 = {
+  const mockUser1: User = {
     id: 'user-2',
     name: 'John Doe',
     email: 'john@test.com',
     tenantId: 'tenant-1',
     role: 'USER',
     isActive: true,
+    passwordHash: 'unused-test-hash',
+    deactivatedAt: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
   };
 
-  const mockUser2 = {
+  const mockUser2: User = {
+    ...mockUser1,
     id: 'user-3',
     name: 'Jane Doe',
     email: 'jane@test.com',
     tenantId: 'tenant-2',
     role: 'USER',
     isActive: true,
+  };
+
+  const mockAuditLog: AuditLog = {
+    id: 'audit-1',
+    userId: mockUser.sub,
+    tenantId: mockUser.tenantId,
+    action: 'CASE_ASSIGNED',
+    metadata: null,
+    createdAt: new Date(),
   };
 
   beforeEach(async () => {
@@ -74,6 +88,9 @@ describe('CasesService - Assignment', () => {
             auditLog: {
               create: jest.fn(),
             },
+            caseActivity: {
+              create: jest.fn(),
+            },
             $transaction: jest.fn(),
           },
         },
@@ -91,9 +108,8 @@ describe('CasesService - Assignment', () => {
       jest.spyOn(prisma.case, 'update').mockResolvedValue({
         ...mockCase,
         assigneeId: 'user-2',
-        assignee: mockUser1,
       });
-      jest.spyOn(prisma.auditLog, 'create').mockResolvedValue({} as any);
+      jest.spyOn(prisma.auditLog, 'create').mockResolvedValue(mockAuditLog);
 
       const result = await service.assign(mockUser, 'case-1', 'user-2');
 
@@ -131,12 +147,12 @@ describe('CasesService - Assignment', () => {
     it('should log CASE_REASSIGNED when reassigning', async () => {
       const caseWithAssignee = { ...mockCase, assigneeId: 'user-2' };
       jest.spyOn(prisma.case, 'findFirst').mockResolvedValue(caseWithAssignee);
-      jest.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockUser1);
+      jest.spyOn(prisma.user, 'findUnique').mockResolvedValue({ ...mockUser1, id: 'user-3' });
       jest.spyOn(prisma.case, 'update').mockResolvedValue({
         ...caseWithAssignee,
         assigneeId: 'user-3',
       });
-      jest.spyOn(prisma.auditLog, 'create').mockResolvedValue({} as any);
+      jest.spyOn(prisma.auditLog, 'create').mockResolvedValue({ ...mockAuditLog, action: 'CASE_REASSIGNED' });
 
       await service.assign(mockUser, 'case-1', 'user-3');
 

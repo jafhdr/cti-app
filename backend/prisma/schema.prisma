@@ -178,6 +178,17 @@ enum AssetStatus {
   UNKNOWN
 }
 
+enum AssetRelationshipType {
+  DISCOVERED_SUBDOMAIN
+  RESOLVES_TO
+}
+
+enum AssetDiscoverySource {
+  CLOUDFLARE_DOH
+  CRT_SH
+  DNS_RESOLUTION
+}
+
 enum AssetCriticality {
   LOW
   MEDIUM
@@ -267,6 +278,7 @@ model Tenant {
   caseThreatActors           CaseThreatActor[]
   alerts                     Alert[]
   assets                     Asset[]
+  assetRelationships         AssetRelationship[]
   assetPortServices          AssetPortService[]
   moduleSettings             TenantModule[]
   subscription               TenantSubscription?
@@ -1154,6 +1166,9 @@ model Asset {
   updatedAt     DateTime           @updatedAt
   tenant        Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   portServices  AssetPortService[]
+  outgoingRelationships AssetRelationship[] @relation("RelationshipSource")
+  incomingRelationships AssetRelationship[] @relation("RelationshipTarget")
+  rootRelationships AssetRelationship[] @relation("RelationshipRoot")
 
   @@unique([tenantId, type, value])
   @@unique([id, tenantId])
@@ -1162,6 +1177,27 @@ model Asset {
   @@index([tenantId, value])
   @@index([tenantId, status])
   @@index([tenantId, criticality])
+}
+
+model AssetRelationship {
+  id            String                @id @default(cuid())
+  tenantId      String
+  rootAssetId   String
+  sourceAssetId String
+  targetAssetId String
+  type          AssetRelationshipType
+  source        AssetDiscoverySource
+  firstSeenAt   DateTime              @default(now())
+  lastSeenAt    DateTime              @default(now())
+  tenant        Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  rootAsset     Asset                 @relation("RelationshipRoot", fields: [rootAssetId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  sourceAsset   Asset                 @relation("RelationshipSource", fields: [sourceAssetId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  targetAsset   Asset                 @relation("RelationshipTarget", fields: [targetAssetId, tenantId], references: [id, tenantId], onDelete: Cascade)
+
+  @@unique([tenantId, sourceAssetId, targetAssetId, type, source])
+  @@index([tenantId, rootAssetId])
+  @@index([tenantId, sourceAssetId])
+  @@index([tenantId, targetAssetId])
 }
 
 model AssetPortService {

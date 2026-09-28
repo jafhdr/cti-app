@@ -24,33 +24,8 @@ export class ModulesService {
 
   async listConfiguration(user: AuthUser, requestedTenantId?: string) {
     const tenantId = this.resolveTenant(user, requestedTenantId);
-    const modules = await this.prisma.appModule.findMany({
-      include: {
-        features: { orderBy: { name: 'asc' } },
-        settings: {
-          where: { tenantId },
-          include: { access: { where: { role: { in: [...configurableRoles] } } } },
-        },
-      },
-      orderBy: [{ category: 'asc' }, { name: 'asc' }],
-    });
-    return modules.map((module) => {
-      const setting = module.settings[0];
-      return {
-        id: module.id,
-        slug: module.slug,
-        name: module.name,
-        description: module.description,
-        category: module.category,
-        isActive: module.isActive,
-        features: module.features,
-        tenantEnabled: setting?.isEnabled ?? false,
-        access: {
-          ADMIN: setting?.access.find((entry) => entry.role === Role.ADMIN)?.isAllowed ?? false,
-          USER: setting?.access.find((entry) => entry.role === Role.USER)?.isAllowed ?? false,
-        },
-      };
-    });
+    const modules = await this.moduleAccess.listTenantPolicies(tenantId);
+    return modules.map(module => ({ ...module, access: module.roleAccess }));
   }
 
   async create(user: AuthUser, input: CreateModuleInput) {
@@ -142,6 +117,7 @@ export class ModulesService {
       if (!requestedTenantId) throw new BadRequestException('Tenant wajib dipilih');
       return requestedTenantId;
     }
+    if (requestedTenantId && requestedTenantId !== user.tenantId) throw new ForbiddenException('Anda hanya dapat mengakses konfigurasi tenant sendiri');
     return this.tenantId(user);
   }
 

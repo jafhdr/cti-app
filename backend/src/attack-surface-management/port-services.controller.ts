@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '../auth/auth.guard';
 import { ModuleAccessGuard } from '../auth/module-access.guard';
-import { RequiresModule } from '../auth/module-access.decorator';
+import { RequiresModule, RequiresModuleFeature } from '../auth/module-access.decorator';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import type { AuthUser } from '../users/users.types';
@@ -12,6 +12,7 @@ import { PortServicesService } from './port-services.service';
 @Controller('attack-surface/assets/:assetId/port-services')
 @UseGuards(AuthGuard, RolesGuard, ModuleAccessGuard)
 @RequiresModule('attack-surface-management')
+@RequiresModuleFeature('asset-management')
 export class PortServicesController {
   constructor(
     private readonly portServices: PortServicesService,
@@ -24,6 +25,7 @@ export class PortServicesController {
     return this.portServices.list(req.user, assetId, tenantId);
   }
 
+  @RequiresModuleFeature('asset-discovery')
   @Post('discover')
   @Roles('SUPER_ADMIN', 'ADMIN')
   discover(@Req() req: { user: AuthUser }, @Param('assetId') assetId: string, @Query('tenantId') tenantId?: string) {

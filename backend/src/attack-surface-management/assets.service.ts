@@ -25,6 +25,30 @@ export class AssetsService {
     return this.scopedAsset(user, id, requestedTenantId);
   }
 
+  async relationships(user: AuthUser, id: string, requestedTenantId?: string) {
+    const asset = await this.scopedAsset(user, id, requestedTenantId);
+    const relationships = await this.prisma.assetRelationship.findMany({
+      where: { tenantId: asset.tenantId, OR: [{ sourceAssetId: id }, { targetAssetId: id }] },
+      select: {
+        id: true, type: true, source: true, firstSeenAt: true, lastSeenAt: true,
+        rootAsset: { select: { id: true, type: true, value: true } },
+        sourceAsset: { select: { id: true, type: true, value: true } },
+        targetAsset: { select: { id: true, type: true, value: true } },
+      },
+      orderBy: { firstSeenAt: 'asc' },
+    });
+    return {
+      asset: { id: asset.id, type: asset.type, value: asset.value },
+      relationships: relationships.map(link => ({
+        id: link.id, type: link.type, source: link.source,
+        direction: link.sourceAsset.id === id ? 'outgoing' : 'incoming',
+        rootAsset: link.rootAsset,
+        relatedAsset: link.sourceAsset.id === id ? link.targetAsset : link.sourceAsset,
+        firstSeenAt: link.firstSeenAt, lastSeenAt: link.lastSeenAt,
+      })),
+    };
+  }
+
   async threatIntelligence(user: AuthUser, id: string, requestedTenantId?: string) {
     const asset = await this.scopedAsset(user, id, requestedTenantId);
     const type = asset.type === AssetType.DOMAIN || asset.type === AssetType.SUBDOMAIN

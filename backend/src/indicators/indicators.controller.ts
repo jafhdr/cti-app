@@ -3,7 +3,7 @@ import { AuthGuard } from '../auth/auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { ModuleAccessGuard } from '../auth/module-access.guard';
-import { RequiresModule } from '../auth/module-access.decorator';
+import { RequiresModule, RequiresModuleFeature } from '../auth/module-access.decorator';
 import { AuthUser } from '../users/users.types';
 import { IndicatorInput, LinkCaseInput, ThreatActorAttributionInput } from './indicators.types';
 import { IndicatorsService } from './indicators.service';
@@ -16,6 +16,7 @@ import { ThreatActorAttributionService } from './threat-actor-attribution.servic
 @Controller('indicators')
 @UseGuards(AuthGuard, RolesGuard, ModuleAccessGuard)
 @RequiresModule('threat-intelligence')
+@RequiresModuleFeature('indicator-management')
 export class IndicatorsController {
   constructor(
     private readonly indicators: IndicatorsService,
@@ -73,6 +74,7 @@ export class IndicatorsController {
   @Get(':id/cases/available')
   @Roles('SUPER_ADMIN', 'ADMIN', 'USER')
   @RequiresModule('case-management')
+  @RequiresModuleFeature('case-workflow')
   getAvailableCases(@Req() req: { user: AuthUser }, @Param('id') id: string, @Query('search') search?: string) {
     return this.indicators.getAvailableCases(req.user, id, search);
   }
@@ -80,6 +82,7 @@ export class IndicatorsController {
   @Get(':id/cases')
   @Roles('SUPER_ADMIN', 'ADMIN', 'USER')
   @RequiresModule('case-management')
+  @RequiresModuleFeature('case-workflow')
   getCases(@Req() req: { user: AuthUser }, @Param('id') id: string) {
     return this.indicators.getCases(req.user, id);
   }
@@ -87,6 +90,7 @@ export class IndicatorsController {
   @Post(':id/cases')
   @Roles('SUPER_ADMIN', 'ADMIN')
   @RequiresModule('case-management')
+  @RequiresModuleFeature('case-workflow')
   linkCase(@Req() req: { user: AuthUser }, @Param('id') id: string, @Body() body: LinkCaseInput) {
     return this.indicators.linkCase(req.user, id, body.caseId);
   }
@@ -94,6 +98,7 @@ export class IndicatorsController {
   @Delete(':id/cases/:caseId')
   @Roles('SUPER_ADMIN', 'ADMIN')
   @RequiresModule('case-management')
+  @RequiresModuleFeature('case-workflow')
   unlinkCase(@Req() req: { user: AuthUser }, @Param('id') id: string, @Param('caseId') caseId: string) {
     return this.indicators.unlinkCase(req.user, id, caseId);
   }

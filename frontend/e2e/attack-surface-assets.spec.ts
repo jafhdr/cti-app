@@ -26,7 +26,7 @@ test('lists, searches, filters, paginates, opens detail, and gates discovery by 
     await json(route, { items: [domain, host], total: 12, totalPages: 2 });
   });
   await page.goto(`${app}/attack-surface/assets`);
-  await expect(page.getByRole('heading', { name: 'Attack Surface Assets' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Know what is exposed.' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Discover Subdomains' })).toHaveCount(1);
   await expect(page.getByText('gateway')).toBeVisible();
   await page.getByLabel('Search assets').fill('example');
@@ -38,7 +38,8 @@ test('lists, searches, filters, paginates, opens detail, and gates discovery by 
   await page.getByRole('button', { name: 'Next', exact: true }).click();
   await expect.poll(() => requests.some(url => url.searchParams.get('page') === '2')).toBeTruthy();
   await page.getByRole('button', { name: 'Detail' }).first().click();
-  await expect(page.getByRole('heading', { name: 'Asset Detail' })).toBeVisible();
+  await expect(page.getByRole('dialog').getByRole('heading', { name: 'example.com' })).toBeVisible();
+  await expect(page.getByRole('dialog').getByRole('heading', { name: 'Asset overview' })).toBeVisible();
   await expect(page.getByRole('dialog').getByText('Security')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Close asset panel' })).toBeFocused();
   await page.keyboard.press('Escape');
@@ -164,4 +165,21 @@ test('shows matching threat intelligence and an empty correlation state', async 
   await page.getByRole('button', { name: 'Close asset panel' }).click();
   await page.getByRole('button', { name: 'Detail' }).last().click();
   await expect(page.getByRole('region', { name: 'Threat Intelligence' })).toContainText('No matching threat intelligence indicators found.');
+});
+
+test('shows discovery lineage for the selected asset', async ({ page }) => {
+  await mockSession(page);
+  await page.route(assetsApi, route => json(route, { items: [domain], total: 1, totalPages: 1 }));
+  await page.route('**/attack-surface/assets/domain-1/relationships', route => json(route, {
+    asset: { id: domain.id, type: domain.type, value: domain.value },
+    relationships: [{ id: 'rel-1', type: 'DISCOVERED_SUBDOMAIN', source: 'CRT_SH', direction: 'outgoing',
+      rootAsset: { id: domain.id, type: domain.type, value: domain.value },
+      relatedAsset: { id: 'sub-1', type: 'SUBDOMAIN', value: 'api.example.com' },
+      firstSeenAt: now, lastSeenAt: now }],
+  }));
+  await page.route('**/attack-surface/assets/domain-1/threat-intelligence', route => json(route, { matches: [] }));
+  await page.goto(`${app}/attack-surface/assets`);
+  await page.getByRole('button', { name: 'Detail' }).click();
+  await expect(page.getByRole('region', { name: 'Discovery Relationships' })).toContainText('api.example.com');
+  await expect(page.getByRole('region', { name: 'Discovery Relationships' })).toContainText('CRT_SH');
 });

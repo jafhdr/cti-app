@@ -39,7 +39,7 @@ function ResetPasswordForm() {
       const data: unknown = await response.json().catch(() => null);
       if (!response.ok) throw new Error(readMessage(data, 'Reset password gagal.'));
       setIsComplete(true);
-      window.setTimeout(() => router.replace('/'), 1200);
+      window.setTimeout(() => router.replace('/login'), 1200);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Reset password gagal.');
     } finally {
@@ -49,7 +49,7 @@ function ResetPasswordForm() {
 
   if (isComplete) return <main className="auth-page"><div className="auth-card"><div className="logo">CTI Platform</div><div className="success">Password berhasil diubah. Mengarahkan ke Login...</div></div></main>;
 
-  return <main className="auth-page"><form className="auth-card" onSubmit={submit}><div className="logo">CTI Platform</div><div className="muted">Buat password baru</div><h1 className="auth-title">Reset password</h1><div className="field"><label htmlFor="new-password">Password baru</label><input id="new-password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} minLength={8} autoComplete="new-password" required /></div><div className="field"><label htmlFor="confirm-password">Konfirmasi password</label><input id="confirm-password" type="password" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} minLength={8} autoComplete="new-password" required /></div>{error && <div className="error" role="alert">{error}</div>}<button className="primary" disabled={isSaving}>{isSaving ? 'Menyimpan...' : 'Simpan password'}</button><div className="auth-footer"><Link href="/">Kembali ke Login</Link></div></form></main>;
+  return <main className="auth-page"><form className="auth-card" onSubmit={submit}><div className="logo">CTI Platform</div><div className="muted">Buat password baru</div><h1 className="auth-title">Reset password</h1><div className="field"><label htmlFor="new-password">Password baru</label><input id="new-password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} minLength={8} autoComplete="new-password" required /></div><div className="field"><label htmlFor="confirm-password">Konfirmasi password</label><input id="confirm-password" type="password" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} minLength={8} autoComplete="new-password" required /></div>{error && <div className="error" role="alert">{error}</div>}<button className="primary" disabled={isSaving}>{isSaving ? 'Menyimpan...' : 'Simpan password'}</button><div className="auth-footer"><Link href="/login">Kembali ke Login</Link></div></form></main>;
 }
 
 export default function ResetPasswordPage() {

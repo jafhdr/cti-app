@@ -102,7 +102,7 @@ test.describe('Case Detail and Assignment', () => {
 
     // Should return to case list
     await page.waitForURL('http://localhost:3000/cases');
-    await expect(page.getByRole('heading', { name: 'Case Management' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Investigate with clarity.' })).toBeVisible();
   });
 
   test('should display responsive layout on mobile', async ({ page }) => {

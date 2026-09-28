@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useThreatIntelligenceTenant } from '../ThreatIntelligenceShell';
+import { Phase2bSummary } from '../Phase2bSummary';
 import type { FeedStatusResponse, FeedSyncResponse } from './types';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -54,13 +55,15 @@ export function FeedsWorkspace({ role }: { readonly role: Role }) {
     } finally { setSyncing(false); }
   }
 
-  return <>
-    <div className="source-heading feed-heading"><div><span className="source-eyebrow">AUTOMATED INGESTION</span><h1>Threat Feeds</h1><p>Monitor health dan jalankan sinkronisasi provider threat intelligence.</p></div>{canSync && <Button view="action" size="l" disabled={syncing || (role === 'SUPER_ADMIN' && !tenantId)} onClick={() => void syncNow()}><RefreshCw size={16} className={syncing ? 'feed-spin' : undefined} aria-hidden="true" />{syncing ? 'Syncing...' : 'Sync Now'}</Button>}</div>
+  return <div className="ti-phase2b">
+    <div className="source-heading feed-heading"><div><span className="source-eyebrow">AUTOMATED INGESTION</span><h1>Threat Feeds</h1><p>Monitor external intelligence entering the platform.</p></div>{canSync && <Button view="action" size="l" disabled={syncing || (role === 'SUPER_ADMIN' && !tenantId)} onClick={() => void syncNow()}><RefreshCw size={16} className={syncing ? 'feed-spin' : undefined} aria-hidden="true" />{syncing ? 'Syncing...' : 'Sync Now'}</Button>}</div>
     {error && <div className="error feed-feedback" role="alert"><AlertCircle size={16} aria-hidden="true" /><span>{error}</span><button type="button" onClick={() => void load()}>Retry</button></div>}
     {feedback && <div className={`feed-feedback feed-feedback-${feedback.tone}`} role={feedback.tone === 'error' ? 'alert' : 'status'}>{feedback.tone === 'success' ? <CheckCircle2 size={16} aria-hidden="true" /> : <AlertCircle size={16} aria-hidden="true" />}<span>{feedback.message}</span></div>}
+    {data && <Phase2bSummary title="FEED STATUS" metrics={[{label:"Active",value:data.providers.filter(feed=>feed.status==="ACTIVE").length},{label:"Failed",value:data.providers.filter(feed=>feed.status==="FAILED").length},{label:"Not configured",value:data.providers.filter(feed=>feed.status==="NOT_CONFIGURED").length}]}/>}
     <section className="feed-scheduler" aria-labelledby="scheduler-title"><div><span className="source-eyebrow">SCHEDULER</span><h2 id="scheduler-title">Automatic Sync</h2></div><div className="feed-scheduler-stat"><Radio size={17} aria-hidden="true" /><span>Status<strong>{data ? (data.scheduler.enabled ? 'Enabled' : 'Disabled') : loading ? 'Loading' : 'Unavailable'}</strong></span></div><div className="feed-scheduler-stat"><TimerReset size={17} aria-hidden="true" /><span>Sync Interval<strong>{data ? formatInterval(data.scheduler.intervalMinutes) : '—'}</strong></span></div><div className="feed-scheduler-stat"><Clock3 size={17} aria-hidden="true" /><span>Next Sync<strong>{data ? formatDate(data.scheduler.nextSyncAt) : '—'}</strong></span></div></section>
+    <div className="editorial-section-heading"><span className="source-eyebrow">PROVIDERS</span><h2>Provider health</h2></div>
     {loading && !data ? <Card view="outlined" className="source-state" aria-live="polite">Loading threat feeds...</Card> : <div className="feed-grid">{data?.providers.map(feed => <Card view="outlined" className="feed-card" key={feed.provider}><header><div className="feed-provider-icon"><Radio size={18} aria-hidden="true" /></div><div><span className="source-eyebrow">{feed.provider}</span><h2>{feed.name}</h2></div><span className={`feed-status feed-status-${feed.status.toLowerCase().replace('_', '-')}`}><span aria-hidden="true" />{statusLabel(feed.status)}</span></header><dl><div><dt>Last Sync</dt><dd>{formatDate(feed.lastSyncAt)}</dd></div><div><dt>Indicators Received</dt><dd>{feed.received.toLocaleString('id-ID')}</dd></div><div><dt>Created</dt><dd>{formatCount(feed.created)}</dd></div><div><dt>Updated</dt><dd>{formatCount(feed.updated)}</dd></div></dl>{feed.error && <div className="feed-error"><AlertCircle size={15} aria-hidden="true" /><span><strong>Last error</strong>{feed.error}</span></div>}</Card>)}</div>}
-  </>;
+  </div>;
 }
 
 function formatDate(value: string | null): string { return value ? new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : 'Not available'; }

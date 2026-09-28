@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Table } from '@/components/ui/table';
 import SharedSidebar from '../../components/dashboard/Sidebar';
+import type { ModulePolicy } from '../../lib/access-policy';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -39,7 +40,7 @@ function LegacySidebar({ role, onLogout }: { role: string; onLogout: () => void 
     ...(role === 'SUPER_ADMIN'
       ? [
           { label: 'ADMIN', href: '', divider: true },
-          { label: '🏢 Tenant Management', href: '/tenants' },
+          { label: 'Tenant Management', href: '/tenants' },
           { label: '👥 User Management', href: '/users' },
           { label: '📋 Audit Log', href: '/audit-logs' },
         ]
@@ -87,6 +88,12 @@ export default function TenantsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [forbidden, setForbidden] = useState(false);
+  const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
+  const [tenantModules, setTenantModules] = useState<readonly ModulePolicy[]>([]);
+  const [detailError, setDetailError] = useState('');
+  const [detailLoading, setDetailLoading] = useState(false);
+  const detailSequence = useRef(0);
 
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -94,15 +101,15 @@ export default function TenantsPage() {
 
   async function loadCurrentUser() {
     const res = await fetch(API + '/auth/me', { credentials: 'include', cache: 'no-store' });
-    if (res.status === 401) { router.replace('/'); return null; }
+    if (res.status === 401) { router.replace('/login'); return null; }
     if (!res.ok) return null;
     return res.json() as Promise<CurrentUser>;
   }
 
   async function loadTenants() {
     const res = await fetch(API + '/tenants', { credentials: 'include', cache: 'no-store' });
-    if (res.status === 401) { router.replace('/'); return []; }
-    if (res.status === 403) { router.replace('/dashboard'); return []; }
+    if (res.status === 401) { router.replace('/login'); return []; }
+    if (res.status === 403) { setForbidden(true); return []; }
     if (!res.ok) return [];
     const data = await res.json();
     return Array.isArray(data) ? data : [];
@@ -112,7 +119,7 @@ export default function TenantsPage() {
     (async () => {
       const [user, list] = await Promise.all([loadCurrentUser(), loadTenants()]);
       if (!user) return;
-      if (user.role !== 'SUPER_ADMIN') { router.replace('/dashboard'); return; }
+      if (user.role !== 'SUPER_ADMIN') { setCurrentUser(user); setForbidden(true); setLoading(false); return; }
       setCurrentUser(user);
       setTenants(list);
       setLoading(false);
@@ -121,7 +128,7 @@ export default function TenantsPage() {
 
   async function logout() {
     await fetch(API + '/auth/logout', { method: 'POST', credentials: 'include' });
-    router.replace('/');
+    router.replace('/login');
   }
 
   async function handleCreate(e: React.FormEvent) {
@@ -134,7 +141,7 @@ export default function TenantsPage() {
       setSaving(true);
       const res = await fetch(API + '/tenants', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
       const data = await res.json().catch(() => ({}));
-      if (res.status === 401) { router.replace('/'); return; }
+      if (res.status === 401) { router.replace('/login'); return; }
       if (!res.ok) throw new Error(Array.isArray(data.message) ? data.message.join(', ') : data.message || 'Gagal membuat tenant.');
       setSuccess('Tenant "' + data.tenant?.name + '" berhasil dibuat. Admin: ' + data.admin?.email);
       setForm({ name: '', slug: '', adminName: '', adminEmail: '', adminPassword: '' });
@@ -159,32 +166,50 @@ export default function TenantsPage() {
     }
   }
 
+  async function viewTenant(tenant: Tenant) {
+    const sequence = ++detailSequence.current;
+    setSelectedTenant(tenant); setTenantModules([]); setDetailError(''); setDetailLoading(true);
+    try {
+      const response = await fetch(`${API}/modules/configuration?tenantId=${encodeURIComponent(tenant.id)}`, { credentials: 'include', cache: 'no-store' });
+      if (response.status === 401) { router.replace('/login'); return; }
+      if (!response.ok) throw new Error('Module policy could not be loaded.');
+      const policy: readonly ModulePolicy[] = await response.json();
+      if (sequence === detailSequence.current) setTenantModules(policy);
+    } catch (cause) { if (sequence === detailSequence.current) setDetailError(cause instanceof Error ? cause.message : 'Module policy could not be loaded.'); }
+    finally { if (sequence === detailSequence.current) setDetailLoading(false); }
+  }
+
   if (loading) {
     return (
       <div className="app">
         <aside className="sidebar"><div className="brand">CTI Platform</div></aside>
-        <section className="main"><div className="content" style={{ paddingTop: 60, textAlign: 'center', color: '#687386' }}>Memuat tenant…</div></section>
+        <section className="main"><div className="content" style={{ paddingTop: 60, textAlign: 'center', color: 'var(--soc-muted)' }}>Memuat tenant…</div></section>
       </div>
     );
   }
+
+  if (forbidden) return <div className="app"><SharedSidebar role={currentUser?.role ?? 'USER'} onLogout={logout} /><section className="main"><main className="content admin-workspace"><p className="admin-state" role="alert">You don’t have permission to access this area.</p></main></section></div>;
 
   return (
     <div className="app">
       <SharedSidebar role={currentUser?.role ?? 'USER'} onLogout={logout} />
       <section className="main">
         <header className="topbar">
-          <div style={{ fontWeight: 600 }}>🏢 Tenant Management</div>
-          <span style={{ fontSize: 13, color: '#687386' }}>{currentUser?.role}</span>
+          <div style={{ fontWeight: 600 }}>Tenant Management</div>
+          <span style={{ fontSize: 13, color: 'var(--soc-muted)' }}>{currentUser?.role}</span>
         </header>
-        <main className="content">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
+        <main className="content editorial-module admin-workspace">
+          <Link className="admin-back-link" href="/administration">← Administration overview</Link>
+          <div className="admin-heading-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
             <div>
-              <h1 style={{ margin: '0 0 6px' }}>Tenant Management</h1>
-              <p style={{ margin: 0, color: '#687386', fontSize: 15 }}>Kelola organisasi/tenant dalam platform CTI</p>
+              <span className="source-eyebrow">TENANT MANAGEMENT</span><h1>Organizations in your platform.</h1>
+              <p>Manage tenant status, users and access to the platform.</p>
             </div>
             <Button view="action" size="l" onClick={() => { setError(''); setSuccess(''); setShowForm(true); }}>+ Buat Tenant Baru</Button>
           </div>
 
+          <section className="editorial-metrics" aria-label="Tenant summary"><div><span>Total tenants</span><strong>{tenants.length}</strong></div><div><span>Active</span><strong>{tenants.filter(tenant => tenant.isActive).length}</strong></div><div><span>Users</span><strong>{tenants.reduce((count, tenant) => count + tenant._count.users, 0)}</strong></div><div><span>Indicators</span><strong>{tenants.reduce((count, tenant) => count + tenant._count.indicators, 0)}</strong></div></section>
+          <div className="editorial-section-heading"><span className="source-eyebrow">TENANT OPERATIONS</span><h2>Organization directory</h2></div>
           {error && <div className="error" style={{ marginBottom: 16 }}>{error}</div>}
           {success && <div className="success" style={{ marginBottom: 16 }}>{success}</div>}
 
@@ -200,10 +225,10 @@ export default function TenantsPage() {
                   <div className="field">
                     <label>Slug *</label>
                     <input type="text" value={form.slug} onChange={e => setForm(f => ({ ...f, slug: e.target.value }))} placeholder="pt-maju-jaya" required />
-                    <small style={{ color: '#687386', fontSize: 12 }}>Huruf kecil, angka, tanda hubung</small>
+                    <small style={{ color: 'var(--soc-muted)', fontSize: 12 }}>Huruf kecil, angka, tanda hubung</small>
                   </div>
                 </div>
-                <div style={{ marginTop: 20, marginBottom: 8, fontWeight: 600, fontSize: 14, borderTop: '1px solid #e6eaf0', paddingTop: 16 }}>Akun Administrator Tenant</div>
+                <div style={{ marginTop: 20, marginBottom: 8, fontWeight: 600, fontSize: 14, borderTop: '1px solid var(--soc-border)', paddingTop: 16 }}>Akun Administrator Tenant</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                   <div className="field">
                     <label>Nama Admin *</label>
@@ -226,21 +251,22 @@ export default function TenantsPage() {
             </Card>
           )}
 
-          <Card view="outlined" style={{ padding: 24 }}>
+          <Card view="outlined" className="admin-directory" style={{ padding: 24 }}>
             <h2 style={{ margin: '0 0 20px' }}>Daftar Tenant ({tenants.length})</h2>
             {tenants.length === 0 ? (
-              <p style={{ color: '#687386' }}>Belum ada tenant terdaftar.</p>
+              <p style={{ color: 'var(--soc-muted)' }}>Belum ada tenant terdaftar.</p>
             ) : (
               <Table
                 data={tenants}
                 columns={[
-                  { id: 'name', name: 'Nama Tenant', template: (t: Tenant) => <div><div style={{ fontWeight: 600 }}>{t.name}</div><div style={{ fontSize: 12, color: '#687386' }}>{t.slug}</div></div> },
-                  { id: 'status', name: 'Status', template: (t: Tenant) => <span className={`status-pill ${t.isActive ? 'is-active' : 'is-inactive'}`} style={{ display: 'inline-block', padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 700, background: t.isActive ? '#e9f8ef' : '#fff0f0', color: t.isActive ? '#18794e' : '#b42318' }}>{t.isActive ? 'Aktif' : 'Nonaktif'}</span> },
+                  { id: 'name', name: 'Nama Tenant', template: (t: Tenant) => <div><div style={{ fontWeight: 600 }}>{t.name}</div><div style={{ fontSize: 12, color: 'var(--soc-muted)' }}>{t.slug}</div></div> },
+                  { id: 'status', name: 'Status', template: (t: Tenant) => <span className={`status-pill ${t.isActive ? 'is-active' : 'is-inactive'}`}>{t.isActive ? 'Aktif' : 'Nonaktif'}</span> },
                   { id: 'users', name: 'User', template: (t: Tenant) => t._count.users },
                   { id: 'indicators', name: 'Indicators', template: (t: Tenant) => t._count.indicators },
                   { id: 'createdAt', name: 'Dibuat', template: (t: Tenant) => new Date(t.createdAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) },
                   { id: 'actions', name: 'Aksi', template: (t: Tenant) => (
                     <div style={{ display: 'flex', gap: 8 }}>
+                      <Button view="flat" size="s" onClick={() => void viewTenant(t)}>View</Button>
                       <Button view={t.isActive ? 'flat-danger' : 'flat'} size="s" onClick={() => toggleStatus(t)}>{t.isActive ? 'Nonaktifkan' : 'Aktifkan'}</Button>
                       <Button view="flat" size="s" onClick={() => router.push('/users?tenantId=' + t.id)}>Lihat User</Button>
                     </div>
@@ -249,6 +275,7 @@ export default function TenantsPage() {
               />
             )}
           </Card>
+          {selectedTenant && <section className="admin-detail" aria-label={`Organization detail ${selectedTenant.name}`}><div className="admin-detail-head"><div><span className="source-eyebrow">ORGANIZATION WORKSPACE</span><h2>{selectedTenant.name}</h2></div><button type="button" onClick={() => { detailSequence.current += 1; setSelectedTenant(null); }}>Close</button></div><dl><div><dt>Status</dt><dd>{selectedTenant.isActive ? 'Active' : 'Inactive'}</dd></div><div><dt>Users</dt><dd>{selectedTenant._count.users}</dd></div><div><dt>Created</dt><dd>{new Date(selectedTenant.createdAt).toLocaleDateString('id-ID')}</dd></div><div><dt>Slug</dt><dd>{selectedTenant.slug}</dd></div></dl><div className="admin-detail-actions"><Link href={`/users?tenantId=${encodeURIComponent(selectedTenant.id)}`}>View organization users ↗</Link></div><h3>Module access</h3><p>Tenant policy determines eligibility. Individual accessibility is evaluated for each user by the backend.</p>{detailError && <p role="alert" className="error">{detailError}</p>}{detailLoading && <p className="muted" role="status">Loading module policies…</p>}{!detailLoading && !detailError && tenantModules.length === 0 && <p className="muted">No module policies available.</p>}{tenantModules.length > 0 && <div className="admin-policy-list">{tenantModules.map(module => <div key={module.id}><strong>{module.name}</strong><span>Global: {module.isActive ? 'Active' : 'Inactive'} · Tenant: {module.tenantEnabled ? 'Enabled' : 'Disabled'} · Included: {module.subscriptionIncluded ? 'Yes' : 'No'}</span></div>)}</div>}</section>}
         </main>
       </section>
     </div>

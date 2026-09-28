@@ -51,7 +51,7 @@ export function CampaignPanel({
     >
       <div className="source-panel-heading">
         <div>
-          <span className="source-eyebrow">CAMPAIGN RECORD</span>
+          <span className="source-eyebrow">CAMPAIGN INTELLIGENCE</span>
           <h2>{title}</h2>
         </div>
         <Button view="flat" onClick={onClose}>
@@ -60,11 +60,8 @@ export function CampaignPanel({
       </div>
       {readOnly && campaign ? (
         <>
-          <dl className="source-detail">
-            <Detail
-              label="Threat actor"
-              value={campaign.threatActor.entity.name}
-            />
+          <div className="ti-profile"><span className="source-eyebrow">CAMPAIGN OVERVIEW</span><p>{campaign.description || "No campaign description available."}</p><div><span className="cti-status">{campaign.status}</span><span className={`ioc-severity severity-${campaign.severity.toLowerCase()}`}>{campaign.severity}</span><span>{campaign.startDate ? formatDate(campaign.startDate) : "Start date unavailable"}</span></div></div><h3 className="ti-detail-title">Overview metadata</h3><dl className="source-detail">
+            <div><dt>Threat actor</dt><dd><a href={`/intelligence/threat-actors?actorId=${encodeURIComponent(campaign.threatActor.id)}`}>{campaign.threatActor.entity.name}</a></dd></div>
             <Detail
               label="Indicators"
               value={`${campaign._count.indicators} indicator${campaign._count.indicators === 1 ? "" : "s"}`}

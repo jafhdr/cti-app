@@ -7,7 +7,7 @@ export type ModuleAccess = {
   readonly moduleName: string;
   readonly moduleSlug: string;
   readonly assigned: boolean;
-  readonly accessible?: boolean;
+  readonly accessible: boolean;
   readonly featureKeys: readonly string[];
 };
 
@@ -19,12 +19,6 @@ export function useModuleAccess(role: 'SUPER_ADMIN' | 'ADMIN' | 'USER') {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (role !== 'USER') {
-      setModuleAccess([]);
-      setLoading(false);
-      return;
-    }
-
     let cancelled = false;
     setLoading(true);
     setError(null);

@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation';
 import { ArrowLeft, Edit2, Loader } from 'lucide-react';
 import Link from 'next/link';
 import AssignModal from './assign-modal';
+import EditCaseModal from './edit-case-modal';
 import { InvestigationPanel } from './investigation-panel';
 import { RelatedIndicators } from './related-indicators';
 import { RelatedThreatActors } from './related-threat-actors';
@@ -44,6 +45,7 @@ export default function CaseDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAssignModal, setShowAssignModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   useEffect(() => {
     fetchCaseDetail();
@@ -113,23 +115,28 @@ export default function CaseDetailPage() {
   }
 
   return (
-    <main className="case-page">
+    <main className="case-page editorial-module">
       <div className="max-w-4xl mx-auto">
         <Link href="/cases" className="case-back-link mb-6 flex items-center gap-2">
           <ArrowLeft size={20} />
           Back
         </Link>
 
+        <div className="editorial-heading"><span className="source-eyebrow">CASE INTELLIGENCE WORKSPACE · {caseDetail.caseNumber}</span><h1>{caseDetail.title}</h1><p>{caseDetail.tenant.name} · Updated {new Date(caseDetail.updatedAt).toLocaleString('id-ID')}</p></div>
+        <section className="editorial-metrics" aria-label="Case status"><div><span>Status</span><strong className="editorial-text-metric">{caseDetail.status.replaceAll("_", " ")}</strong></div><div><span>Priority</span><strong className="editorial-text-metric">{caseDetail.priority}</strong></div><div><span>Severity</span><strong className="editorial-text-metric">{caseDetail.severity}</strong></div><div><span>Assignee</span><strong className="editorial-text-metric">{caseDetail.assignee?.name ?? "Unassigned"}</strong></div></section>
+        {canMutateCases && <div className="case-operations"><span className="source-eyebrow">CASE OPERATIONS</span><div><button type="button" onClick={() => setShowEditModal(true)} className="soc-button-outline">Edit case</button></div></div>}
         <nav aria-label="Bagian detail case" className="case-panel mb-4 flex gap-2 overflow-x-auto p-2">
           <a href="#overview" className="case-detail-tab">Overview</a>
           <a href="#investigation" className="case-detail-tab">Investigation</a>
-          <a href="#related-intelligence" className="case-detail-tab">Related Intelligence</a>
+          <a href="#related-intelligence" className="case-detail-tab">Intelligence</a>
+          <a href="#evidence" className="case-detail-tab">Evidence</a>
+          <a href="#activity" className="case-detail-tab">Activity</a>
         </nav>
 
         <section id="overview" aria-labelledby="overview-heading" className="case-panel scroll-mt-4 p-8">
           <div className="border-b pb-6 mb-6">
             <p className="mb-2 text-sm text-muted-foreground">{caseDetail.caseNumber}</p>
-            <h1 id="overview-heading" className="case-title">{caseDetail.title}</h1>
+            <h2 id="overview-heading" className="case-detail-section-title">Case overview</h2>
 
             <div className="flex gap-3 flex-wrap mt-4">
               <span className="case-badge case-badge-info">
@@ -144,12 +151,12 @@ export default function CaseDetailPage() {
             </div>
           </div>
 
-          {caseDetail.description && (
+          {caseDetail.description ? (
             <div className="mb-8">
               <h2 className="mb-3 text-lg font-semibold text-card-foreground">Description</h2>
               <p className="text-foreground">{caseDetail.description}</p>
             </div>
-          )}
+          ) : <p className="mb-8 text-muted-foreground">No description available.</p>}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
             <div className="case-subpanel p-6">
@@ -183,7 +190,7 @@ export default function CaseDetailPage() {
             <p className="text-xs text-muted-foreground">Updated: {new Date(caseDetail.updatedAt).toLocaleString('id-ID')}</p>
           </div>
         </section>
-        <InvestigationPanel caseId={caseDetail.id} />
+        <InvestigationPanel caseId={caseDetail.id} section="investigation" />
         <section id="related-intelligence" aria-labelledby="related-intelligence-heading" className="scroll-mt-4">
           <div className="mt-8">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Case intelligence</p>
@@ -193,8 +200,11 @@ export default function CaseDetailPage() {
           <RelatedThreatActors caseId={caseDetail.id} canMutate={canMutateCases} />
           <RelatedCampaigns caseId={caseDetail.id} canMutate={canMutateCases} />
         </section>
+        <InvestigationPanel caseId={caseDetail.id} section="evidence" />
+        <InvestigationPanel caseId={caseDetail.id} section="activity" />
       </div>
 
+      {showEditModal && <EditCaseModal caseDetail={caseDetail} onClose={() => setShowEditModal(false)} onSuccess={() => { setShowEditModal(false); void fetchCaseDetail(); }} />}
       {showAssignModal && (
         <AssignModal
           caseId={caseDetail.id}

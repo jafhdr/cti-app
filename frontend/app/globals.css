@@ -949,3 +949,19 @@ html.dark .module-card:hover, html.dark .module-card:focus-within { box-shadow: 
 .asm-port-result dt { color:var(--soc-muted); font-size:10px; text-transform:uppercase; }
 .asm-port-result dd { margin:4px 0 0; color:var(--soc-ink); font-size:18px; font-weight:700; }
 @media(max-width:640px){.asm-ports>header{align-items:flex-start;flex-direction:column}.asm-port-result dl{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.access-policy-details { display:grid; gap:8px; margin:16px 0; }
+.access-policy-details > div { display:flex; justify-content:space-between; gap:16px; }
+.access-policy-details dt { color:var(--soc-muted); }
+.access-policy-details dd { margin:0; text-align:right; overflow-wrap:anywhere; }
+.access-features { border:0; padding:0; min-width:0; }
+.access-features legend { margin-bottom:8px; font-weight:600; }
+.entitlement-list { display:grid; gap:8px; list-style:none; padding:0; }
+.entitlement-list li { display:flex; justify-content:space-between; gap:16px; }
+.entitlement-list strong { text-align:right; }
+
+@media (max-width: 900px) {
+  .module-app .sidebar-navigation, .app:has(.subscription-page) .sidebar-navigation, .app:has(.module-access-page) .sidebar-navigation { flex-flow: row wrap !important; width: 100%; min-width: 0; max-width: 100%; overflow-x: visible; }
+  .module-app .sidebar-module, .app:has(.subscription-page) .sidebar-module, .app:has(.module-access-page) .sidebar-module { flex: 1 1 176px; min-width: 0; max-width: 100%; }
+  .module-app .sidebar-submenu, .app:has(.subscription-page) .sidebar-submenu, .app:has(.module-access-page) .sidebar-submenu { display: flex; flex-wrap: wrap; min-width: 0; }
+}

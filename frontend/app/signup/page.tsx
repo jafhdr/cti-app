@@ -40,6 +40,6 @@ export default function SignupPage() {
     </div>
     {error && <div className="error">{error}</div>}
     <button className="primary" disabled={loading}>{loading ? 'Membuat akun...' : 'Create account'}</button>
-    <div className="auth-footer">Sudah punya akun? <Link href="/">Login</Link></div>
+    <div className="auth-footer">Sudah punya akun? <Link href="/login">Login</Link></div>
   </form></main>;
 }

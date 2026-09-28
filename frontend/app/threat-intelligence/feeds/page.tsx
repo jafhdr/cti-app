@@ -13,10 +13,10 @@ export default function ThreatFeedsPage() {
   const [role, setRole] = useState<Role | null>(null);
   useEffect(() => {
     fetch(`${API}/auth/me`, { credentials: 'include', cache: 'no-store' }).then(async response => {
-      if (!response.ok) { router.replace('/'); return; }
+      if (!response.ok) { router.replace('/login'); return; }
       const user: { readonly role: Role } = await response.json();
       setRole(user.role);
-    }).catch(() => router.replace('/'));
+    }).catch(() => router.replace('/login'));
   }, [router]);
   return <ThreatIntelligenceShell title="Threat Feeds">{role ? <FeedsWorkspace role={role} /> : <div className="source-state">Loading threat feeds...</div>}</ThreatIntelligenceShell>;
 }

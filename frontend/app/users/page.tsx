@@ -58,10 +58,16 @@ function UsersPageContent() {
   const [tenantId, setTenantId] = useState('');
   const [saving, setSaving] = useState(false);
   const [accessUser, setAccessUser] = useState<User | null>(null);
+  const [detailUser, setDetailUser] = useState<User | null>(null);
+  const [search, setSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [organizationFilter, setOrganizationFilter] = useState('');
 
   // Messages
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [forbidden, setForbidden] = useState(false);
 
   /* ── Load users ── */
   async function loadUsers() {
@@ -70,8 +76,8 @@ function UsersPageContent() {
       const params = new URLSearchParams();
       if (filterTenantId) params.set('tenantId', filterTenantId);
       const res = await fetch(`${API}/users?${params}`, { credentials: 'include', cache: 'no-store' });
-      if (res.status === 401) { router.replace('/'); return; }
-      if (res.status === 403) { router.replace('/dashboard'); return; }
+      if (res.status === 401) { router.replace('/login'); return; }
+      if (res.status === 403) { setForbidden(true); return; }
       if (!res.ok) throw new Error('Gagal mengambil data user.');
       const data = await res.json();
       setUsers(Array.isArray(data) ? data : data.users || []);
@@ -82,7 +88,7 @@ function UsersPageContent() {
 
   async function loadCurrentUser() {
     const res = await fetch(`${API}/auth/me`, { credentials: 'include', cache: 'no-store' });
-    if (res.status === 401) { router.replace('/'); return; }
+    if (res.status === 401) { router.replace('/login'); return; }
     if (!res.ok) throw new Error('Gagal memuat sesi pengguna.');
     setCurrentUser(await res.json());
   }
@@ -90,7 +96,7 @@ function UsersPageContent() {
   async function loadTenants() {
     try {
       const res = await fetch(`${API}/users/tenants`, { credentials: 'include', cache: 'no-store' });
-      if (res.status === 401) { router.replace('/'); return; }
+      if (res.status === 401) { router.replace('/login'); return; }
       if (res.status === 403) return;
       if (!res.ok) return;
       const data = await res.json();
@@ -112,7 +118,7 @@ function UsersPageContent() {
 
   async function logout() {
     await fetch(`${API}/auth/logout`, { method: 'POST', credentials: 'include' });
-    router.replace('/');
+    router.replace('/login');
   }
 
   function resetForm() { setName(''); setEmail(''); setPassword(''); setRole('USER'); setTenantId(''); }
@@ -135,7 +141,7 @@ function UsersPageContent() {
         body: JSON.stringify({ name: name.trim(), email: email.trim(), password, role, ...(currentUser?.role === 'SUPER_ADMIN' ? { tenantId } : {}) }),
       });
       const data = await res.json().catch(() => ({}));
-      if (res.status === 401) { router.replace('/'); return; }
+      if (res.status === 401) { router.replace('/login'); return; }
       if (res.status === 403) throw new Error('Anda tidak memiliki izin membuat user.');
       if (!res.ok) throw new Error(Array.isArray(data.message) ? data.message.join(', ') : data.message || 'Gagal membuat user.');
       setSuccess(`User ${data.email || email} berhasil dibuat.`);
@@ -149,7 +155,7 @@ function UsersPageContent() {
   async function userRequest(path: string, method: 'PATCH', body: object) {
     const res = await fetch(`${API}${path}`, { method, credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     const data = await res.json().catch(() => ({}));
-    if (res.status === 401) { router.replace('/'); return null; }
+    if (res.status === 401) { router.replace('/login'); return null; }
     if (!res.ok) throw new Error(data.message || 'Gagal memperbarui user.');
     return data;
   }
@@ -210,15 +216,24 @@ function UsersPageContent() {
 
   /* ── Role dropdown in table ── */
   function canChangeRole() { return currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN'; }
+  const filteredUsers = users.filter(user => {
+    const query = search.trim().toLowerCase();
+    return (!query || `${user.name} ${user.email}`.toLowerCase().includes(query))
+      && (!roleFilter || user.role === roleFilter)
+      && (!statusFilter || (statusFilter === 'active' ? user.isActive : !user.isActive))
+      && (!organizationFilter || user.tenantId === organizationFilter);
+  });
 
   if (loading) {
     return (
       <div className="app">
         <aside className="sidebar"><div className="brand">CTI Platform</div></aside>
-        <section className="main"><div className="content" style={{ paddingTop: 60, textAlign: 'center', color: '#687386' }}>Memuat user…</div></section>
+        <section className="main"><div className="content" style={{ paddingTop: 60, textAlign: 'center', color: 'var(--soc-muted)' }}>Memuat user…</div></section>
       </div>
     );
   }
+
+  if (forbidden || currentUser?.role === 'USER') return <div className="app"><SharedSidebar role={currentUser?.role ?? 'USER'} onLogout={logout} /><section className="main"><main className="content admin-workspace"><p className="admin-state" role="alert">You don’t have permission to access this area.</p></main></section></div>;
 
   return (
     <div className="app">
@@ -226,18 +241,19 @@ function UsersPageContent() {
 
       <section className="main">
         <header className="topbar">
-          <div style={{ fontWeight: 600 }}>👥 User Management</div>
-          <span style={{ fontSize: 13, color: '#687386' }}>{currentUser?.role}</span>
+          <div style={{ fontWeight: 600 }}>User Management</div>
+          <span style={{ fontSize: 13, color: 'var(--soc-muted)' }}>{currentUser?.role}</span>
         </header>
 
-        <main className="content">
+        <main className="content editorial-module admin-workspace">
+          <Link className="admin-back-link" href="/administration">← Administration overview</Link>
           {/* Context banner */}
-          <div style={{
+          <div className="admin-heading-row" style={{
             display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28,
           }}>
             <div>
-              <h1 style={{ margin: '0 0 6px' }}>User Management</h1>
-              <p style={{ margin: 0, color: '#687386', fontSize: 15 }}>
+              <span className="source-eyebrow">USER MANAGEMENT</span><h1>People and permissions.</h1>
+              <p style={{ margin: 0, color: 'var(--soc-muted)', fontSize: 15 }}>Manage users and their organizational access.{' '}
                 {currentUser?.role === 'SUPER_ADMIN'
                   ? `Scope: ${scopeLabel} — Mengelola semua pengguna platform`
                   : `Scope: ${scopeLabel} — Mengelola pengguna dalam tenant Anda`}
@@ -245,7 +261,7 @@ function UsersPageContent() {
             </div>
             <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
               {currentUser?.role === 'SUPER_ADMIN' && filterTenantId && (
-                <Link href="/users" style={{ fontSize: 13, color: '#4155d8' }}>← Semua Tenant</Link>
+                <Link href="/users" style={{ fontSize: 13, color: 'var(--soc-blue)' }}>← Semua Tenant</Link>
               )}
               {currentUser && (
                 <Button view="action" size="l" onClick={openAddForm}>+ Add User</Button>
@@ -253,10 +269,13 @@ function UsersPageContent() {
             </div>
           </div>
 
+          <section className="editorial-metrics" aria-label="User summary"><div><span>Users shown</span><strong>{users.length}</strong></div><div><span>Active</span><strong>{users.filter(user => user.isActive).length}</strong></div><div><span>Administrators</span><strong>{users.filter(user => user.role === "ADMIN").length}</strong></div><div><span>Standard users</span><strong>{users.filter(user => user.role === "USER").length}</strong></div></section>
+          <div className="editorial-section-heading"><span className="source-eyebrow">SEARCH & FILTER</span><h2>Find a user</h2></div>
+          <div className="admin-filters"><label className="admin-filter">Search<input type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Name or email" /></label>{currentUser?.role === 'SUPER_ADMIN' && <label className="admin-filter">Organization<select value={organizationFilter} onChange={event => setOrganizationFilter(event.target.value)}><option value="">All organizations</option>{tenants.map(tenant => <option key={tenant.id} value={tenant.id}>{tenant.name}</option>)}</select></label>}<label className="admin-filter">Role<select value={roleFilter} onChange={event => setRoleFilter(event.target.value)}><option value="">All roles</option><option value="SUPER_ADMIN">Super Admin</option><option value="ADMIN">Admin</option><option value="USER">User</option></select></label><label className="admin-filter">Status<select value={statusFilter} onChange={event => setStatusFilter(event.target.value)}><option value="">All statuses</option><option value="active">Active</option><option value="inactive">Inactive</option></select></label><button type="button" onClick={() => { setSearch(''); setRoleFilter(''); setStatusFilter(''); setOrganizationFilter(''); }}>Reset</button></div>
+          <div className="editorial-section-heading"><span className="source-eyebrow">USER DIRECTORY</span><h2>Manage access</h2></div>
           {/* Role badge */}
           {currentUser?.role === 'ADMIN' && currentUser.tenant && (
             <div className="context-note" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'var(--soc-blue-tint)', borderRadius: 6, padding: '8px 14px', marginBottom: 20, fontSize: 13 }}>
-              <span>🏢</span>
               <span>Anda adalah <strong>Admin</strong> dari tenant <strong>{currentUser.tenant.name}</strong>. Anda hanya dapat mengelola user dalam tenant ini.</span>
             </div>
           )}
@@ -290,7 +309,7 @@ function UsersPageContent() {
                         <option value="ADMIN">ADMIN</option>
                       </select>
                     ) : (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e6eaf0', color: '#687386' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: 'var(--soc-elevated)', borderRadius: 8, border: '1px solid var(--soc-border)', color: 'var(--soc-muted)' }}>
                         USER <small>(ADMIN hanya dapat membuat USER)</small>
                       </div>
                     )}
@@ -309,7 +328,7 @@ function UsersPageContent() {
                 )}
 
                 {currentUser?.role === 'ADMIN' && currentUser.tenant && (
-                  <div style={{ background: '#f0f9ff', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#0369a1' }}>
+                  <div style={{ background: 'var(--soc-blue-tint)', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: 'var(--soc-ink)' }}>
                     User akan dibuat dalam tenant: <strong>{currentUser.tenant.name}</strong>
                   </div>
                 )}
@@ -323,21 +342,21 @@ function UsersPageContent() {
           )}
 
           {/* User table */}
-          <Card view="outlined" style={{ padding: 24 }}>
-            <h2 style={{ margin: '0 0 20px' }}>Users ({users.length})</h2>
-            {users.length === 0 ? (
-              <p style={{ color: '#687386' }}>Belum ada user.</p>
+          <Card view="outlined" className="admin-directory" style={{ padding: 24 }}>
+            <h2 style={{ margin: '0 0 20px' }}>Users ({filteredUsers.length})</h2>
+            {filteredUsers.length === 0 ? (
+              <p style={{ color: 'var(--soc-muted)' }}>{users.length ? 'No users match these filters.' : 'Belum ada user.'}</p>
             ) : (
               <Table
-                data={users}
+                data={filteredUsers}
                 columns={[
-                  { id: 'name', name: 'Nama', template: (u: User) => <div><div style={{ fontWeight: 600 }}>{u.name}</div><div style={{ fontSize: 12, color: '#687386' }}>{u.email}</div></div> },
+                  { id: 'name', name: 'Nama', template: (u: User) => <div><div style={{ fontWeight: 600 }}>{u.name}</div><div style={{ fontSize: 12, color: 'var(--soc-muted)' }}>{u.email}</div></div> },
                   { id: 'role', name: 'Role', template: (u: User) => {
-                    if (u.role === 'SUPER_ADMIN') return <span style={{ fontWeight: 700, color: '#6366f1' }}>SUPER_ADMIN</span>;
+                    if (u.role === 'SUPER_ADMIN') return <span style={{ fontWeight: 700, color: 'var(--soc-blue)' }}>SUPER_ADMIN</span>;
                     if (canChangeRole() && u.id !== currentUser?.id && !(currentUser?.role === 'ADMIN' && u.role === 'ADMIN')) {
                       const opts: Array<'ADMIN' | 'USER'> = currentUser?.role === 'SUPER_ADMIN' ? ['USER', 'ADMIN'] : ['USER'];
                       return (
-                        <select value={u.role} onChange={e => changeRole(u, e.target.value as 'ADMIN' | 'USER')} style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #e6eaf0' }}>
+                        <select value={u.role} onChange={e => changeRole(u, e.target.value as 'ADMIN' | 'USER')} style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid var(--soc-border)' }}>
                           {opts.map(r => <option key={r} value={r}>{r}</option>)}
                         </select>
                       );
@@ -345,16 +364,17 @@ function UsersPageContent() {
                     return <span>{u.role}</span>;
                   }},
                   { id: 'status', name: 'Status', template: (u: User) => (
-                    <span className={`status-pill ${u.isActive ? 'is-active' : 'is-inactive'}`} style={{ display: 'inline-block', padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 700, background: u.isActive ? '#e9f8ef' : '#fff0f0', color: u.isActive ? '#18794e' : '#b42318' }}>
+                    <span className={`status-pill ${u.isActive ? 'is-active' : 'is-inactive'}`}>
                       {u.isActive ? 'Aktif' : 'Nonaktif'}
                     </span>
                   )},
-                  ...(currentUser?.role === 'SUPER_ADMIN' ? [{ id: 'tenant', name: 'Tenant', template: (u: User) => u.tenant?.name ?? <span style={{ color: '#687386' }}>-</span> }] : []),
+                  ...(currentUser?.role === 'SUPER_ADMIN' ? [{ id: 'tenant', name: 'Tenant', template: (u: User) => u.tenant?.name ?? <span style={{ color: 'var(--soc-muted)' }}>-</span> }] : []),
                   { id: 'createdAt', name: 'Dibuat', template: (u: User) => u.createdAt ? new Date(u.createdAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-' },
                   { id: 'actions', name: 'Aksi', template: (u: User) => {
                     const cannotManage = u.id === currentUser?.id || u.role === 'SUPER_ADMIN' || (currentUser?.role === 'ADMIN' && u.role === 'ADMIN');
                     return (
                       <div style={{ display: 'flex', gap: 8 }}>
+                        <Button view="flat" size="s" onClick={() => setDetailUser(u)}>View</Button>
                         <Button view="flat" size="s" disabled={cannotManage} onClick={() => editUser(u)}>Edit</Button>
                         <Button view="flat" size="s" disabled={cannotManage} onClick={() => resetUserPassword(u)}>Reset PW</Button>
                         <Button view="flat" size="s" disabled={cannotManage || u.role !== 'USER'} onClick={() => openModuleAccess(u)}>Akses Modul</Button>
@@ -368,7 +388,8 @@ function UsersPageContent() {
               />
             )}
           </Card>
-          {accessUser && <ModuleAccessPanel target={accessUser} onClose={() => setAccessUser(null)} onError={setError} onSaved={setSuccess} onUnauthorized={() => router.replace('/')} />}
+          {detailUser && <section className="admin-detail" aria-label={`User detail ${detailUser.name}`}><div className="admin-detail-head"><div><span className="source-eyebrow">USER INTELLIGENCE</span><h2>{detailUser.name}</h2></div><button type="button" onClick={() => setDetailUser(null)}>Close</button></div><dl><div><dt>Email</dt><dd>{detailUser.email}</dd></div><div><dt>Organization</dt><dd>{detailUser.tenant?.name ?? 'Not available'}</dd></div><div><dt>Role</dt><dd>{detailUser.role}</dd></div><div><dt>Status</dt><dd>{detailUser.isActive ? 'Active' : 'Inactive'}</dd></div></dl><div className="admin-detail-actions">{detailUser.role === 'USER' && detailUser.id !== currentUser?.id ? <Button view="outlined" size="s" onClick={() => openModuleAccess(detailUser)}>View assigned and accessible modules</Button> : <span>Module access details are unavailable for this account.</span>}</div></section>}
+          {accessUser && <ModuleAccessPanel target={accessUser} onClose={() => setAccessUser(null)} onError={setError} onSaved={setSuccess} onUnauthorized={() => router.replace('/login')} />}
         </main>
       </section>
     </div>

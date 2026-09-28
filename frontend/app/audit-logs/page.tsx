@@ -110,7 +110,7 @@ export default function AuditLogsPage() {
       });
 
       if (res.status === 401) {
-        router.replace('/');
+        router.replace('/login');
         return;
       }
       if (res.status === 403) {
@@ -137,7 +137,7 @@ export default function AuditLogsPage() {
     (async () => {
       try {
         const meRes = await fetch(`${API}/auth/me`, { credentials: 'include', cache: 'no-store' });
-        if (!meRes.ok) return router.replace('/');
+        if (!meRes.ok) return router.replace('/login');
         const user: CurrentUser = await meRes.json();
 
         // Strict role access guard: USER cannot access audit logs
@@ -184,7 +184,7 @@ export default function AuditLogsPage() {
 
   async function logout() {
     await fetch(`${API}/auth/logout`, { method: 'POST', credentials: 'include' });
-    router.replace('/');
+    router.replace('/login');
   }
 
   if (loading) {

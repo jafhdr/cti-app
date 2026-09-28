@@ -30,7 +30,7 @@ export default function CasesLayout({ children }: { readonly children: ReactNode
       try {
         const response = await fetch(`${API}/auth/me`, { credentials: 'include', cache: 'no-store' });
         if (!response.ok) {
-          router.replace('/');
+          router.replace('/login');
           return;
         }
 
@@ -47,7 +47,7 @@ export default function CasesLayout({ children }: { readonly children: ReactNode
 
   async function logout(): Promise<void> {
     await fetch(`${API}/auth/logout`, { method: 'POST', credentials: 'include' });
-    router.replace('/');
+    router.replace('/login');
   }
 
   if (loading || !user) {

@@ -3,9 +3,10 @@
 import { X } from 'lucide-react';
 import { useEffect, useRef, type FormEvent, type KeyboardEvent } from 'react';
 import { Button } from '@/components/ui/button';
-import { assetCriticalities, assetStatuses, assetTypes, type Asset, type AssetFormValue } from './types';
+import { assetCriticalities, assetStatuses, assetTypes, type Asset, type AssetFormValue, type DiscoverySummary } from './types';
 import { PortServices } from './PortServices';
 import { ThreatIntelligence } from './ThreatIntelligence';
+import { DiscoveryRelationships } from './DiscoveryRelationships';
 
 type Props = {
   readonly asset: Asset | null;
@@ -17,9 +18,14 @@ type Props = {
   readonly onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   readonly tenantQuery: string;
   readonly canManage: boolean;
+  readonly discovery: DiscoverySummary | null;
+  readonly discoveryError: string;
+  readonly discoveryRun: number;
+  readonly discovering: boolean;
+  readonly onDiscoverAsset: (asset: Asset) => Promise<void>;
 };
 
-export function AssetPanel({ asset, form, mode, saving, onChange, onClose, onSubmit, tenantQuery, canManage }: Props) {
+export function AssetPanel({ asset, form, mode, saving, onChange, onClose, onSubmit, tenantQuery, canManage, discovery, discoveryError, discoveryRun, discovering, onDiscoverAsset }: Props) {
   const detail = mode === 'detail' && asset;
   const dialogRef = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -37,9 +43,9 @@ export function AssetPanel({ asset, form, mode, saving, onChange, onClose, onSub
     else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
   }
   return <div className="asm-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}>
-    <section ref={dialogRef} className="asm-dialog" role="dialog" aria-modal="true" aria-labelledby="asset-panel-title" onKeyDown={handleKeyDown}>
-      <header><div><span className="source-eyebrow">ASSET REGISTRY</span><h2 id="asset-panel-title">{detail ? 'Asset Detail' : asset ? 'Edit Asset' : 'Create Asset'}</h2></div><Button view="flat" size="s" aria-label="Close asset panel" onClick={onClose}><X size={16} /></Button></header>
-      {detail ? <><AssetDetails asset={asset} />{asset.type === 'IP_ADDRESS' && <PortServices asset={asset} tenantQuery={tenantQuery} canDiscover={canManage} />}<ThreatIntelligence asset={asset} tenantQuery={tenantQuery} /></> : <form className="asm-form" onSubmit={onSubmit}>
+    <section ref={dialogRef} className={`asm-dialog${detail ? ' asm-intelligence-dialog' : ''}`} role="dialog" aria-modal="true" aria-labelledby="asset-panel-title" onKeyDown={handleKeyDown}>
+      <header><div><span className="source-eyebrow">{detail ? 'ASSET INTELLIGENCE' : 'ASSET REGISTRY'}</span><h2 id="asset-panel-title">{detail ? asset.name : asset ? 'Edit Asset' : 'Create Asset'}</h2>{detail && <p className="asm-asset-identity">{asset.value}</p>}</div><Button view="flat" size="s" aria-label="Close asset panel" onClick={onClose}><X size={16} /></Button></header>
+      {detail ? <><AssetDetails asset={asset} /><section className="asm-intelligence-section" aria-label="Asset discovery"><div className="asm-section-heading"><span className="source-eyebrow">02 / DISCOVERY</span><h3>Discovery</h3></div>{(asset.type === 'DOMAIN' || asset.type === 'SUBDOMAIN') && canManage && <Button view="outlined" size="s" disabled={discovering} onClick={() => void onDiscoverAsset(asset)}>{discovering ? 'Discovering...' : asset.type === 'DOMAIN' ? 'Discover subdomains' : 'Discover DNS/IP'}</Button>}{discovering && <p role="status">Discovery is running for {asset.value}...</p>}{discoveryError && <p className="error" role="alert">{discoveryError}</p>}{discovery ? <><p className="asm-discovery-context">Latest discovery result in this session for {discovery.rootDomain} · {discovery.providers.length ? discovery.providers.join(' · ') : 'No provider completed'}</p><dl className="asm-service-metrics"><div><dt>Discovered</dt><dd>{discovery.discovered}</dd></div><div><dt>Created</dt><dd>{discovery.created}</dd></div><div><dt>Updated</dt><dd>{discovery.updated}</dd></div></dl></> : <p className="asm-discovery-context">No discovery result is available in this session. Recorded relationships appear below.</p>}</section><DiscoveryRelationships asset={asset} tenantQuery={tenantQuery} discoveryRun={discoveryRun} />{asset.type === 'IP_ADDRESS' && <PortServices asset={asset} tenantQuery={tenantQuery} canDiscover={canManage} />}<ThreatIntelligence asset={asset} tenantQuery={tenantQuery} /></> : <form className="asm-form" onSubmit={onSubmit}>
         <label>Name<input required maxLength={255} value={form.name} onChange={event => onChange('name', event.target.value)} /></label>
         <label>Type<select value={form.type} onChange={event => onChange('type', event.target.value)}>{assetTypes.map(value => <option key={value}>{value}</option>)}</select></label>
         <label className="asm-form-wide">Value<input required maxLength={1024} value={form.value} onChange={event => onChange('value', event.target.value)} /></label>
@@ -56,12 +62,13 @@ export function AssetPanel({ asset, form, mode, saving, onChange, onClose, onSub
 }
 
 function AssetDetails({ asset }: { readonly asset: Asset }) {
-  const fields: readonly [string, string][] = [
-    ['Name', asset.name], ['Value', asset.value], ['Type', asset.type], ['Owner', asset.owner || '-'], ['Description', asset.description || '-'],
-    ['First seen', formatDate(asset.firstSeenAt)], ['Last seen', formatDate(asset.lastSeenAt)],
-    ['Created', formatDate(asset.createdAt)], ['Updated', formatDate(asset.updatedAt)],
-  ];
-  return <dl className="asm-detail">{fields.slice(0, 3).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}<div><dt>Status</dt><dd><span className={`cti-status is-${asset.status.toLowerCase()}`}>{asset.status}</span></dd></div><div><dt>Criticality</dt><dd><span className={`ioc-severity severity-${asset.criticality.toLowerCase()}`}>{asset.criticality}</span></dd></div>{fields.slice(3).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>;
+  return <section className="asm-intelligence-section" aria-labelledby="asset-overview-title"><div className="asm-section-heading"><span className="source-eyebrow">01 / IDENTITY</span><h3 id="asset-overview-title">Asset overview</h3></div><dl className="asm-detail">
+    <div><dt>Type</dt><dd>{asset.type.replaceAll('_', ' ')}</dd></div><div><dt>Status</dt><dd><span className={`cti-status is-${asset.status.toLowerCase()}`}>{asset.status}</span></dd></div>
+    <div><dt>Criticality</dt><dd><span className={`ioc-severity severity-${asset.criticality.toLowerCase()}`}>{asset.criticality}</span></dd></div><div><dt>Owner</dt><dd>{asset.owner || 'Not assigned'}</dd></div>
+    <div className="asm-detail-wide"><dt>Description</dt><dd>{asset.description || 'No description recorded.'}</dd></div>
+    <div><dt>First seen</dt><dd>{formatDate(asset.firstSeenAt)}</dd></div><div><dt>Last seen</dt><dd>{formatDate(asset.lastSeenAt)}</dd></div>
+    <div><dt>Created</dt><dd>{formatDate(asset.createdAt)}</dd></div><div><dt>Updated</dt><dd>{formatDate(asset.updatedAt)}</dd></div>
+  </dl></section>;
 }
 
 export function formatDate(value: string | null): string {

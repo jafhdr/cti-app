@@ -52,7 +52,7 @@ export default function IndicatorsPage() {
     if (search.trim()) params.set('search', search.trim());
     Object.entries(filter).forEach(([key, value]) => value && params.set(key, value));
     const res = await fetch(`${API}/indicators?${params}`, { credentials: 'include', cache: 'no-store' });
-    if (res.status === 401) return router.replace('/');
+    if (res.status === 401) return router.replace('/login');
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.message || 'Gagal memuat indicators.');
     setItems(data.items || []);
@@ -69,7 +69,7 @@ export default function IndicatorsPage() {
     (async () => {
       try {
         const me = await fetch(`${API}/auth/me`, { credentials: 'include' });
-        if (!me.ok) return router.replace('/');
+        if (!me.ok) return router.replace('/login');
         const user: CurrentUser = await me.json();
         setCurrentUser(user);
         if (user.role === 'SUPER_ADMIN') {
@@ -85,7 +85,7 @@ export default function IndicatorsPage() {
 
   async function logout() {
     await fetch(`${API}/auth/logout`, { method: 'POST', credentials: 'include' });
-    router.replace('/');
+    router.replace('/login');
   }
 
   function setField(key: keyof typeof emptyForm, value: string) { setForm(current => ({ ...current, [key]: value })); }
@@ -118,7 +118,7 @@ export default function IndicatorsPage() {
     return (
       <div className="app">
         <aside className="sidebar"><div className="brand">CTI Platform</div></aside>
-        <section className="main"><div className="content" style={{ paddingTop: 60, textAlign: 'center', color: '#687386' }}>Memuat indicators…</div></section>
+        <section className="main"><div className="content" style={{ paddingTop: 60, textAlign: 'center', color: 'var(--soc-muted)' }}>Memuat indicators…</div></section>
       </div>
     );
   }
@@ -130,19 +130,21 @@ export default function IndicatorsPage() {
       <section className="main">
         <header className="topbar">
           <div style={{ fontWeight: 600 }}>Threat Intelligence / Indicators</div>
-          <span style={{ fontSize: 13, color: '#687386' }}>{currentUser?.email} · <strong>{currentUser?.role}</strong></span>
+          <span style={{ fontSize: 13, color: 'var(--soc-muted)' }}>{currentUser?.email} · <strong>{currentUser?.role}</strong></span>
         </header>
 
-        <main className="content">
+        <main className="content editorial-module">
           <nav className="ti-section-tabs" aria-label="Threat Intelligence"><Link href="/threat-intelligence">Overview</Link><Link href="/threat-intelligence/indicators">Indicators</Link><Link href="/threat-intelligence/hub">Intelligence Hub</Link></nav>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
+          <div className="ti-indicators-heading">
             <div>
-              <h1 style={{ margin: '0 0 6px' }}>Indicators / IOC</h1>
-              <p style={{ margin: 0, color: '#687386', fontSize: 15 }}>Kelola indikator ancaman untuk tenant Anda.</p>
+              <span className="source-eyebrow">INDICATORS</span><h1>Track known malicious infrastructure.</h1>
+              <p>Search, assess and enrich the indicators observed by your organization.</p>
             </div>
             {canManage && <Button view="action" size="l" onClick={openCreate}>+ Add Indicator</Button>}
           </div>
 
+          <div className="editorial-section-heading"><span className="source-eyebrow">INTELLIGENCE SUMMARY</span><h2>Current results</h2></div>
+          <section className="editorial-metrics" aria-label="Indicator summary"><div><span>Indicators shown</span><strong>{items.length}</strong></div><div><span>Critical</span><strong>{items.filter(item => item.severity === "CRITICAL").length}</strong></div><div><span>High</span><strong>{items.filter(item => item.severity === "HIGH").length}</strong></div><div><span>Active</span><strong>{items.filter(item => item.status === "ACTIVE").length}</strong></div></section>
           {error && <div className="error" style={{ marginBottom: 16 }}>{error}</div>}
           {success && <div className="success" style={{ marginBottom: 16 }}>{success}</div>}
 
@@ -168,15 +170,17 @@ export default function IndicatorsPage() {
             </Card>
           )}
 
-          <Card view="outlined" style={{ padding: 24 }}>
+          <div className="editorial-section-heading"><span className="source-eyebrow">SEARCH & FILTER</span><h2>Find an indicator</h2></div>
+          <Card view="outlined" className="ti-inventory" style={{ padding: 24 }}>
             <div className="ioc-filters">
-              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search value, source, tag" />
+              <input aria-label="Search indicators" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search value, source, tag" />
               <select value={filter.type} onChange={e => setFilter({ ...filter, type: e.target.value })}><option value="">All types</option><option value="DOMAIN">Domain</option><option value="IP_ADDRESS">IP</option><option value="URL">URL</option><option value="FILE_HASH">Hash</option><option value="EMAIL">Email</option></select>
               <select value={filter.severity} onChange={e => setFilter({ ...filter, severity: e.target.value })}><option value="">All severity</option><option value="LOW">Low</option><option value="MEDIUM">Medium</option><option value="HIGH">High</option><option value="CRITICAL">Critical</option></select>
               <select value={filter.status} onChange={e => setFilter({ ...filter, status: e.target.value })}><option value="">All status</option><option value="ACTIVE">Active</option><option value="INACTIVE">Inactive</option><option value="EXPIRED">Expired</option></select>
               <Button view="normal" onClick={() => loadIndicators()}>Apply</Button>
             </div>
-            <Table
+            <div className="editorial-section-heading"><span className="source-eyebrow">INDICATOR INVENTORY</span><h2>Observed infrastructure</h2></div>
+            <div className="ti-indicator-table"><Table
               data={items}
               columns={[
                 { id: 'value', name: 'Indicator', template: (item: Indicator) => item.value },
@@ -189,7 +193,7 @@ export default function IndicatorsPage() {
                 { id: 'intelligenceEntity', name: 'Entitas CTI', template: (item: Indicator) => item.intelligenceEntity ? `${item.intelligenceEntity.name} (${item.intelligenceEntity.type})` : '-' },
                 { id: 'actions', name: 'Actions', template: (item: Indicator) => <div className="ioc-actions"><Button view="flat" size="s" onClick={() => setSelected(item)}>Detail</Button>{canManage && <><Button view="flat" size="s" onClick={() => openEdit(item)}>Edit</Button>{item.status === 'ACTIVE' && <Button view="flat-danger" size="s" onClick={() => deactivate(item)}>Deactivate</Button>}</>}</div> },
               ]}
-            />
+            /></div>
           </Card>
         </main>
       </section>

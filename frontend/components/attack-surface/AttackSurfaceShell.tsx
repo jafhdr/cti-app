@@ -32,7 +32,7 @@ export function AttackSurfaceShell({ children }: { readonly children: ReactNode 
     async function load(): Promise<void> {
       try {
         const response = await fetch(`${API}/auth/me`, { credentials: 'include', cache: 'no-store' });
-        if (response.status === 401) { router.replace('/'); return; }
+        if (response.status === 401) { router.replace('/login'); return; }
         if (!response.ok) throw new Error('Gagal memuat sesi pengguna.');
         const current: CurrentUser = await response.json();
         if (cancelled) return;
@@ -53,7 +53,7 @@ export function AttackSurfaceShell({ children }: { readonly children: ReactNode 
 
   async function logout(): Promise<void> {
     await fetch(`${API}/auth/logout`, { method: 'POST', credentials: 'include' });
-    router.replace('/');
+    router.replace('/login');
   }
 
   const hasAccess = user?.moduleAccess.some(module => module.accessible === true && module.moduleSlug === 'attack-surface-management');

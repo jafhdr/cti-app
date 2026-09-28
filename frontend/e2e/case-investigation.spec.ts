@@ -10,7 +10,7 @@ test('analyst adds an investigation note and evidence and sees timeline activity
     id: person.id,
     email: person.email,
     role: 'USER',
-    moduleAccess: [{ moduleId: 'case', moduleSlug: 'case-management', moduleName: 'Case Management', assigned: true, featureKeys: [] }],
+    moduleAccess: [{ moduleId: 'case', moduleSlug: 'case-management', moduleName: 'Case Management', assigned: true, accessible: true, featureKeys: [] }],
   } }));
 
   await page.route('http://localhost:3001/cases/case-1', async (route) => route.fulfill({ json: { id: 'case-1', caseNumber: 'CASE-2026-00001', title: 'Suspicious login', description: 'Investigate access', status: 'OPEN', priority: 'HIGH', severity: 'HIGH', creator: person, tenant: { id: 'tenant-1', name: 'Acme', slug: 'acme' }, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() } }));
@@ -63,4 +63,21 @@ test('analyst adds an investigation note and evidence and sees timeline activity
   await expect(page.getByRole('heading', { name: 'Evidence', exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.screenshot({ path: '../.omo/evidence/cases/investigation-mobile.png', fullPage: true });
+  const evidencePath = '../.omo/evidence/cases/phase2';
+  for (const theme of ['dark', 'light'] as const) {
+    await page.evaluate((value) => localStorage.setItem('cti-theme', value), theme);
+    for (const width of [1440, 768, 375]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.reload();
+      await expect(page.getByRole('heading', { name: 'Investigation', exact: true })).toBeVisible();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      await page.screenshot({ path: `${evidencePath}/case-phase2-${theme}-${width}.png`, fullPage: true });
+    }
+  }
+  for (const colorScheme of ['dark', 'light'] as const) {
+    await page.emulateMedia({ colorScheme });
+    await page.evaluate(() => localStorage.setItem('cti-theme', 'system'));
+    await page.reload();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', colorScheme);
+  }
 });

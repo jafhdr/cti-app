@@ -9,6 +9,9 @@ test('Module Management renders API features and a clear empty state', async ({ 
       id: 'asm', slug: 'attack-surface-management', name: 'Attack Surface Management',
       description: 'Kelola aset dan permukaan serangan.', category: 'APPSEC', isActive: true,
       tenantEnabled: true, access: { ADMIN: true, USER: true },
+      subscriptionIncluded: true, subscriptionActive: true, subscriptionSource: 'Team',
+      roleAccess: { ADMIN: true, USER: true },
+      policyAccess: { ADMIN: { accessible: true, reason: null }, USER: { accessible: true, reason: null } },
       features: [
         { id: 'feature-1', key: 'asset-management', name: 'Asset Management', description: 'Kelola aset.' },
         { id: 'feature-2', key: 'asset-discovery', name: 'Asset Discovery', description: 'Temukan aset.' },
@@ -18,6 +21,12 @@ test('Module Management renders API features and a clear empty state', async ({ 
       id: 'empty', slug: 'empty-module', name: 'Empty Module', description: 'Belum memiliki fitur.',
       category: 'PLATFORM', isActive: true, tenantEnabled: false,
       access: { ADMIN: false, USER: false }, features: [],
+      subscriptionIncluded: true, subscriptionActive: true, subscriptionSource: 'Team',
+      roleAccess: { ADMIN: false, USER: false },
+      policyAccess: {
+        ADMIN: { accessible: false, reason: 'Modul dinonaktifkan untuk tenant ini' },
+        USER: { accessible: false, reason: 'Modul dinonaktifkan untuk tenant ini' },
+      },
     },
   ] }));
 

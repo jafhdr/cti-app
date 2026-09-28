@@ -3,9 +3,9 @@ import type { Page } from '@playwright/test';
 
 const app = process.env.SIDEBAR_APP_URL || 'http://localhost:3000';
 const modules = [
-  { moduleId: 'intel', moduleSlug: 'threat-intelligence', moduleName: 'Intel dari katalog', assigned: true, featureKeys: ['read'] },
-  { moduleId: 'custom', moduleSlug: 'custom-module', moduleName: 'Modul katalog tambahan', assigned: true, featureKeys: [] },
-  { moduleId: 'appsec', moduleSlug: 'appsec-posture', moduleName: 'AppSec Posture', assigned: false, featureKeys: [] },
+  { moduleId: 'intel', moduleSlug: 'threat-intelligence', moduleName: 'Intel dari katalog', assigned: true, accessible: true, featureKeys: ['read'] },
+  { moduleId: 'custom', moduleSlug: 'custom-module', moduleName: 'Modul katalog tambahan', assigned: true, accessible: true, featureKeys: [] },
+  { moduleId: 'appsec', moduleSlug: 'appsec-posture', moduleName: 'AppSec Posture', assigned: false, accessible: false, featureKeys: [] },
 ];
 
 async function session(page: Page, role: 'USER' | 'ADMIN' | 'SUPER_ADMIN', access = modules) {
@@ -15,8 +15,8 @@ async function session(page: Page, role: 'USER' | 'ADMIN' | 'SUPER_ADMIN', acces
 }
 
 for (const role of ['USER', 'ADMIN', 'SUPER_ADMIN'] as const) {
-  test(`${role} sees catalog names and only assigned modules`, async ({ page }) => {
-    await session(page, role);
+  test(`${role} sees catalog names and only accessible modules`, async ({ page }) => {
+    await session(page, role, role === 'SUPER_ADMIN' ? modules.map(module => ({ ...module, accessible: true })) : modules);
     await page.goto(`${app}/dashboard`);
     const nav = page.getByRole('navigation', { name: 'Navigasi utama' });
     await expect(nav.getByRole('link', { name: 'Dashboard', exact: true })).toBeVisible();
@@ -32,7 +32,7 @@ for (const role of ['USER', 'ADMIN', 'SUPER_ADMIN'] as const) {
 }
 
 test('unassigned user cannot open intelligence directly', async ({ page }) => {
-  await session(page, 'USER', modules.map(module => ({ ...module, assigned: false })));
+  await session(page, 'USER', modules.map(module => ({ ...module, assigned: false, accessible: false })));
   await page.goto(`${app}/intelligence`);
   await expect(page.getByRole('heading', { name: 'Akses modul dibatasi' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Kembali ke Dashboard', exact: true })).toBeVisible();
@@ -40,7 +40,7 @@ test('unassigned user cannot open intelligence directly', async ({ page }) => {
 });
 
 test('user with no assignment keeps only core navigation', async ({ page }) => {
-  await session(page, 'USER', modules.map(module => ({ ...module, assigned: false })));
+  await session(page, 'USER', modules.map(module => ({ ...module, assigned: false, accessible: false })));
   await page.goto(`${app}/dashboard`);
   const nav = page.getByRole('navigation', { name: 'Navigasi utama' });
   await expect(nav.getByRole('link')).toHaveText(['Dashboard']);
@@ -48,7 +48,7 @@ test('user with no assignment keeps only core navigation', async ({ page }) => {
 });
 
 test('user with all assignments sees every catalog module', async ({ page }) => {
-  await session(page, 'USER', modules.map(module => ({ ...module, assigned: true })));
+  await session(page, 'USER', modules.map(module => ({ ...module, assigned: true, accessible: true })));
   await page.goto(`${app}/dashboard`);
   const nav = page.getByRole('navigation', { name: 'Navigasi utama' });
   await expect(nav.getByText('AppSec Posture', { exact: true })).toBeVisible();
@@ -58,7 +58,7 @@ test('user with all assignments sees every catalog module', async ({ page }) => 
 });
 
 test('super admin sees Attack Surface Management without tenant assignments', async ({ page }) => {
-  await session(page, 'SUPER_ADMIN', []);
+  await session(page, 'SUPER_ADMIN', [{ moduleId: 'asm', moduleSlug: 'attack-surface-management', moduleName: 'Attack Surface Management', assigned: false, accessible: true, featureKeys: [] }]);
   await page.goto(`${app}/dashboard`);
   const nav = page.getByRole('navigation', { name: 'Navigasi utama' });
 
@@ -71,7 +71,7 @@ test('API subscription denial blocks assigned user without rendering workspace',
   await page.route('**/intelligence/overview', route => route.fulfill({ status: 403, json: { message: 'Subscription tenant tidak aktif' } }));
   await page.goto(`${app}/intelligence`);
   await expect(page.getByRole('heading', { name: 'Akses modul dibatasi' })).toBeVisible();
-  await expect(page.getByRole('main').getByRole('alert')).toContainText('subscription');
+  await expect(page.getByRole('main').getByRole('alert')).toContainText(/subscription/i);
   await expect(page.getByRole('heading', { name: 'Entities', exact: true })).toHaveCount(0);
   await page.getByRole('link', { name: 'Kembali ke Dashboard', exact: true }).click();
   await expect(page).toHaveURL(`${app}/dashboard`);
@@ -83,5 +83,5 @@ test('failed access response does not expose module navigation', async ({ page }
   await page.goto(`${app}/intelligence`);
   const nav = page.getByRole('navigation', { name: 'Navigasi utama' });
   await expect(nav.getByRole('link')).toHaveText(['Dashboard']);
-  await expect(nav.getByRole('status')).toContainText('Gagal memuat akses modul.');
+  await expect(page.getByRole('main').getByRole('alert')).toContainText('Gagal memuat sesi pengguna.');
 });

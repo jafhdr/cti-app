@@ -19,16 +19,15 @@ import {
   KeyRound,
   LayoutDashboard,
   LogOut,
-  Moon,
   Radar,
   ShieldAlert,
-  Sun,
   Users,
   type LucideIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { applyTheme, type ThemePreference } from '../ThemeProvider';
 import type { ModuleAccess } from '../../lib/module-access';
 
 type Role = 'SUPER_ADMIN' | 'ADMIN' | 'USER';
@@ -84,7 +83,8 @@ export default function Sidebar({
   moduleAccess = [],
 }: SidebarProps) {
   const pathname = usePathname();
-  const [darkMode, setDarkMode] = useState(false);
+  const [theme, setTheme] = useState<ThemePreference>('dark');
+  const [mobileOpen, setMobileOpen] = useState(false);
   const activeModuleId = pathname.startsWith('/threat-intelligence') || pathname === '/indicators' || pathname.startsWith('/intelligence')
     ? 'threat-intelligence'
     : pathname === '/cases' || pathname.startsWith('/cases/')
@@ -98,12 +98,7 @@ export default function Sidebar({
 
   useEffect(() => {
     const savedTheme = window.localStorage.getItem('cti-theme');
-    const shouldUseDarkMode =
-      savedTheme === 'dark' ||
-      (savedTheme === null &&
-        window.matchMedia('(prefers-color-scheme: dark)').matches);
-    document.documentElement.classList.toggle('dark', shouldUseDarkMode);
-    setDarkMode(shouldUseDarkMode);
+    setTheme(savedTheme === 'light' || savedTheme === 'system' ? savedTheme : 'dark');
   }, []);
 
   useEffect(() => {
@@ -111,11 +106,10 @@ export default function Sidebar({
     setExpandedModules(current => current[activeModuleId] ? current : { ...current, [activeModuleId]: true });
   }, [activeModuleId]);
 
-  function toggleTheme() {
-    const nextDarkMode = !darkMode;
-    document.documentElement.classList.toggle('dark', nextDarkMode);
-    window.localStorage.setItem('cti-theme', nextDarkMode ? 'dark' : 'light');
-    setDarkMode(nextDarkMode);
+  function changeTheme(value: ThemePreference) {
+    window.localStorage.setItem('cti-theme', value);
+    applyTheme(value);
+    setTheme(value);
   }
 
   const canAccessThreatIntelligence = moduleAccess.some(module => module.accessible === true && module.moduleSlug === 'threat-intelligence');
@@ -138,6 +132,7 @@ export default function Sidebar({
 
   return (
     <aside className="sidebar">
+      <button type="button" className="sidebar-mobile-toggle" aria-expanded={mobileOpen} aria-controls="sidebar-navigation" onClick={() => setMobileOpen(open => !open)}>Menu navigasi</button>
       <Link
         href="/dashboard"
         className="brand"
@@ -147,26 +142,16 @@ export default function Sidebar({
         <span>CTI Platform</span>
       </Link>
 
-      <nav className="sidebar-navigation" aria-label="Navigasi utama">
+      <nav id="sidebar-navigation" className={`sidebar-navigation${mobileOpen ? ' is-open' : ''}`} aria-label="Navigasi utama" onClick={() => setMobileOpen(false)}>
         <NavigationLink item={dashboardItem} pathname={pathname} />
         {modules.map(module => <ModuleSection expanded={expandedModules[module.id] ?? false} key={module.id} module={module} pathname={pathname} onToggle={toggleModule} />)}
       </nav>
 
       <div className="sidebar-footer">
-        <button
-          className="theme-toggle"
-          onClick={toggleTheme}
-          aria-label={
-            darkMode ? 'Gunakan mode terang' : 'Gunakan mode gelap'
-          }
-        >
-          {darkMode ? (
-            <Sun size={16} aria-hidden="true" />
-          ) : (
-            <Moon size={16} aria-hidden="true" />
-          )}
-          <span>{darkMode ? 'Mode terang' : 'Mode gelap'}</span>
-        </button>
+        <label className="theme-select-label" htmlFor="cti-theme">Tema</label>
+        <select id="cti-theme" className="theme-select" value={theme} onChange={event => changeTheme(event.target.value as ThemePreference)}>
+          <option value="dark">Gelap</option><option value="light">Terang</option><option value="system">Sistem</option>
+        </select>
         {onLogout && (
           <button className="logout" onClick={onLogout}>
             <LogOut size={16} aria-hidden="true" />

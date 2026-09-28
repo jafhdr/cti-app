@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Table } from "@/components/ui/table";
@@ -30,6 +31,7 @@ type Relations = {
   readonly message?: string;
 };
 export function CampaignsWorkspace({ role }: { readonly role: Role }) {
+  const campaignId = useSearchParams().get("campaignId");
   const { tenantId, ready } = useThreatIntelligenceTenant();
   const [items, setItems] = useState<readonly Campaign[]>([]);
   const [actors, setActors] = useState<readonly RelationActor[]>([]);
@@ -146,11 +148,11 @@ export function CampaignsWorkspace({ role }: { readonly role: Role }) {
   ) {
     setForm((current) => ({ ...current, [key]: value }));
   }
-  async function detail(campaign: Campaign) {
+  async function detail(campaignIdentifier: string) {
     setError("");
     try {
       const response = await fetch(
-        `${API}/intelligence/campaigns/${campaign.id}${tenantQuery}`,
+        `${API}/intelligence/campaigns/${campaignIdentifier}${tenantQuery}`,
         { credentials: "include", cache: "no-store" },
       );
       const body: Campaign & { readonly message?: string } =
@@ -167,6 +169,10 @@ export function CampaignsWorkspace({ role }: { readonly role: Role }) {
       );
     }
   }
+  useEffect(() => {
+    if (!campaignId || (role === "SUPER_ADMIN" && (!ready || !tenantId))) return;
+    void detail(campaignId);
+  }, [campaignId, ready, role, tenantId]);
   async function submit(event: FormEvent) {
     event.preventDefault();
     setSaving(true);
@@ -222,11 +228,11 @@ export function CampaignsWorkspace({ role }: { readonly role: Role }) {
     await load();
   }
   return (
-    <>
-      <div className="source-heading">
+    <div className="ti-phase2a">
+      <div className="source-heading ti-workspace-heading">
         <div>
-          <span className="source-eyebrow">CAMPAIGN REGISTRY</span>
-          <h1>Threat Campaigns</h1>
+          <span className="source-eyebrow">CAMPAIGNS / INTELLIGENCE WORKSPACE</span>
+          <h1>Track coordinated threat activity.</h1>
           <p>
             Track operations and database-backed relationships to threat actors
             and indicators.
@@ -238,6 +244,13 @@ export function CampaignsWorkspace({ role }: { readonly role: Role }) {
           </Button>
         )}
       </div>
+      <div className="editorial-metrics" aria-label="Campaign summary">
+        <div><span>Total campaigns</span><strong>{loading ? '—' : total}</strong></div>
+        <div><span>Active · current page</span><strong>{loading ? '—' : items.filter(item => item.status === 'ACTIVE').length}</strong></div>
+        <div><span>Critical · current page</span><strong>{loading ? '—' : items.filter(item => item.severity === 'CRITICAL').length}</strong></div>
+        <div><span>Actors · current page</span><strong>{loading ? '—' : new Set(items.map(item => item.threatActorId)).size}</strong></div>
+      </div>
+      <div className="editorial-section-heading"><span className="source-eyebrow">CAMPAIGN DIRECTORY</span><h2>Operations in view</h2><p>Filter campaigns by status, severity, and actor.</p></div>
       {error && (
         <div className="error" role="alert">
           {error}{" "}
@@ -355,7 +368,7 @@ export function CampaignsWorkspace({ role }: { readonly role: Role }) {
                 template: (item: Campaign) => (
                   <button
                     className="source-name"
-                    onClick={() => void detail(item)}
+                    onClick={() => void detail(item.id)}
                   >
                     {item.name}
                   </button>
@@ -410,7 +423,7 @@ export function CampaignsWorkspace({ role }: { readonly role: Role }) {
                     <Button
                       view="flat"
                       size="s"
-                      onClick={() => void detail(item)}
+                      onClick={() => void detail(item.id)}
                     >
                       Detail
                     </Button>
@@ -462,6 +475,6 @@ export function CampaignsWorkspace({ role }: { readonly role: Role }) {
           </div>
         </div>
       </Card>
-    </>
+    </div>
   );
 }

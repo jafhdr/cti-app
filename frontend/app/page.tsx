@@ -1,10 +1,46 @@
-import { Suspense } from 'react';
-import LoginForm from './login-form';
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import { Activity, ArrowRight, Crosshair, GitBranch, LockKeyhole, Radar, ShieldCheck } from 'lucide-react';
+import './landing.css';
 
-export default function Page() {
-  return (
-    <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>Memuat…</div>}>
-      <LoginForm />
-    </Suspense>
-  );
+export const metadata: Metadata = {
+  title: 'CTI App | Cyber Threat Intelligence Platform',
+  description: 'Bring threat intelligence, attack surface visibility, and investigations into one security workspace.',
+  openGraph: { title: 'CTI App | Cyber Threat Intelligence Platform', description: 'See the threat landscape clearly. Investigate with context.', type: 'website' },
+};
+
+const capabilities = [
+  { icon: Crosshair, title: 'Threat intelligence', description: 'Connect indicators, actors, campaigns, reports, and intelligence sources.', target: '#intelligence' },
+  { icon: Radar, title: 'Attack surface', description: 'Trace discovered assets through domains, DNS, addresses, ports, and services.', target: '#attack-surface' },
+  { icon: GitBranch, title: 'Case management', description: 'Give investigations ownership, related intelligence, notes, and evidence.', target: '#cases' },
+  { icon: LockKeyhole, title: 'Administration', description: 'Manage tenants, users, subscriptions, and module access.', target: '#security' },
+] as const;
+
+function Preview() {
+  return <div className="lp-preview" aria-label="Illustrative CTI workspace preview">
+    <div className="lp-preview-rail"><Activity size={20} /><span /><span /><span /><span /></div>
+    <div className="lp-preview-content"><div className="lp-preview-top">CTI APP <span>INTELLIGENCE WORKSPACE</span></div><h3>Threat landscape <span>↗</span></h3>
+      <div className="lp-preview-stats"><div><small>INTELLIGENCE</small><strong>Indicators</strong></div><div><small>ATTACK SURFACE</small><strong>Assets</strong></div><div><small>INVESTIGATION</small><strong>Cases</strong></div></div>
+      <div className="lp-preview-chart"><div>Signal activity <span>Workspace overview</span></div><div className="lp-bars">{[28,42,35,61,48,75,54,68,91,71,83,95,72,86,66,76,58,70,94,77].map((height, index) => <i key={index} style={{ height: `${height}%` }} />)}</div></div>
+      <div className="lp-preview-foot"><span>● Indicator enrichment</span><span>● Asset discovery</span><span>● Case activity</span></div>
+    </div>
+  </div>;
+}
+
+export default function HomePage() {
+  return <div className="lp"><header className="lp-header"><nav className="lp-container lp-nav" aria-label="Main navigation"><Link href="/" className="lp-brand"><Activity size={22} /> CTI<span>APP</span></Link><div className="lp-links"><a href="#platform">Platform</a><a href="#capabilities">Capabilities</a><a href="#security">Security</a><a href="#pricing">Pricing</a><a href="#about">About</a></div><div className="lp-nav-actions"><Link href="/login">Sign in</Link><Link className="lp-button lp-button-small" href="/signup">Get started <ArrowRight size={15} /></Link></div><details className="lp-menu"><summary>Menu ☰</summary><div><a href="#platform">Platform</a><a href="#capabilities">Capabilities</a><a href="#security">Security</a><a href="#pricing">Pricing</a><a href="#about">About</a><Link href="/login">Sign in</Link><Link href="/signup">Get started</Link></div></details></nav></header>
+    <main><section className="lp-hero lp-container" id="platform"><div className="lp-hero-copy"><p className="lp-kicker">● &nbsp; A CLEARER VIEW OF YOUR THREAT LANDSCAPE</p><h1>Know the threat.<br /><em>See the exposure.</em><br />Move with clarity.</h1><p>Threat intelligence, attack surface visibility, and investigation context brought together for security teams that need the whole picture.</p><div className="lp-actions"><a href="#capabilities" className="lp-button">Explore platform <ArrowRight size={17} /></a><Link href="/signup" className="lp-button lp-button-outline">Get started</Link></div><small>Built for focused security operations</small></div><div className="lp-hero-art"><div className="lp-orbit" /><Preview /><div className="lp-floating">● &nbsp; INTELLIGENCE CONNECTED</div></div></section>
+    <div className="lp-strip"><div className="lp-container"><span>ONE CONNECTED WORKSPACE</span><b>Threat intelligence</b><b>Attack surface</b><b>Investigations</b><b>Access control</b></div></div>
+    <section className="lp-section lp-container" id="capabilities"><div className="lp-heading"><p className="lp-kicker">THE PLATFORM</p><h2>Security context, <em>without the silos.</em></h2><p>Move from a signal to its surrounding context through the capabilities built into CTI App.</p></div><div className="lp-grid">{capabilities.map(({icon: Icon,title,description,target},index) => <a className="lp-card" href={target} key={title}><span>0{index+1}</span><Icon size={26} strokeWidth={1.6} /><h3>{title}</h3><p>{description}</p><ArrowRight className="lp-card-arrow" size={19} /></a>)}</div></section>
+    <section className="lp-feature lp-container" id="intelligence"><div><p className="lp-kicker">01 / THREAT INTELLIGENCE</p><h2>From isolated indicators to <em>informed decisions.</em></h2><p>Investigate indicators alongside actors, campaigns, feeds, and reports that give them meaning. Keep enrichment close to the work.</p><a href="#preview">See the workspace <ArrowRight size={16} /></a></div><div className="lp-panel"><div className="lp-panel-title">INDICATOR CONTEXT <span>INTELLIGENCE</span></div><div className="lp-panel-row"><i /> Indicator <span>Enrichment</span><b>CONTEXT</b></div><div className="lp-panel-row"><i /> Threat actor <span>Relationships</span><b>LINKED</b></div><div className="lp-panel-row"><i /> Campaign <span>Attribution</span><b>REVIEW</b></div><small>Indicators → Enrichment → Investigation</small></div></section>
+    <section className="lp-feature lp-feature-reverse lp-container" id="attack-surface"><div><p className="lp-kicker">02 / ATTACK SURFACE</p><h2>Know what is <em>exposed.</em></h2><p>Discover assets and follow relationships between domains, subdomains, IP addresses, ports, and services.</p><a href="#preview">Explore the platform <ArrowRight size={16} /></a></div><div className="lp-panel lp-asset"><div className="lp-panel-title">ASSET RELATIONSHIPS <span>DISCOVERY</span></div><div><span>DOMAIN</span><span>SUBDOMAIN</span><span>IP ADDRESS</span><span>PORT &amp; SERVICE</span></div><small>Connected discovery · Visible relationships</small></div></section>
+    <section className="lp-feature lp-container" id="cases"><div><p className="lp-kicker">03 / CASE MANAGEMENT</p><h2>Give every investigation <em>the full context.</em></h2><p>Bring priority, status, assignment, related indicators, actors, campaigns, notes, and evidence into a single case workspace.</p><a href="#preview">See the workspace <ArrowRight size={16} /></a></div><div className="lp-panel lp-case"><div className="lp-panel-title">INVESTIGATION WORKSPACE <span>IN PROGRESS</span></div><h3>Case context</h3><div>Priority <b>High</b></div><div>Owner <b>Assigned analyst</b></div><div>Related intelligence <b>Indicators · Actors</b></div></div></section>
+    <section className="lp-process"><div className="lp-container"><p className="lp-kicker">A CONNECTED WORKFLOW</p><h2>From discovery to <em>direction.</em></h2><div>{[['01','Collect intelligence'],['02','Discover exposure'],['03','Investigate threats'],['04','Keep visibility']].map(([number,title]) => <article key={number}><span>{number}</span><h3>{title}</h3></article>)}</div></div></section>
+    <section className="lp-section lp-container lp-platform" id="preview"><div className="lp-heading"><p className="lp-kicker">INSIDE THE PLATFORM</p><h2>Built for the work <em>behind the insight.</em></h2><p>A unified visual language connects the public story to the operational workspace.</p></div><Preview /><small>Illustrative interface preview. Live workspace data appears after sign in.</small></section>
+    <section className="lp-security lp-container" id="security"><div><p className="lp-kicker">CONTROL WHERE IT MATTERS</p><h2>Designed for teams. <em>Scoped for access.</em></h2><p>CTI App supports tenant-aware workspaces, role-based controls, and module access managed within the application.</p></div><div><span><ShieldCheck /> Tenant-aware workspace</span><span><LockKeyhole /> Role and module access</span><span><Activity /> Activity and audit views</span></div></section>
+    <section className="lp-pricing lp-container" id="pricing"><p className="lp-kicker">SUBSCRIPTION</p><h2>Access shaped around <em>your workspace.</em></h2><p>Plans and available modules are managed in the application. Sign in to see the subscription assigned to your tenant.</p><Link href="/login" className="lp-button lp-button-outline">View your subscription <ArrowRight size={16} /></Link></section>
+    <section className="lp-faq lp-container" id="about"><div><p className="lp-kicker">FAQ</p><h2>A little more <em>clarity.</em></h2></div><div><details><summary>What is CTI App?</summary><p>A workspace for threat intelligence, attack surface visibility, investigations, and security administration.</p></details><details><summary>What can I investigate?</summary><p>Available modules include indicators, actors, campaigns, reports, discovered assets, and cases. Access depends on your organization's configuration.</p></details><details><summary>How does access work?</summary><p>Administrators manage tenant, role, and module access. Navigation reflects effective module access.</p></details><details><summary>Where can I see my plan?</summary><p>Authenticated users can view their tenant subscription in the application.</p></details></div></section>
+    <section className="lp-cta lp-container"><p className="lp-kicker">START WITH VISIBILITY</p><h2>See the landscape.<br /><em>Find your next move.</em></h2><p>Bring intelligence, exposure, and investigation into focus.</p><div className="lp-actions"><Link className="lp-button" href="/signup">Get started <ArrowRight size={17} /></Link><a className="lp-button lp-button-outline" href="#platform">Explore platform</a></div></section></main>
+    <footer className="lp-footer"><div className="lp-container"><div><strong>CTI APP</strong><p>Clarity across your threat landscape.</p></div><nav aria-label="Footer navigation"><a href="#capabilities">Platform</a><a href="#intelligence">Intelligence</a><a href="#attack-surface">Attack surface</a><a href="#cases">Cases</a><a href="#security">Security</a><a href="#pricing">Pricing</a><Link href="/login">Sign in</Link></nav><small>© {new Date().getFullYear()} CTI App</small></div></footer>
+  </div>;
 }

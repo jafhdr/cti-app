@@ -11,7 +11,7 @@ test('admin opens a case, searches, links, and removes an existing campaign', as
   const initialListGate = new Promise<void>((resolve) => { releaseInitialList = resolve; });
   let initialListPending = true;
 
-  await page.route('**/auth/me', async (route) => route.fulfill({ json: { id: person.id, email: person.email, role: 'ADMIN', moduleAccess: [{ moduleId: 'case', moduleSlug: 'case-management', moduleName: 'Case Management', assigned: true, featureKeys: [] }] } }));
+  await page.route('**/auth/me', async (route) => route.fulfill({ json: { id: person.id, email: person.email, role: 'ADMIN', moduleAccess: [{ moduleId: 'case', moduleSlug: 'case-management', moduleName: 'Case Management', assigned: true, accessible: true, featureKeys: [] }] } }));
   await page.route('http://localhost:3001/cases/case-1', async (route) => route.fulfill({ json: { id: 'case-1', caseNumber: 'CASE-2026-00001', title: 'Suspicious login', status: 'OPEN', priority: 'HIGH', severity: 'HIGH', creator: person, tenant: { id: 'tenant-1', name: 'Acme', slug: 'acme' }, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() } }));
   await page.route('http://localhost:3001/cases/case-1/campaigns', async (route) => {
     if (route.request().method() === 'POST') { linked = [available]; await route.fulfill({ status: 201, json: available }); return; }

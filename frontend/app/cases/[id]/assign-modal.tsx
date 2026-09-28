@@ -95,10 +95,11 @@ export default function AssignModal({ caseId, currentAssigneeId, onClose, onSucc
         ) : (
           <>
             <div className="mb-6">
-              <label className="mb-2 block text-sm font-medium">
+              <label htmlFor="case-assignee" className="mb-2 block text-sm font-medium">
                 Select User
               </label>
               <select
+                id="case-assignee"
                 value={selectedUserId}
                 onChange={(e) => setSelectedUserId(e.target.value)}
                 className="w-full px-3 py-2"

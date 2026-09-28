@@ -8,7 +8,7 @@ import { RelatedCases } from './RelatedCases';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-type IndicatorSummary = { readonly id: string; readonly value: string; readonly type: string };
+type IndicatorSummary = { readonly id: string; readonly value: string; readonly type: string; readonly severity?: string; readonly confidence?: number; readonly source?: string | null; readonly status?: string; readonly description?: string | null; readonly tags?: readonly string[]; readonly expiresAt?: string | null };
 type Enrichment = {
   readonly id: string;
   readonly provider: string;
@@ -29,6 +29,7 @@ export function IndicatorEnrichmentPanel({ indicator, canManage, canAccessCases,
   const [enriching, setEnriching] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const virusTotalAvailable = indicator.type !== 'EMAIL';
 
   async function load(): Promise<void> {
     setLoading(true);
@@ -72,17 +73,19 @@ export function IndicatorEnrichmentPanel({ indicator, canManage, canAccessCases,
 
   return <Card view="outlined" className="source-panel indicator-enrichment-panel" role="region" aria-labelledby="indicator-enrichment-title">
     <div className="source-panel-heading">
-      <div><span className="source-eyebrow">INDICATOR CONTEXT</span><h2 id="indicator-enrichment-title">{indicator.value}</h2><span className="indicator-enrichment-type">{indicator.type}</span></div>
-      <div className="ioc-actions">{canManage && <Button view="action" disabled={enriching} onClick={() => void enrich()}>{enriching ? 'Enriching...' : 'Enrich with VirusTotal'}</Button>}<Button view="flat" onClick={onClose}>Close</Button></div>
+      <div><span className="source-eyebrow">INDICATOR INTELLIGENCE</span><h2 id="indicator-enrichment-title">{indicator.value}</h2><div className="ti-indicator-badges"><span>{indicator.type.replaceAll('_', ' ')}</span>{indicator.severity && <span>{indicator.severity} risk</span>}{indicator.confidence !== undefined && <span>{indicator.confidence}% confidence</span>}{indicator.status && <span>{indicator.status}</span>}</div></div>
+      <div className="ioc-actions">{canManage && virusTotalAvailable && <Button view="action" disabled={enriching} onClick={() => void enrich()}>{enriching ? 'Enriching...' : 'Enrich with VirusTotal'}</Button>}<Button view="flat" onClick={onClose}>Close</Button></div>
     </div>
     {error && <div className="error" role="alert">{error}</div>}
     {notice && <div className="success" role="status">{notice}</div>}
-    {canManage && <ThreatActorDiscoveryPanel indicatorId={indicator.id} />}
-    {canAccessCases && <RelatedCases indicatorId={indicator.id} canMutate={canManage} />}
-    {loading ? <div className="source-state" aria-live="polite">Loading enrichment history...</div> : items.length === 0 ? <div className="source-state"><strong>No enrichment yet</strong><span>{canManage ? 'Run enrichment to collect provider context.' : 'An administrator has not enriched this indicator yet.'}</span></div> : <div className="indicator-enrichment-history">{items.map(item => <article key={item.id} className={`indicator-enrichment-entry is-${item.status.toLowerCase()}`}>
+    <section className="ti-detail-section"><span className="source-eyebrow">OVERVIEW</span><h3>Indicator metadata</h3><dl className="ti-indicator-meta"><div><dt>Source</dt><dd>{indicator.source || 'Not provided'}</dd></div><div><dt>Description</dt><dd>{indicator.description || 'No description'}</dd></div><div><dt>Tags</dt><dd>{indicator.tags?.join(', ') || 'None'}</dd></div><div><dt>Expires</dt><dd>{indicator.expiresAt ? new Date(indicator.expiresAt).toLocaleDateString('id-ID') : 'Not set'}</dd></div></dl></section>
+    <section className="ti-detail-section"><span className="source-eyebrow">ENRICHMENT</span><h3>Provider results</h3>
+    {!virusTotalAvailable && <div className="source-state"><strong>VirusTotal not available</strong><span>This provider does not support email indicators.</span></div>}
+    {loading ? <div className="source-state" aria-live="polite">Loading enrichment history...</div> : items.length === 0 ? <div className="source-state"><strong>No enrichment yet</strong><span>{canManage && virusTotalAvailable ? 'Run enrichment to collect provider context.' : 'No provider result is available for this indicator.'}</span></div> : <div className="indicator-enrichment-history">{items.map(item => <article key={item.id} className={`indicator-enrichment-entry is-${item.status.toLowerCase()}`}>
       <header><strong>{item.provider}</strong><span className={`cti-status ${item.status === 'SUCCESS' ? 'is-active' : 'is-inactive'}`}>{item.status}</span><time dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleString('id-ID')}</time></header>
       {item.error ? <p className="indicator-enrichment-error">{item.error}</p> : item.provider === 'VIRUSTOTAL' ? <VirusTotalSummary data={item.data} /> : <pre>{JSON.stringify(item.data, null, 2)}</pre>}
-    </article>)}</div>}
+    </article>)}</div>}</section>
+    <section className="ti-detail-section"><span className="source-eyebrow">THREAT CONTEXT</span><h3>Related intelligence</h3>{canManage && <ThreatActorDiscoveryPanel indicatorId={indicator.id} />}{canAccessCases && <RelatedCases indicatorId={indicator.id} canMutate={canManage} />}{!canManage && !canAccessCases && <p>No related intelligence available.</p>}</section>
   </Card>;
 }
 

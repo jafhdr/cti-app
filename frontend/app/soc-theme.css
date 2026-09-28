@@ -261,3 +261,70 @@ dialog::backdrop { background:rgba(0,0,0,.72); backdrop-filter:blur(3px); }
   .activity-row>span:last-child { white-space:normal; font-size:10px!important; }
 }
 @media (prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto!important; animation-duration:.01ms!important; animation-iteration-count:1!important; transition-duration:.01ms!important; } }
+
+:root {
+  --soc-canvas:#090d1b; --soc-nav:#0d1425; --soc-surface:#151e32;
+  --soc-elevated:#1d2940; --soc-hover:#202b42; --soc-border:#303c58;
+  --soc-border-muted:#253149; --soc-ink:#f7f8ff; --soc-body:#cbd4e7;
+  --soc-muted:#9ba8c1; --soc-blue:#a99aff; --soc-blue-strong:#8872f3;
+  --soc-blue-tint:rgba(137,115,249,.15); --soc-violet:#a99aff;
+  --soc-focus:rgba(169,154,255,.3);
+}
+.app,.cti-layout,.module-app{background:var(--soc-canvas)}
+.sidebar,.cti-sidebar{background:var(--soc-nav);border-color:var(--soc-border-muted)}
+.brand,.cti-logo{font-family:Inter,Arial,sans-serif;font-weight:800;font-size:16px;letter-spacing:-.05em}
+.brand::after{content:none}
+.sidebar-link,.nav-item,.cti-menu-item{border-radius:9px;font-family:Inter,Arial,sans-serif;font-size:12px;min-height:37px}
+.sidebar-group-label{font-size:10px;letter-spacing:.12em}
+.topbar,.cti-header,.module-topbar{background:var(--soc-nav);border-color:var(--soc-border-muted)}
+.content,.cti-content,.module-content{max-width:1600px;width:100%;margin-inline:auto}
+.content h1,.cti-content h1,.module-content h1{color:var(--soc-ink);letter-spacing:-.045em}
+.card,.cti-card,.module-card{background:var(--soc-surface);border-color:var(--soc-border);border-radius:14px;box-shadow:0 14px 32px rgba(0,0,0,.12)}
+.metric{color:var(--soc-ink);letter-spacing:-.055em}
+.auth-page{background:radial-gradient(circle at 70% 15%,rgba(112,91,204,.22),transparent 40%),var(--soc-canvas)}
+.auth-card{background:var(--soc-surface);border-color:var(--soc-border);box-shadow:0 30px 70px rgba(0,0,0,.32)}
+.auth-card .muted,.auth-card .auth-footer,.auth-card .security-note{color:var(--soc-muted)}
+.auth-card input{background:var(--soc-nav);border-color:var(--soc-border);color:var(--soc-ink)}
+.auth-card .primary{background:linear-gradient(135deg,#8973f9,#7157da);color:#fff;min-height:45px}
+.auth-card a,.auth-card .password-toggle{color:#b9adff}
+@media(max-width:900px){.sidebar,.cti-sidebar{display:flex}.sidebar-link,.nav-item,.cti-menu-item{font-size:11px}}
+
+html.light { color-scheme:light; --soc-canvas:#f5f7fc;--soc-nav:#fff;--soc-surface:#fff;--soc-elevated:#eaf0fb;--soc-hover:#eef2fa;--soc-border:#d6deed;--soc-border-muted:#e4e9f2;--soc-ink:#16233e;--soc-body:#334461;--soc-muted:#5c6c87;--soc-blue:#5b46cd;--soc-blue-strong:#654ed8;--soc-blue-tint:rgba(101,78,216,.1);--soc-violet:#654ed8;--soc-green:#187a53;--soc-yellow:#925d08;--soc-red:#be3948;--soc-focus:rgba(101,78,216,.24);--soc-banner-global:linear-gradient(135deg,#ecebff,#f5f7fc);--soc-banner-admin:linear-gradient(135deg,#e8edff,#f6f8ff);--soc-banner-user:linear-gradient(135deg,#e5f7f1,#f7fbff) }
+html.light body,html.light .lp { background:var(--soc-canvas);color:var(--soc-body) }
+.sidebar-mobile-toggle { display:none }
+.sidebar-module-toggle { width:100%;display:flex;align-items:center;justify-content:space-between;padding:10px;border:0;border-radius:9px;background:transparent;color:var(--soc-muted);cursor:pointer;text-align:left;font-weight:700 }
+.sidebar-module.active .sidebar-module-toggle,.sidebar-module-toggle:hover { background:var(--soc-hover);color:var(--soc-ink) }
+.sidebar-submenu { display:grid;gap:3px;padding:3px 0 5px 8px }
+.sidebar-empty-submenu { padding:8px;color:var(--soc-muted) }
+.theme-select-label { color:var(--soc-muted);font-size:11px }
+.theme-select { width:100%;min-height:38px }
+.sidebar-link.active { border-radius:10px }
+.command-overview { display:grid;gap:16px;margin:0 0 26px }
+.command-hero { padding:30px clamp(20px,4vw,48px);border:1px solid var(--soc-border);border-radius:20px;background:radial-gradient(circle at 85% 15%,var(--soc-blue-tint),transparent 42%),var(--soc-surface) }
+.command-eyebrow { color:var(--soc-blue);font-size:11px;font-weight:800;letter-spacing:.13em }
+.command-hero h2 { margin:15px 0;font-size:clamp(30px,4vw,54px);line-height:1.05;letter-spacing:-.055em }
+.command-hero h2 span { color:var(--soc-blue) }
+.command-hero p { margin:0;color:var(--soc-muted);font-size:14px }
+.command-kpis { display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px }
+.command-kpis .card { min-width:0;overflow-wrap:anywhere }
+.command-kpis .metric { font-size:clamp(16px,2vw,27px) }
+.command-detail-grid { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px }
+.command-detail-grid h3 { margin:0 0 14px;font-size:16px }
+.command-risk { display:flex;justify-content:space-between;gap:12px;padding:14px;border-radius:10px;background:var(--soc-nav);color:var(--soc-red) }
+.command-actions { display:flex;flex-wrap:wrap;gap:8px }
+@media(max-width:1100px) { .command-kpis { grid-template-columns:repeat(3,minmax(0,1fr)) }.command-detail-grid { grid-template-columns:1fr 1fr } }
+@media(max-width:640px) { .command-kpis,.command-detail-grid { grid-template-columns:1fr }.command-hero { padding:24px 18px } }
+.card,.soc-card,.cti-stat-card,.cti-activity,.module-card,.module-create,.module-tenant { border-radius:14px!important }
+.topbar { font-family:Inter,Arial,sans-serif;gap:12px }
+html.light .auth-page { background:radial-gradient(circle at 70% 15%,rgba(112,91,204,.1),transparent 40%),var(--soc-canvas) }
+html.light input::placeholder { color:var(--soc-muted) }
+@media(max-width:900px) {
+  .sidebar { flex-wrap:wrap;align-items:center;justify-content:space-between;overflow:visible }
+  .sidebar-mobile-toggle { display:block;order:2;padding:9px 12px;border:1px solid var(--soc-border);border-radius:9px;background:var(--soc-surface);color:var(--soc-ink);cursor:pointer }
+  .sidebar .brand { margin:0;border:0 }
+  .sidebar-navigation { display:none;width:100%;min-width:0;order:3;flex-direction:column;gap:5px;padding:10px 0 }
+  .sidebar-navigation.is-open { display:flex }
+  .sidebar-module,.sidebar-module-toggle,.sidebar-submenu { width:100% }
+  .sidebar-footer { display:grid;order:4;width:100%;margin:0 }
+  .sidebar-footer::before { display:none }
+}

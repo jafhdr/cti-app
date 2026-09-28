@@ -48,8 +48,9 @@ function CreateCaseModal({ onClose, onSuccess }: { onClose: () => void; onSucces
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-medium">Title</label>
+            <label htmlFor="case-title" className="mb-1 block text-sm font-medium">Title</label>
             <input
+              id="case-title"
               type="text"
               required
               value={title}
@@ -60,8 +61,9 @@ function CreateCaseModal({ onClose, onSuccess }: { onClose: () => void; onSucces
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium">Description</label>
+            <label htmlFor="case-description" className="mb-1 block text-sm font-medium">Description</label>
             <textarea
+              id="case-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="w-full px-3 py-2"
@@ -71,8 +73,9 @@ function CreateCaseModal({ onClose, onSuccess }: { onClose: () => void; onSucces
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium">Priority</label>
+            <label htmlFor="case-priority" className="mb-1 block text-sm font-medium">Priority</label>
             <select
+              id="case-priority"
               value={priority}
               onChange={(e) => setPriority(e.target.value)}
               className="w-full px-3 py-2"

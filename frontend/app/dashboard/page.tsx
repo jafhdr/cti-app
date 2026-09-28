@@ -12,13 +12,7 @@ const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 ───────────────────────────────────────────── */
 type Role = 'SUPER_ADMIN' | 'ADMIN' | 'USER';
 
-type ModuleAccess = {
-  readonly moduleId: string;
-  readonly moduleName: string;
-  readonly moduleSlug: string;
-  readonly assigned: boolean;
-  readonly featureKeys: readonly string[];
-};
+import type { ModuleAccess } from '../../lib/module-access';
 
 type Me = {
   id: string;
@@ -70,6 +64,25 @@ function StatCard({ title, value, accent }: { title: string; value: number | str
       <div className="metric">{value}</div>
     </div>
   );
+}
+
+function CommandOverview({ summary, user }: { summary: Summary; user: Me }) {
+  const actions = [
+    { label: 'Cari indicator', href: '/indicators', enabled: user.moduleAccess.some(module => module.moduleSlug === 'threat-intelligence' && module.accessible) },
+    { label: 'Lihat asset', href: '/attack-surface/assets', enabled: user.moduleAccess.some(module => module.moduleSlug === 'attack-surface-management' && module.accessible) },
+    { label: 'Buka cases', href: '/cases', enabled: user.moduleAccess.some(module => module.moduleSlug === 'case-management' && module.accessible) },
+  ];
+  const metrics = [
+    { label: 'Indicators monitored', value: summary.indicators },
+    { label: 'High risk indicators', value: summary.highRiskIndicators },
+    { label: 'Open investigations', value: summary.openCases },
+    { label: 'Active alerts', value: summary.activeAlerts },
+  ];
+  return <section className="command-overview" aria-label="Ringkasan command center">
+    <div className="command-hero"><div className="command-hero-copy"><span className="command-eyebrow">CTI / {summary.dashboardMode.replace('_', ' ')}</span><h2>Security visibility,<br /><span>in one place.</span></h2><p>{summary.tenantName ?? 'Platform'} · Intelligence, exposure, and investigations in one operational view.</p><div className="command-actions">{actions.filter(action => action.enabled).map(action => <Link className="quick-action is-info" key={action.href} href={action.href}>{action.label} ↗</Link>)}</div></div><div className="command-visual" aria-label="Live summary of available intelligence"><div className="command-visual-top"><span>LIVE WORKSPACE</span><span>● CONNECTED</span></div><div className="command-visual-center"><small>INTELLIGENCE SIGNALS</small><strong>{summary.indicators}</strong><span>Indicators in scope</span></div><div className="command-visual-bottom"><span>HIGH RISK <b>{summary.highRiskIndicators}</b></span><span>OPEN CASES <b>{summary.openCases}</b></span></div></div></div>
+    <div className="command-kpis">{metrics.map(metric => <article className="command-metric" key={metric.label}><strong>{metric.value}</strong><span>{metric.label}</span></article>)}</div>
+    <div className="command-detail-grid"><article className="command-story"><span className="command-eyebrow">01 / RISK POSTURE</span><h3>Focus on what needs attention.</h3><p>High risk indicators are drawn from the current dashboard summary. Explore the accessible modules to investigate the underlying records.</p><div className="command-risk"><span>High risk indicators</span><strong>{summary.highRiskIndicators}</strong></div></article><article className="command-story command-story-secondary"><span className="command-eyebrow">02 / WORKFLOW</span><h3>Move from signal to investigation.</h3><p>Review intelligence, inspect your attack surface, and continue open cases in the same workspace.</p><div className="command-actions">{actions.filter(action => action.enabled).map(action => <Link className="quick-action is-info" key={action.href} href={action.href}>{action.label} ↗</Link>)}{actions.every(action => !action.enabled) && <p className="muted">Tidak ada modul yang dapat diakses.</p>}</div></article></div>
+  </section>;
 }
 
 /* ─────────────────────────────────────────────
@@ -303,7 +316,7 @@ export default function DashboardPage() {
     (async () => {
       try {
         const me = await fetch(`${API}/auth/me`, { credentials: 'include' });
-        if (!me.ok) { router.replace('/'); return; }
+        if (!me.ok) { router.replace('/login'); return; }
         const userData: Me = await me.json();
         setUser(userData);
 
@@ -320,7 +333,7 @@ export default function DashboardPage() {
 
   async function logout() {
     await fetch(`${API}/auth/logout`, { method: 'POST', credentials: 'include' });
-    router.replace('/');
+    router.replace('/login');
   }
 
   if (loading) {
@@ -371,16 +384,19 @@ export default function DashboardPage() {
         </header>
 
         <main className="content">
-          <div className="header">
+          <div className="header dashboard-heading">
             <div>
               <h1>Dashboard</h1>
               <div className="tenant">{subTitle}</div>
             </div>
           </div>
 
-          {summary.dashboardMode === 'GLOBAL' && <GlobalDashboard summary={summary} />}
-          {summary.dashboardMode === 'TENANT_ADMIN' && <TenantAdminDashboard summary={summary} user={user} />}
-          {summary.dashboardMode === 'PERSONAL' && <PersonalDashboard summary={summary} user={user} />}
+          <CommandOverview summary={summary} user={user} />
+
+          <section className="dashboard-secondary" aria-label="Additional workspace metrics"><div className="dashboard-section-title"><span className="command-eyebrow">WORKSPACE / COVERAGE</span><h2>More of the picture.</h2></div><div className="dashboard-secondary-grid"><StatCard title="Sources" value={summary.sources} /><StatCard title="Campaigns" value={summary.campaigns} /><StatCard title="Users" value={summary.users} /><StatCard title="Indicators you created" value={summary.myIndicatorsCreated} /></div>{user.role !== 'USER' && <div className="command-actions dashboard-admin-actions"><Link className="quick-action is-info" href="/users">Kelola user ↗</Link><Link className="quick-action is-info" href="/audit-logs">Audit log ↗</Link>{user.role === 'SUPER_ADMIN' && <Link className="quick-action is-info" href="/tenants">Kelola tenant ↗</Link>}</div>}</section>
+
+          <section className="dashboard-activity"><div className="dashboard-section-title"><span className="command-eyebrow">WORKSPACE / RECENT</span><h2>Activity in context.</h2></div><ActivityLog items={summary.recentActivity} /></section>
+          {summary.dashboardMode === 'GLOBAL' && summary.tenantOverview.length > 0 && <section className="dashboard-tenants"><div className="dashboard-section-title"><span className="command-eyebrow">PLATFORM / TENANTS</span><h2>Tenant overview.</h2></div><div className="card"><div className="dashboard-tenant-link"><Link href="/tenants">Kelola semua tenant ↗</Link></div><div className="dashboard-table-scroll"><table><thead><tr><th>Tenant</th><th>Slug</th><th>Users</th><th>Indicators</th></tr></thead><tbody>{summary.tenantOverview.map(tenant => <tr key={tenant.id}><td>{tenant.name}</td><td>{tenant.slug}</td><td>{tenant._count.users}</td><td>{tenant._count.indicators}</td></tr>)}</tbody></table></div></div></section>}
         </main>
       </section>
     </div>

@@ -12,10 +12,10 @@ test('Threat Intelligence is the parent navigation and overview uses API data', 
   await login(page);
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto(`${app}/threat-intelligence`);
-  await expect(page.getByRole('heading', { name: 'Threat Intelligence', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Understand what is targeting your organization.' })).toBeVisible();
   await expect(page.getByLabel('Tenant Threat Intelligence')).toBeVisible();
   await expect(page.getByText('Threat Intelligence', { exact: true }).first()).toBeVisible();
-  await expect(page.getByText('CTI Entities', { exact: true })).toBeVisible();
+  await expect(page.getByText('CTI entities', { exact: true })).toBeVisible();
   await page.screenshot({ path: '../.omo/evidence/threat-intelligence/overview-desktop.png', fullPage: true });
 });
 
@@ -26,7 +26,7 @@ test('entity sections and Intelligence Hub stay inside Threat Intelligence', asy
     await expect(page.locator('h1')).toBeVisible();
   }
   await page.goto(`${app}/threat-intelligence/indicators`);
-  await expect(page.getByRole('heading', { name: 'Indicators / IOC', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Track known malicious infrastructure.' })).toBeVisible();
   await expect(page.locator('.ti-section-tabs')).toBeVisible();
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: '../.omo/evidence/threat-intelligence/indicators-desktop.png', fullPage: true });
@@ -42,7 +42,7 @@ test('Threat Intelligence remains usable on mobile', async ({ page }) => {
   await login(page);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`${app}/threat-intelligence`);
-  await expect(page.getByRole('heading', { name: 'Threat Intelligence', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Understand what is targeting your organization.' })).toBeVisible();
   await page.screenshot({ path: '../.omo/evidence/threat-intelligence/overview-mobile.png', fullPage: true });
   await page.goto(`${app}/threat-intelligence/hub`);
   await expect(page.getByRole('heading', { name: 'Intelligence Hub', exact: true })).toBeVisible();

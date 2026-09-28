@@ -2,45 +2,68 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import type { UserModuleAccess } from '@/lib/access-policy';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-type Feature = { readonly id: string; readonly key: string; readonly name: string };
-type ModuleAccess = { readonly id: string; readonly name: string; readonly assigned: boolean; readonly features: readonly Feature[]; readonly featureKeys: readonly string[] };
 type AccessTarget = { readonly id: string; readonly name: string; readonly email: string };
 
 export default function ModuleAccessPanel({ target, onClose, onError, onSaved, onUnauthorized }: { readonly target: AccessTarget; readonly onClose: () => void; readonly onError: (message: string) => void; readonly onSaved: (message: string) => void; readonly onUnauthorized: () => void }) {
-  const [modules, setModules] = useState<ModuleAccess[]>([]);
+  const [modules, setModules] = useState<readonly UserModuleAccess[]>([]);
+  const [original, setOriginal] = useState<readonly UserModuleAccess[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const handlers = useRef({ onClose, onError, onUnauthorized });
+  const [error, setError] = useState('');
+  const handlers = useRef({ onUnauthorized });
+  handlers.current = { onUnauthorized };
 
-  useEffect(() => { void (async () => {
-    setLoading(true);
-    try {
-      const response = await fetch(`${API}/users/${target.id}/module-access`, { credentials: 'include', cache: 'no-store' });
-      if (response.status === 401) { handlers.current.onUnauthorized(); return; }
-      const data: unknown = await response.json().catch(() => null);
-      if (!response.ok) throw new Error(typeof data === 'object' && data !== null && 'message' in data ? String(data.message) : 'Gagal memuat akses modul.');
-      const received = Array.isArray(data) ? data as ModuleAccess[] : [];
-      setModules(received.map((module) => ({ ...module, featureKeys: module.assigned && module.featureKeys.length === 0 ? module.features.map((feature) => feature.key) : module.featureKeys })));
-    } catch (cause) { handlers.current.onError(cause instanceof Error ? cause.message : 'Gagal memuat akses modul.'); handlers.current.onClose(); }
-    finally { setLoading(false); }
-  })(); }, [target.id]);
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      setLoading(true); setError('');
+      try {
+        const response = await fetch(`${API}/users/${target.id}/module-access`, { credentials: 'include', cache: 'no-store' });
+        if (response.status === 401) { handlers.current.onUnauthorized(); return; }
+        if (!response.ok) throw new Error('Gagal memuat akses modul. Tutup panel dan coba kembali.');
+        const received: readonly UserModuleAccess[] = await response.json();
+        if (active) { setModules(received); setOriginal(received); }
+      } catch (cause) { if (active) setError(cause instanceof Error ? cause.message : 'Gagal memuat akses modul.'); }
+      finally { if (active) setLoading(false); }
+    })();
+    return () => { active = false; };
+  }, [target.id]);
 
-  function toggleModule(moduleId: string) { setModules((current) => current.map((module) => module.id === moduleId ? { ...module, assigned: !module.assigned, featureKeys: !module.assigned ? module.features.map((feature) => feature.key) : [] } : module)); }
-  function toggleFeature(moduleId: string, key: string) { setModules((current) => current.map((module) => module.id === moduleId ? { ...module, assigned: true, featureKeys: module.featureKeys.includes(key) ? module.featureKeys.filter((item) => item !== key) : [...module.featureKeys, key] } : module)); }
-
+  function toggleModule(moduleId: string) {
+    setModules(current => current.map(module => module.id === moduleId && (module.assignable || module.assigned) ? { ...module, assigned: !module.assigned, featureKeys: [] } : module));
+  }
+  function toggleFeature(moduleId: string, key: string) {
+    setModules(current => current.map(module => module.id === moduleId && (module.assignable || module.featureKeys.includes(key)) ? { ...module, featureKeys: module.featureKeys.includes(key) ? module.featureKeys.filter(item => item !== key) : [...module.featureKeys, key] } : module));
+  }
   async function save() {
-    setSaving(true);
+    const revoking = original.some(previous => previous.assigned && (!modules.find(module => module.id === previous.id)?.assigned || previous.featureKeys.some(key => !modules.find(module => module.id === previous.id)?.featureKeys.includes(key))));
+    if (revoking && !window.confirm(`Hapus akses modul atau fitur yang dipilih dari ${target.name}?`)) return;
+    setSaving(true); setError('');
     try {
-      const response = await fetch(`${API}/users/${target.id}/module-access`, { method: 'PUT', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ access: modules.filter((module) => module.assigned).map((module) => ({ moduleId: module.id, featureKeys: module.featureKeys })) }) });
+      const response = await fetch(`${API}/users/${target.id}/module-access`, { method: 'PUT', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ access: modules.filter(module => module.assigned).map(module => ({ moduleId: module.id, featureKeys: module.featureKeys })) }) });
       if (response.status === 401) { onUnauthorized(); return; }
       const data: unknown = await response.json().catch(() => null);
       if (!response.ok) throw new Error(typeof data === 'object' && data !== null && 'message' in data ? String(data.message) : 'Gagal menyimpan akses modul.');
       onSaved(`Akses modul ${target.email} berhasil diperbarui.`); onClose();
-    } catch (cause) { onError(cause instanceof Error ? cause.message : 'Gagal menyimpan akses modul.'); }
+    } catch (cause) { const message = cause instanceof Error ? cause.message : 'Gagal menyimpan akses modul.'; setError(message); onError(message); }
     finally { setSaving(false); }
   }
 
-  return <section className="access-panel" aria-label={`Akses modul ${target.name}`} aria-busy={loading}><div className="access-panel-header"><div><h2>Akses Modul: {target.name}</h2><p>Hanya modul dalam subscription aktif tenant yang dapat diberikan. Perubahan mengganti seluruh assignment lama.</p></div><Button view="outlined" size="s" onClick={onClose} disabled={saving}>Batal</Button></div>{loading ? <p className="muted" role="status">Memuat akses modul…</p> : <><div className="access-module-list">{modules.map((module) => <article className="access-module" key={module.id}><label><input type="checkbox" checked={module.assigned} onChange={() => toggleModule(module.id)} /><span>{module.name}</span></label>{module.assigned && module.features.length > 0 && <div className="access-features">{module.features.map((feature) => <label key={feature.id}><input type="checkbox" checked={module.featureKeys.includes(feature.key)} onChange={() => toggleFeature(module.id, feature.key)} /><span>{feature.name}</span></label>)}</div>}</article>)}</div>{modules.length === 0 && <p className="muted">Tenant belum memiliki subscription aktif atau paket belum berisi modul.</p>}<Button view="action" size="l" onClick={() => void save()} disabled={saving}>{saving ? 'Menyimpan…' : 'Simpan Akses Modul'}</Button></>}</section>;
+  return <section className="access-panel" aria-label={`Akses modul ${target.name}`} aria-busy={loading}>
+    <div className="access-panel-header"><div><h2>Akses Modul: {target.name}</h2><p>User Assigned berbeda dari Accessible. Status efektif berasal dari server; perubahan diterapkan setelah disimpan.</p></div><Button view="outlined" size="s" onClick={onClose} disabled={saving}>Batal</Button></div>
+    {error && <p className="error" role="alert">{error}</p>}
+    {loading ? <p className="muted" role="status">Memuat akses modul…</p> : <>
+      <div className="access-module-list">{modules.map(module => <article className="access-module" key={module.id}>
+        <label><input type="checkbox" checked={module.assigned} disabled={saving || (!module.assignable && !module.assigned)} onChange={() => toggleModule(module.id)} /><span>{module.name}</span></label>
+        <dl className="access-policy-details"><div><dt>User Assigned</dt><dd>{module.assigned ? 'Yes' : 'No'}</dd></div><div><dt>Module Included</dt><dd>{module.subscriptionIncluded ? 'Included' : 'Not Included'}</dd></div><div><dt>Subscription</dt><dd>{module.subscriptionActive ? 'Active' : 'Inactive'}</dd></div><div><dt>Global Module</dt><dd>{module.isActive ? 'Active' : 'Inactive'}</dd></div><div><dt>Tenant Enabled</dt><dd>{module.tenantEnabled ? 'Yes' : 'No'}</dd></div><div><dt>Role Access</dt><dd>{module.roleAllowed ? 'Allowed' : 'Denied'}</dd></div><div><dt>Effective Access (tersimpan)</dt><dd>{module.accessible ? 'Accessible' : 'Not Accessible'}</dd></div></dl>
+        {module.reason && <p className="muted">{module.reason}</p>}
+        {module.assigned && <fieldset className="access-features" disabled={saving}><legend>Feature Access</legend>{module.features.map(feature => <label key={feature.id}><input type="checkbox" checked={module.featureKeys.includes(feature.key)} disabled={!module.assignable && !module.featureKeys.includes(feature.key)} onChange={() => toggleFeature(module.id, feature.key)} /><span>{feature.name}</span></label>)}{module.features.length === 0 && <p>Tidak ada fitur terpisah.</p>}{module.features.length > 0 && module.featureKeys.length === 0 && <p>Belum ada fitur diberikan.</p>}</fieldset>}
+      </article>)}</div>
+      {modules.length === 0 && !error && <p className="muted">Belum ada modul dalam katalog tenant.</p>}
+      <Button view="action" size="l" onClick={() => void save()} disabled={saving || Boolean(error) || modules.length === 0}>{saving ? 'Menyimpan…' : 'Simpan Akses Modul'}</Button>
+    </>}
+  </section>;
 }

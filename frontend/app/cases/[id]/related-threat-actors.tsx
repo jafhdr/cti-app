@@ -2,6 +2,7 @@
 
 import { Loader2, Plus, Search, ShieldAlert, Trash2, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { Card } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
 
@@ -136,7 +137,7 @@ export function RelatedThreatActors({ caseId, canMutate }: Props) {
           <div className="case-related-grid mt-5 grid gap-3">
             {items.length === 0 ? <p className="col-span-full rounded-md bg-muted py-10 text-center text-sm text-muted-foreground">Belum ada Threat Actor yang terhubung.</p> : items.map((threatActor) => (
               <article key={threatActor.id} className="min-w-0 rounded-md border border-input p-4">
-                <div className="flex items-start justify-between gap-3"><div className="min-w-0"><h3 className="truncate text-sm font-semibold !text-card-foreground">{threatActor.entity.name}</h3><p className="mt-1 text-xs text-muted-foreground">{threatActor.entity.severity} / {threatActor.status} / Confidence {threatActor.entity.confidence}%</p></div>{canMutate && <button type="button" aria-label={`Lepas ${threatActor.entity.name}`} disabled={busyId === threatActor.id} onClick={() => void unlink(threatActor)} className="rounded-md p-3 text-destructive hover:bg-muted disabled:opacity-50">{busyId === threatActor.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}</button>}</div>
+                <div className="flex items-start justify-between gap-3"><div className="min-w-0"><h3 className="truncate text-sm font-semibold !text-card-foreground"><Link href={`/threat-intelligence/threat-actors?actorId=${encodeURIComponent(threatActor.id)}`} className="hover:underline">{threatActor.entity.name}</Link></h3><p className="mt-1 text-xs text-muted-foreground">{threatActor.entity.severity} / {threatActor.status} / Confidence {threatActor.entity.confidence}%</p></div>{canMutate && <button type="button" aria-label={`Lepas ${threatActor.entity.name}`} disabled={busyId === threatActor.id} onClick={() => void unlink(threatActor)} className="rounded-md p-3 text-destructive hover:bg-muted disabled:opacity-50">{busyId === threatActor.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}</button>}</div>
                 <p className="mt-3 truncate text-xs text-muted-foreground">{threatActor.aliases.length > 0 ? threatActor.aliases.join(', ') : 'Tanpa alias'}{threatActor.country ? ` / ${threatActor.country}` : ''}</p>
               </article>
             ))}

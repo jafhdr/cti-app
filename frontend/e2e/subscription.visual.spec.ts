@@ -17,7 +17,7 @@ test('subscription package and custom states', async ({ page }) => {
   await login(page);
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto(`${app}/subscription`);
-  await expect(page.getByRole('heading', { name: 'Subscription', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Your security platform, your plan.' })).toBeVisible();
   await expect(page.getByRole('article').getByRole('heading', { name: 'Community' })).toBeVisible();
   await page.screenshot({ path: '../.omo/evidence/subscription/desktop-packages.png', fullPage: true });
   await page.getByRole('tab', { name: 'Paket Custom' }).click();
@@ -59,7 +59,7 @@ test('super admin can access modules and switch subscription tenant', async ({ p
   await loginSuperAdmin(page);
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto(`${app}/indicators`);
-  await expect(page.getByRole('heading', { name: 'Indicators / IOC', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Track known malicious infrastructure.' })).toBeVisible();
   await expect(page).toHaveURL(`${app}/indicators`);
   await page.goto(`${app}/subscription`);
   await expect(page.getByText('SUPER ADMIN', { exact: true })).toBeVisible();

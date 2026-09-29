@@ -35,7 +35,7 @@ test('Case Management menu opens list, detail, and assign modal', async ({ page 
   await expect(page.getByRole('link', { name: 'Cases', exact: true })).toHaveAttribute('aria-current', 'page');
   await page.getByRole('button', { name: 'Change' }).click();
   await expect(page.getByRole('heading', { name: 'Assign Case' })).toBeVisible();
-  await expect(page.getByRole('main').getByRole('combobox')).toContainText('Responder');
+  await expect(page.getByRole('dialog', { name: 'Assign Case' }).getByRole('combobox')).toContainText('Responder');
   await expect(page.getByRole('region', { name: 'Investigation' })).toBeVisible();
   expect(pageErrors).toEqual([]);
   await page.screenshot({ path: '../.omo/evidence/cases/detail-with-assign-modal.png', fullPage: true });

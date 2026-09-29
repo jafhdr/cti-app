@@ -8,6 +8,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import SharedSidebar from '../../components/dashboard/Sidebar';
 import ModuleAccessPanel from '../../components/users/ModuleAccessPanel';
+import { ConfirmationModal, FormModal } from '@/components/ui/modal-patterns';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -59,6 +60,9 @@ function UsersPageContent() {
   const [saving, setSaving] = useState(false);
   const [accessUser, setAccessUser] = useState<User | null>(null);
   const [detailUser, setDetailUser] = useState<User | null>(null);
+  const [editTarget, setEditTarget] = useState<User | null>(null);
+  const [passwordTarget, setPasswordTarget] = useState<User | null>(null);
+  const [statusTarget, setStatusTarget] = useState<User | null>(null);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -128,6 +132,7 @@ function UsersPageContent() {
   /* ── Create user ── */
   async function createUser(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (saving) return;
     setError(''); setSuccess('');
     if (!name.trim()) { setError('Nama wajib diisi.'); return; }
     if (!email.trim()) { setError('Email wajib diisi.'); return; }
@@ -161,35 +166,53 @@ function UsersPageContent() {
   }
 
   async function editUser(user: User) {
-    const nextName = window.prompt('Nama pengguna', user.name);
-    if (nextName === null) return;
-    const nextEmail = window.prompt('Email pengguna', user.email);
-    if (nextEmail === null) return;
+    setError(''); setName(user.name); setEmail(user.email); setEditTarget(user);
+  }
+
+  async function submitEdit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!editTarget || saving) return;
+    setSaving(true); setError('');
     try {
-      await userRequest(`/users/${user.id}`, 'PATCH', { name: nextName, email: nextEmail });
+      await userRequest(`/users/${editTarget.id}`, 'PATCH', { name, email });
       setSuccess('Data pengguna berhasil diperbarui.');
       await loadUsers();
+      setEditTarget(null);
     } catch (err) { setError(err instanceof Error ? err.message : 'Gagal memperbarui user.'); }
+    finally { setSaving(false); }
   }
 
   async function resetUserPassword(user: User) {
-    const nextPassword = window.prompt(`Password baru untuk ${user.email} (minimal 8 karakter)`);
-    if (nextPassword === null) return;
-    if (nextPassword.length < 8) { setError('Password minimal 8 karakter.'); return; }
+    setError(''); setPassword(''); setPasswordTarget(user);
+  }
+
+  async function submitPassword(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!passwordTarget || saving) return;
+    if (password.length < 8) { setError('Password minimal 8 karakter.'); return; }
+    setSaving(true); setError('');
     try {
-      await userRequest(`/users/${user.id}/password`, 'PATCH', { password: nextPassword });
-      setSuccess(`Password ${user.email} berhasil direset.`);
+      await userRequest(`/users/${passwordTarget.id}/password`, 'PATCH', { password });
+      setSuccess(`Password ${passwordTarget.email} berhasil direset.`); setPasswordTarget(null); setPassword('');
     } catch (err) { setError(err instanceof Error ? err.message : 'Gagal mereset password.'); }
+    finally { setSaving(false); }
   }
 
   async function toggleUserStatus(user: User) {
-    const action = user.isActive ? 'menonaktifkan' : 'mengaktifkan';
-    if (!window.confirm(`Yakin ingin ${action} ${user.email}?`)) return;
+    setError(''); setStatusTarget(user);
+  }
+
+  async function confirmUserStatus() {
+    const user = statusTarget;
+    if (!user || saving) return;
+    setSaving(true); setError('');
     try {
       await userRequest(`/users/${user.id}/status`, 'PATCH', { isActive: !user.isActive });
       setSuccess(`User ${user.isActive ? 'dinonaktifkan' : 'diaktifkan'}.`);
       await loadUsers();
+      setStatusTarget(null);
     } catch (err) { setError(err instanceof Error ? err.message : 'Gagal mengubah status user.'); }
+    finally { setSaving(false); }
   }
 
   async function changeRole(user: User, nextRole: 'ADMIN' | 'USER') {
@@ -284,10 +307,7 @@ function UsersPageContent() {
           {success && <div className="success" style={{ marginBottom: 16 }}>{success}</div>}
 
           {/* Add user form */}
-          {showAddForm && (
-            <Card view="outlined" style={{ padding: 28, marginBottom: 24 }}>
-              <h2 style={{ margin: '0 0 20px' }}>Tambah User</h2>
-              <form onSubmit={createUser} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <FormModal open={showAddForm} onOpenChange={open => { if (!open) closeAddForm(); }} title="Tambah User" loading={saving} error={showAddForm ? error : ''} submitLabel="Create User" onSubmit={createUser}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                   <div className="field">
                     <label htmlFor="user-name">Nama *</label>
@@ -333,13 +353,15 @@ function UsersPageContent() {
                   </div>
                 )}
 
-                <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
-                  <Button type="submit" view="action" size="l" disabled={saving}>{saving ? 'Creating...' : 'Create User'}</Button>
-                  <Button type="button" view="outlined" size="l" onClick={closeAddForm} disabled={saving}>Cancel</Button>
-                </div>
-              </form>
-            </Card>
-          )}
+          </FormModal>
+          <FormModal open={Boolean(editTarget)} onOpenChange={open => { if (!open) setEditTarget(null); }} title="Edit User" loading={saving} error={editTarget ? error : ''} submitLabel="Save" onSubmit={event => void submitEdit(event)}>
+            <div className="field"><label htmlFor="edit-user-name">Nama</label><input id="edit-user-name" required value={name} onChange={event => setName(event.target.value)} /></div>
+            <div className="field"><label htmlFor="edit-user-email">Email</label><input id="edit-user-email" type="email" required value={email} onChange={event => setEmail(event.target.value)} /></div>
+          </FormModal>
+          <FormModal open={Boolean(passwordTarget)} onOpenChange={open => { if (!open) setPasswordTarget(null); }} title="Reset Password" description={passwordTarget?.email} loading={saving} error={passwordTarget ? error : ''} submitLabel="Reset Password" onSubmit={event => void submitPassword(event)}>
+            <div className="field"><label htmlFor="reset-user-password">Password baru (min. 8 karakter)</label><input id="reset-user-password" type="password" minLength={8} required value={password} onChange={event => setPassword(event.target.value)} /></div>
+          </FormModal>
+          <ConfirmationModal open={Boolean(statusTarget)} onOpenChange={open => { if (!open) setStatusTarget(null); }} title={statusTarget?.isActive ? 'Nonaktifkan user' : 'Aktifkan user'} target={statusTarget?.email} consequence="Status akses user akan diperbarui." confirmLabel={statusTarget?.isActive ? 'Nonaktifkan' : 'Aktifkan'} destructive={statusTarget?.isActive} loading={saving} error={statusTarget ? error : ''} onConfirm={confirmUserStatus} />
 
           {/* User table */}
           <Card view="outlined" className="admin-directory" style={{ padding: 24 }}>

@@ -1,7 +1,7 @@
 'use client';
 
-import { X } from 'lucide-react';
-import { useEffect, useRef, type FormEvent, type KeyboardEvent } from 'react';
+import { type FormEvent, type Ref } from 'react';
+import { FormModal } from '@/components/ui/modal-patterns';
 import { Button } from '@/components/ui/button';
 import { assetCriticalities, assetStatuses, assetTypes, type Asset, type AssetFormValue, type DiscoverySummary } from './types';
 import { PortServices } from './PortServices';
@@ -13,6 +13,7 @@ type Props = {
   readonly form: AssetFormValue;
   readonly mode: 'form' | 'detail';
   readonly saving: boolean;
+  readonly error: string;
   readonly onChange: (key: keyof AssetFormValue, value: string) => void;
   readonly onClose: () => void;
   readonly onSubmit: (event: FormEvent<HTMLFormElement>) => void;
@@ -23,30 +24,16 @@ type Props = {
   readonly discoveryRun: number;
   readonly discovering: boolean;
   readonly onDiscoverAsset: (asset: Asset) => Promise<void>;
+  readonly workspaceRef?: Ref<HTMLElement>;
 };
 
-export function AssetPanel({ asset, form, mode, saving, onChange, onClose, onSubmit, tenantQuery, canManage, discovery, discoveryError, discoveryRun, discovering, onDiscoverAsset }: Props) {
-  const detail = mode === 'detail' && asset;
-  const dialogRef = useRef<HTMLElement>(null);
-  useEffect(() => {
-    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    dialogRef.current?.querySelector<HTMLElement>('button')?.focus();
-    return () => opener?.focus();
-  }, []);
-  function handleKeyDown(event: KeyboardEvent<HTMLElement>): void {
-    if (event.key === 'Escape') { event.preventDefault(); onClose(); return; }
-    if (event.key !== 'Tab') return;
-    const focusable = dialogRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [href], [tabindex]:not([tabindex="-1"])');
-    if (!focusable?.length) return;
-    const first = focusable[0]; const last = focusable[focusable.length - 1];
-    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
-    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
-  }
-  return <div className="asm-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}>
-    <section ref={dialogRef} className={`asm-dialog${detail ? ' asm-intelligence-dialog' : ''}`} role="dialog" aria-modal="true" aria-labelledby="asset-panel-title" onKeyDown={handleKeyDown}>
-      <header><div><span className="source-eyebrow">{detail ? 'ASSET INTELLIGENCE' : 'ASSET REGISTRY'}</span><h2 id="asset-panel-title">{detail ? asset.name : asset ? 'Edit Asset' : 'Create Asset'}</h2>{detail && <p className="asm-asset-identity">{asset.value}</p>}</div><Button view="flat" size="s" aria-label="Close asset panel" onClick={onClose}><X size={16} /></Button></header>
-      {detail ? <><AssetDetails asset={asset} /><section className="asm-intelligence-section" aria-label="Asset discovery"><div className="asm-section-heading"><span className="source-eyebrow">02 / DISCOVERY</span><h3>Discovery</h3></div>{(asset.type === 'DOMAIN' || asset.type === 'SUBDOMAIN') && canManage && <Button view="outlined" size="s" disabled={discovering} onClick={() => void onDiscoverAsset(asset)}>{discovering ? 'Discovering...' : asset.type === 'DOMAIN' ? 'Discover subdomains' : 'Discover DNS/IP'}</Button>}{discovering && <p role="status">Discovery is running for {asset.value}...</p>}{discoveryError && <p className="error" role="alert">{discoveryError}</p>}{discovery ? <><p className="asm-discovery-context">Latest discovery result in this session for {discovery.rootDomain} · {discovery.providers.length ? discovery.providers.join(' · ') : 'No provider completed'}</p><dl className="asm-service-metrics"><div><dt>Discovered</dt><dd>{discovery.discovered}</dd></div><div><dt>Created</dt><dd>{discovery.created}</dd></div><div><dt>Updated</dt><dd>{discovery.updated}</dd></div></dl></> : <p className="asm-discovery-context">No discovery result is available in this session. Recorded relationships appear below.</p>}</section><DiscoveryRelationships asset={asset} tenantQuery={tenantQuery} discoveryRun={discoveryRun} />{asset.type === 'IP_ADDRESS' && <PortServices asset={asset} tenantQuery={tenantQuery} canDiscover={canManage} />}<ThreatIntelligence asset={asset} tenantQuery={tenantQuery} /></> : <form className="asm-form" onSubmit={onSubmit}>
-        <label>Name<input required maxLength={255} value={form.name} onChange={event => onChange('name', event.target.value)} /></label>
+export function AssetPanel({ asset, form, mode, saving, error, onChange, onClose, onSubmit, tenantQuery, canManage, discovery, discoveryError, discoveryRun, discovering, onDiscoverAsset, workspaceRef }: Props) {
+  if (mode === 'detail' && asset) return <section ref={workspaceRef} className="asm-intelligence-dialog asm-intelligence-workspace" role="region" aria-label={`Asset Intelligence Workspace: ${asset.name}`} tabIndex={-1}>
+    <header><div><span className="source-eyebrow">ASSET INTELLIGENCE</span><h2 id="asset-workspace-title">{asset.name}</h2><p className="asm-asset-identity">{asset.value}</p></div><Button type="button" view="outlined" onClick={onClose}>Back to assets</Button></header>
+      <div><AssetDetails asset={asset} /><section className="asm-intelligence-section" aria-label="Asset discovery"><div className="asm-section-heading"><span className="source-eyebrow">02 / DISCOVERY</span><h3>Discovery</h3></div>{(asset.type === 'DOMAIN' || asset.type === 'SUBDOMAIN') && canManage && <Button view="outlined" size="s" disabled={discovering} onClick={() => void onDiscoverAsset(asset)}>{discovering ? 'Discovering...' : asset.type === 'DOMAIN' ? 'Discover subdomains' : 'Discover DNS/IP'}</Button>}{discovering && <p role="status">Discovery is running for {asset.value}...</p>}{discoveryError && <p className="error" role="alert">{discoveryError}</p>}{discovery ? <><p className="asm-discovery-context">Latest discovery result in this session for {discovery.rootDomain} · {discovery.providers.length ? discovery.providers.join(' · ') : 'No provider completed'}</p><dl className="asm-service-metrics"><div><dt>Discovered</dt><dd>{discovery.discovered}</dd></div><div><dt>Created</dt><dd>{discovery.created}</dd></div><div><dt>Updated</dt><dd>{discovery.updated}</dd></div></dl></> : <p className="asm-discovery-context">No discovery result is available in this session. Recorded relationships appear below.</p>}</section><DiscoveryRelationships asset={asset} tenantQuery={tenantQuery} discoveryRun={discoveryRun} />{asset.type === 'IP_ADDRESS' && <PortServices asset={asset} tenantQuery={tenantQuery} canDiscover={canManage} />}<ThreatIntelligence asset={asset} tenantQuery={tenantQuery} /></div>
+  </section>;
+  return <FormModal open onOpenChange={open => { if (!open) onClose(); }} title={asset ? 'Edit Asset' : 'Create Asset'} onSubmit={onSubmit} loading={saving} error={error} submitLabel={asset ? 'Save changes' : 'Create asset'}>
+    <div className="cti-asm-form">        <label>Name<input required maxLength={255} value={form.name} onChange={event => onChange('name', event.target.value)} /></label>
         <label>Type<select value={form.type} onChange={event => onChange('type', event.target.value)}>{assetTypes.map(value => <option key={value}>{value}</option>)}</select></label>
         <label className="asm-form-wide">Value<input required maxLength={1024} value={form.value} onChange={event => onChange('value', event.target.value)} /></label>
         <label>Status<select value={form.status} onChange={event => onChange('status', event.target.value)}>{assetStatuses.map(value => <option key={value}>{value}</option>)}</select></label>
@@ -55,10 +42,8 @@ export function AssetPanel({ asset, form, mode, saving, onChange, onClose, onSub
         <label>First seen<input type="datetime-local" value={form.firstSeenAt} onChange={event => onChange('firstSeenAt', event.target.value)} /></label>
         <label>Last seen<input type="datetime-local" value={form.lastSeenAt} onChange={event => onChange('lastSeenAt', event.target.value)} /></label>
         <label className="asm-form-wide">Description<textarea rows={4} maxLength={2000} value={form.description} onChange={event => onChange('description', event.target.value)} /></label>
-        <footer><Button type="button" view="outlined" onClick={onClose}>Cancel</Button><Button type="submit" disabled={saving}>{saving ? 'Saving...' : asset ? 'Save changes' : 'Create asset'}</Button></footer>
-      </form>}
-    </section>
-  </div>;
+</div>
+  </FormModal>;
 }
 
 function AssetDetails({ asset }: { readonly asset: Asset }) {

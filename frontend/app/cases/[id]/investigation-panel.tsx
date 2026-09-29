@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Clock3, FileSearch, Loader2, MessageSquareText, Plus } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import { Drawer, DrawerBody, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle, OverlayClose } from '@/components/ui/overlay';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -36,6 +37,7 @@ export function InvestigationPanel({ caseId, section }: { readonly caseId: strin
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState('');
   const [evidenceForm, setEvidenceForm] = useState({ name: '', type: '', description: '', source: '' });
+  const [evidenceOpen, setEvidenceOpen] = useState(false);
   const [noteRequestId, setNoteRequestId] = useState(() => crypto.randomUUID());
   const [evidenceRequestId, setEvidenceRequestId] = useState(() => crypto.randomUUID());
 
@@ -81,6 +83,7 @@ export function InvestigationPanel({ caseId, section }: { readonly caseId: strin
       if (path === 'notes') setNoteRequestId(crypto.randomUUID());
       else setEvidenceRequestId(crypto.randomUUID());
       await load();
+      if (path === 'evidence') setEvidenceOpen(false);
       window.dispatchEvent(new Event('case-activity-updated'));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Perubahan gagal disimpan');
@@ -112,17 +115,19 @@ export function InvestigationPanel({ caseId, section }: { readonly caseId: strin
       {section === 'evidence' && <Card view="outlined" className="min-w-0 border-input p-5">
           <h3 className="flex items-center gap-2 text-lg font-semibold !text-card-foreground"><FileSearch className="h-5 w-5 text-primary" />Evidence inventory</h3>
           <div className="mt-4 grid gap-3 sm:grid-cols-3"><div className="case-subpanel p-4"><p className="text-xs text-muted-foreground">Total evidence</p><strong className="text-xl text-card-foreground">{evidence.length}</strong></div><div className="case-subpanel p-4"><p className="text-xs text-muted-foreground">Recent</p><strong className="text-sm text-card-foreground">{evidence[0] ? formatTime(evidence[0].createdAt) : 'No data available'}</strong></div><div className="case-subpanel p-4"><p className="text-xs text-muted-foreground">Types</p><strong className="text-xl text-card-foreground">{new Set(evidence.map((item) => item.type)).size}</strong></div></div>
-          <form className="mt-4 flex flex-col gap-3" onSubmit={(event) => { event.preventDefault(); void submit('evidence', { requestId: evidenceRequestId, ...evidenceForm }); }}>
-            <label className="flex flex-col gap-1 text-xs font-semibold text-muted-foreground">Nama evidence<input aria-label="Nama evidence" required placeholder="Nama evidence" value={evidenceForm.name} onChange={(event) => setEvidenceForm({ ...evidenceForm, name: event.target.value })} className="rounded-sm border border-input !bg-card px-3 py-2 text-sm font-normal !text-card-foreground" /></label>
-            <label className="flex flex-col gap-1 text-xs font-semibold text-muted-foreground">Tipe evidence<input aria-label="Tipe evidence" required placeholder="Tipe (file, log, URL...)" value={evidenceForm.type} onChange={(event) => setEvidenceForm({ ...evidenceForm, type: event.target.value })} className="rounded-sm border border-input !bg-card px-3 py-2 text-sm font-normal !text-card-foreground" /></label>
-            <label className="flex flex-col gap-1 text-xs font-semibold text-muted-foreground">Sumber evidence<input aria-label="Sumber evidence" placeholder="Sumber" value={evidenceForm.source} onChange={(event) => setEvidenceForm({ ...evidenceForm, source: event.target.value })} className="rounded-sm border border-input !bg-card px-3 py-2 text-sm font-normal !text-card-foreground" /></label>
-            <label className="flex flex-col gap-1 text-xs font-semibold text-muted-foreground">Deskripsi evidence<textarea aria-label="Deskripsi evidence" placeholder="Deskripsi" value={evidenceForm.description} onChange={(event) => setEvidenceForm({ ...evidenceForm, description: event.target.value })} className="min-h-16 resize-y rounded-sm border border-input !bg-card px-3 py-2 text-sm font-normal !text-card-foreground" /></label>
-            <button type="submit" disabled={submitting || !evidenceForm.name.trim() || !evidenceForm.type.trim()} className="rounded-sm bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50">{submitting ? 'Menyimpan...' : 'Tambah Evidence'}</button>
-          </form>
+          <button type="button" className="soc-button-primary mt-4 rounded px-4 py-2" onClick={() => setEvidenceOpen(true)}>Add Evidence</button>
+
           <div className="mt-5 space-y-3">
             {evidence.length === 0 ? <p className="rounded-md bg-muted py-8 text-center text-sm text-muted-foreground">No evidence available for this case.</p> : evidence.map((item) => <details key={item.id} className="min-w-0 rounded-md border border-input p-3"><summary className="cursor-pointer text-sm font-medium text-card-foreground">{item.name} · {item.type}</summary><div className="mt-3 grid gap-2 text-sm text-muted-foreground sm:grid-cols-2"><p>Source: {item.source ?? 'Not available'}</p><p>Created: {formatTime(item.createdAt)}</p><p>Collected by: {item.creator.name}</p><p className="sm:col-span-2">Description: {item.description ?? 'No data available'}</p></div></details>)}
           </div>
         </Card>}
+
+      {section === 'evidence' && <Drawer open={evidenceOpen} onOpenChange={setEvidenceOpen} closeOnBackdropClick={!submitting} closeOnEscape={!submitting}><DrawerContent describedBy><DrawerHeader><div><DrawerTitle>Add Evidence</DrawerTitle><DrawerDescription>Record evidence for this case.</DrawerDescription></div><OverlayClose disabled={submitting} /></DrawerHeader><DrawerBody>          <form className="cti-overlay-form" id="case-evidence-form" onSubmit={(event) => { event.preventDefault(); void submit('evidence', { requestId: evidenceRequestId, ...evidenceForm }); }}>
+            <label className="flex flex-col gap-1 text-xs font-semibold text-muted-foreground">Nama evidence<input aria-label="Nama evidence" required placeholder="Nama evidence" value={evidenceForm.name} onChange={(event) => setEvidenceForm({ ...evidenceForm, name: event.target.value })} className="rounded-sm border border-input !bg-card px-3 py-2 text-sm font-normal !text-card-foreground" /></label>
+            <label className="flex flex-col gap-1 text-xs font-semibold text-muted-foreground">Tipe evidence<input aria-label="Tipe evidence" required placeholder="Tipe (file, log, URL...)" value={evidenceForm.type} onChange={(event) => setEvidenceForm({ ...evidenceForm, type: event.target.value })} className="rounded-sm border border-input !bg-card px-3 py-2 text-sm font-normal !text-card-foreground" /></label>
+            <label className="flex flex-col gap-1 text-xs font-semibold text-muted-foreground">Sumber evidence<input aria-label="Sumber evidence" placeholder="Sumber" value={evidenceForm.source} onChange={(event) => setEvidenceForm({ ...evidenceForm, source: event.target.value })} className="rounded-sm border border-input !bg-card px-3 py-2 text-sm font-normal !text-card-foreground" /></label>
+            <label className="flex flex-col gap-1 text-xs font-semibold text-muted-foreground">Deskripsi evidence<textarea aria-label="Deskripsi evidence" placeholder="Deskripsi" value={evidenceForm.description} onChange={(event) => setEvidenceForm({ ...evidenceForm, description: event.target.value })} className="min-h-16 resize-y rounded-sm border border-input !bg-card px-3 py-2 text-sm font-normal !text-card-foreground" /></label>
+          </form>{error && <p role="alert" className="cti-overlay-error">{error}</p>}</DrawerBody><DrawerFooter><button type="button" className="soc-button-outline rounded px-4 py-2" onClick={() => setEvidenceOpen(false)} disabled={submitting}>Cancel</button><button type="submit" form="case-evidence-form" disabled={submitting || !evidenceForm.name.trim() || !evidenceForm.type.trim()} className="soc-button-primary rounded px-4 py-2 disabled:opacity-50">{submitting ? 'Menyimpan...' : 'Tambah Evidence'}</button></DrawerFooter></DrawerContent></Drawer>}
 
       {section === 'activity' && <Card view="outlined" className="border-input p-5">
         <h2 className="flex items-center gap-2 text-lg font-semibold !text-card-foreground"><Clock3 className="h-5 w-5 text-primary" />Activity Timeline</h2>

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { ConfirmationModal } from '@/components/ui/modal-patterns';
 import type { UserModuleAccess } from '@/lib/access-policy';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -13,6 +14,7 @@ export default function ModuleAccessPanel({ target, onClose, onError, onSaved, o
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [confirmRevoke, setConfirmRevoke] = useState(false);
   const handlers = useRef({ onUnauthorized });
   handlers.current = { onUnauthorized };
 
@@ -38,21 +40,25 @@ export default function ModuleAccessPanel({ target, onClose, onError, onSaved, o
   function toggleFeature(moduleId: string, key: string) {
     setModules(current => current.map(module => module.id === moduleId && (module.assignable || module.featureKeys.includes(key)) ? { ...module, featureKeys: module.featureKeys.includes(key) ? module.featureKeys.filter(item => item !== key) : [...module.featureKeys, key] } : module));
   }
-  async function save() {
+  function save() {
     const revoking = original.some(previous => previous.assigned && (!modules.find(module => module.id === previous.id)?.assigned || previous.featureKeys.some(key => !modules.find(module => module.id === previous.id)?.featureKeys.includes(key))));
-    if (revoking && !window.confirm(`Hapus akses modul atau fitur yang dipilih dari ${target.name}?`)) return;
+    if (revoking) { setConfirmRevoke(true); return; }
+    void commitSave();
+  }
+  async function commitSave() {
     setSaving(true); setError('');
     try {
       const response = await fetch(`${API}/users/${target.id}/module-access`, { method: 'PUT', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ access: modules.filter(module => module.assigned).map(module => ({ moduleId: module.id, featureKeys: module.featureKeys })) }) });
       if (response.status === 401) { onUnauthorized(); return; }
       const data: unknown = await response.json().catch(() => null);
       if (!response.ok) throw new Error(typeof data === 'object' && data !== null && 'message' in data ? String(data.message) : 'Gagal menyimpan akses modul.');
-      onSaved(`Akses modul ${target.email} berhasil diperbarui.`); onClose();
+      setConfirmRevoke(false); onSaved(`Akses modul ${target.email} berhasil diperbarui.`); onClose();
     } catch (cause) { const message = cause instanceof Error ? cause.message : 'Gagal menyimpan akses modul.'; setError(message); onError(message); }
     finally { setSaving(false); }
   }
 
   return <section className="access-panel" aria-label={`Akses modul ${target.name}`} aria-busy={loading}>
+    <ConfirmationModal open={confirmRevoke} onOpenChange={setConfirmRevoke} title="Hapus akses modul atau fitur" target={target.name} consequence="Assignment dan fitur yang dibatalkan akan dihapus." confirmLabel="Hapus akses" destructive loading={saving} error={confirmRevoke ? error : ''} onConfirm={commitSave} />
     <div className="access-panel-header"><div><h2>Akses Modul: {target.name}</h2><p>User Assigned berbeda dari Accessible. Status efektif berasal dari server; perubahan diterapkan setelah disimpan.</p></div><Button view="outlined" size="s" onClick={onClose} disabled={saving}>Batal</Button></div>
     {error && <p className="error" role="alert">{error}</p>}
     {loading ? <p className="muted" role="status">Memuat akses modul…</p> : <>

@@ -49,6 +49,8 @@ test('analyst adds an investigation note and evidence and sees timeline activity
   await page.getByLabel('Catatan investigasi').fill('IP sumber telah divalidasi');
   await page.getByLabel('Tambah catatan').click();
   await expect(page.getByText('IP sumber telah divalidasi')).toBeVisible();
+  await page.getByRole('button', { name: 'Add Evidence' }).click();
+  await expect(page.getByRole('dialog', { name: 'Add Evidence' })).toBeVisible();
   await page.getByLabel('Nama evidence').fill('auth.log');
   await page.getByLabel('Tipe evidence').fill('log');
   await page.getByLabel('Sumber evidence').fill('SIEM');

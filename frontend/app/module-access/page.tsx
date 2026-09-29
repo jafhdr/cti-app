@@ -7,6 +7,7 @@ import Sidebar from '../../components/dashboard/Sidebar';
 import type { ModulePolicy, UserModuleAccess } from '../../lib/access-policy';
 import type { ModuleAccess } from '../../lib/module-access';
 import ModuleAccessPanel from '../../components/users/ModuleAccessPanel';
+import { ConfirmationModal } from '@/components/ui/modal-patterns';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 type Role = 'SUPER_ADMIN' | 'ADMIN' | 'USER';
@@ -32,6 +33,7 @@ export default function ModuleAccessPage() {
   const [bulkModuleId, setBulkModuleId] = useState('');
   const [bulkFeatures, setBulkFeatures] = useState<readonly string[]>([]);
   const [busy, setBusy] = useState(false);
+  const [confirmBulk, setConfirmBulk] = useState(false);
   const [message, setMessage] = useState('');
 
   async function request<T>(path: string, init?: RequestInit): Promise<T | null> {
@@ -86,13 +88,16 @@ export default function ModuleAccessPage() {
     setBulkFeatures([]);
   }
 
-  async function applyBulk() {
+  function applyBulk() {
     if (!overview || !selectedUsers.length || !bulkModuleId || bulkDenials.length) return;
-    if (!window.confirm('Ganti seluruh assignment user terpilih? Assignment dan fitur lama yang tidak dipilih akan dihapus.')) return;
+    setConfirmBulk(true);
+  }
+  async function commitBulk() {
+    if (!overview || !selectedUsers.length || !bulkModuleId || bulkDenials.length || busy) return;
     setBusy(true); setMessage('');
     try {
       await request<Overview>(`/users/tenant/${encodeURIComponent(tenantId)}/module-access`, { method: 'PATCH', body: JSON.stringify({ assignments: selectedUsers.map((userId) => ({ userId, access: [{ moduleId: bulkModuleId, featureKeys: bulkFeatures }] })) }) });
-      setMessage(`Akses ${selectedUsers.length} user berhasil diganti.`); await loadOverview(tenantId);
+      setMessage(`Akses ${selectedUsers.length} user berhasil diganti.`); await loadOverview(tenantId); setConfirmBulk(false);
     } catch (cause) { setMessage(cause instanceof Error ? cause.message : 'Bulk update gagal.'); }
     finally { setBusy(false); }
   }
@@ -100,6 +105,7 @@ export default function ModuleAccessPage() {
   async function logout() { await fetch(`${API}/auth/logout`, { method: 'POST', credentials: 'include' }); router.replace('/login'); }
   return <div className="app"><Sidebar role={currentUser?.role} moduleAccess={currentUser?.moduleAccess} onLogout={() => void logout()} /><section className="main"><header className="topbar"><div className="module-access-topbar"><span>IDENTITY & ENTITLEMENTS</span><strong>Akses Modul</strong></div><span>{currentUser?.role?.replace('_', ' ')}</span></header><main className="content module-access-page editorial-module">
     <div className="module-access-heading"><div><span className="module-access-kicker"><KeyRound size={13} /> ACCESS CONTROL</span><h1>Access at every layer.</h1><p>Manage assigned modules and features for each user in the selected tenant.</p></div>{currentUser?.role === 'SUPER_ADMIN' && <label className="module-access-tenant"><span>Tenant</span><select aria-label="Pilih tenant" value={tenantId} onChange={(event) => { setTenantId(event.target.value); setEditingUser(null); setSelectedUsers([]); void loadOverview(event.target.value).catch(cause => setMessage(cause instanceof Error ? cause.message : 'Gagal memuat tenant.')); }}>{tenants.map((tenant) => <option value={tenant.id} key={tenant.id}>{tenant.name}</option>)}</select></label>}</div>
+    <ConfirmationModal open={confirmBulk} onOpenChange={setConfirmBulk} title="Ganti assignment user" target={`${selectedUsers.length} user terpilih`} consequence="Assignment dan fitur lama yang tidak dipilih akan dihapus." confirmLabel="Ganti assignment" destructive loading={busy} error={confirmBulk && message && !message.includes('berhasil') ? message : ''} onConfirm={commitBulk} />
     {message && <div className={message.includes('berhasil') ? 'success module-access-message' : 'error module-access-message'} role="status">{message}</div>}
     {!overview && !message && <section className="module-access-loading" role="status"><KeyRound size={20} /><div><strong>Memuat data akses…</strong><span>Mengambil user, modul, dan assignment tenant.</span></div></section>}
     {overview && <section className="module-access-stats" aria-label="Ringkasan akses"><article><UsersRound size={18} /><span>User dalam tenant</span><strong>{overview.users.length}</strong></article><article><Layers3 size={18} /><span>Module Included</span><strong>{overview.modules.filter(module => module.subscriptionIncluded).length}</strong></article><article><KeyRound size={18} /><span>User Assigned</span><strong>{overview.users.reduce((total, user) => total + user.moduleAccess.length, 0)}</strong></article></section>}

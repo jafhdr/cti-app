@@ -1,6 +1,7 @@
 import type { FormEvent, ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { FormModal } from "@/components/ui/modal-patterns";
 import {
   campaignSeverities,
   campaignStatuses,
@@ -18,6 +19,7 @@ type Props = {
   readonly mitreTechniques: readonly RelationMitreTechnique[];
   readonly readOnly: boolean;
   readonly saving: boolean;
+  readonly error?: string;
   readonly onChange: (
     key: keyof CampaignForm,
     value: string | readonly string[],
@@ -25,40 +27,9 @@ type Props = {
   readonly onClose: () => void;
   readonly onSubmit: (event: FormEvent) => void;
 };
-export function CampaignPanel({
-  campaign,
-  form,
-  actors,
-  indicators,
-  mitreTechniques,
-  readOnly,
-  saving,
-  onChange,
-  onClose,
-  onSubmit,
-}: Props) {
-  const title = readOnly
-    ? (campaign?.name ?? "Campaign detail")
-    : campaign
-      ? "Edit campaign"
-      : "Create campaign";
-  return (
-    <Card
-      view="outlined"
-      className="source-panel"
-      role="region"
-      aria-label={title}
-    >
-      <div className="source-panel-heading">
-        <div>
-          <span className="source-eyebrow">CAMPAIGN INTELLIGENCE</span>
-          <h2>{title}</h2>
-        </div>
-        <Button view="flat" onClick={onClose}>
-          Close
-        </Button>
-      </div>
-      {readOnly && campaign ? (
+export function CampaignPanel({ campaign, form, actors, indicators, mitreTechniques, readOnly, saving, error, onChange, onClose, onSubmit }: Props) {
+  const title = readOnly ? campaign?.name ?? "Campaign detail" : campaign ? "Edit campaign" : "Create campaign";
+  if (readOnly && campaign) return <Card view="outlined" className="source-panel" role="region" aria-label={title}><div className="source-panel-heading"><div><span className="source-eyebrow">CAMPAIGN INTELLIGENCE</span><h2>{title}</h2></div><Button view="flat" onClick={onClose}>Close</Button></div>
         <>
           <div className="ti-profile"><span className="source-eyebrow">CAMPAIGN OVERVIEW</span><p>{campaign.description || "No campaign description available."}</p><div><span className="cti-status">{campaign.status}</span><span className={`ioc-severity severity-${campaign.severity.toLowerCase()}`}>{campaign.severity}</span><span>{campaign.startDate ? formatDate(campaign.startDate) : "Start date unavailable"}</span></div></div><h3 className="ti-detail-title">Overview metadata</h3><dl className="source-detail">
             <div><dt>Threat actor</dt><dd><a href={`/intelligence/threat-actors?actorId=${encodeURIComponent(campaign.threatActor.id)}`}>{campaign.threatActor.entity.name}</a></dd></div>
@@ -106,8 +77,8 @@ export function CampaignPanel({
             {(campaign.malwareTools?.length ?? 0) === 0 ? <p>No linked malware or tools.</p> : <ul>{campaign.malwareTools?.map(({ malwareTool }) => <li key={malwareTool.id}><span>{malwareTool.type}</span><strong>{malwareTool.name}</strong><small>{malwareTool.externalId || 'No external ID'}</small></li>)}</ul>}
           </section>
         </>
-      ) : (
-        <form className="ioc-form" onSubmit={onSubmit}>
+      </Card>;
+  return <FormModal open onOpenChange={open => { if (!open) onClose(); }} title={title} onSubmit={onSubmit} loading={saving} error={error} submitLabel="Save campaign"><div className="ioc-form">
           <Field label="Name">
             <input
               required
@@ -235,19 +206,9 @@ export function CampaignPanel({
             </select>
             <small className="campaign-helper">Use Ctrl/Cmd to add or remove existing techniques.</small>
           </Field>
-          <div className="ioc-actions">
-            <Button view="action" type="submit" disabled={saving}>
-              {saving ? "Saving..." : "Save campaign"}
-            </Button>
-            <Button view="outlined" type="button" onClick={onClose}>
-              Cancel
-            </Button>
-          </div>
-        </form>
-      )}
-    </Card>
-  );
+          </div></FormModal>;
 }
+
 function Field({
   label,
   wide = false,

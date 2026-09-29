@@ -85,3 +85,8 @@ html.light .asm-card .source-name,html.light .asm-card .ioc-actions button{color
 .subscription-capabilities ul{list-style:none;margin:20px 0 0;padding:0}.subscription-capabilities li{display:flex;justify-content:space-between;gap:16px;padding:16px 0;border-top:1px solid var(--soc-border);color:var(--soc-ink)}.subscription-capabilities li span{color:var(--soc-muted);white-space:nowrap}.subscription-page>.billing-cycle{width:max-content;margin:0 0 12px}
 @media(max-width:900px){.subscription-overview dl{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:640px){.subscription-page .subscription-overview{display:block}.subscription-overview .subscription-status-icon{margin-bottom:15px}.subscription-overview dl,.subscription-usage{grid-template-columns:1fr}.subscription-capabilities li{flex-wrap:wrap}.subscription-page .package-grid,.subscription-page .custom-builder{grid-template-columns:minmax(0,1fr)}}
+
+.asm-intelligence-workspace{width:100%;max-width:none;margin-top:28px;overflow:hidden;border:1px solid var(--soc-border);border-radius:var(--cti-radius)}
+.asm-intelligence-workspace>header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:clamp(24px,4vw,48px);background:radial-gradient(circle at 90% 10%,var(--cti-glow),transparent 50%),var(--soc-elevated)}
+.asm-intelligence-workspace>header button{flex:none;min-height:44px}
+@media(max-width:600px){.asm-intelligence-workspace>header{flex-direction:column}.asm-intelligence-workspace>header button{width:100%}}

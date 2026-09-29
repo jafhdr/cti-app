@@ -1,10 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { Dispatch, RefObject, SetStateAction } from 'react';
-import { BriefcaseBusiness, Loader2, Plus, Search, Trash2, X } from 'lucide-react';
+import { BriefcaseBusiness, Loader2, Plus, Search, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { FormModal } from '@/components/ui/modal-patterns';
+import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle, OverlayClose } from '@/components/ui/overlay';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -40,42 +41,6 @@ function isCaseLevel(value: string): value is CreateCaseForm['priority'] {
   return value === 'LOW' || value === 'MEDIUM' || value === 'HIGH' || value === 'CRITICAL';
 }
 
-function useDialogKeyboard(
-  open: boolean,
-  setOpen: Dispatch<SetStateAction<boolean>>,
-  dialogRef: RefObject<HTMLDivElement | null>,
-  triggerRef: RefObject<HTMLElement | null>,
-): void {
-  useEffect(() => {
-    if (!open) return;
-    const handleKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        setOpen(false);
-        return;
-      }
-      if (event.key !== 'Tab' || !dialogRef.current) return;
-      const focusable = Array.from(dialogRef.current.querySelectorAll('button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), a[href]'))
-        .filter((element): element is HTMLElement => element instanceof HTMLElement);
-      const first = focusable[0];
-      const last = focusable.at(-1);
-      if (!first || !last) return;
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-      triggerRef.current?.querySelector('button')?.focus();
-    };
-  }, [dialogRef, open, setOpen, triggerRef]);
-}
-
 async function responseMessage(response: Response, fallback: string): Promise<string> {
   const body: unknown = await response.json().catch(() => null);
   if (typeof body === 'object' && body !== null && 'message' in body && typeof body.message === 'string') return body.message;
@@ -97,13 +62,7 @@ export function RelatedCases({ indicatorId, canMutate }: Props) {
   const [success, setSuccess] = useState<string | null>(null);
   const [createForm, setCreateForm] = useState<CreateCaseForm>(EMPTY_CREATE_FORM);
   const [search, setSearch] = useState('');
-  const addDialogRef = useRef<HTMLDivElement>(null);
-  const addTriggerRef = useRef<HTMLSpanElement>(null);
-  const createDialogRef = useRef<HTMLDivElement>(null);
-  const createTriggerRef = useRef<HTMLSpanElement>(null);
-
-  useDialogKeyboard(dialogOpen, setDialogOpen, addDialogRef, addTriggerRef);
-  useDialogKeyboard(createOpen, setCreateOpen, createDialogRef, createTriggerRef);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async (): Promise<void> => {
     setLoading(true);
@@ -201,7 +160,7 @@ export function RelatedCases({ indicatorId, canMutate }: Props) {
   return <section className="indicator-related-cases" aria-labelledby="related-cases-heading">
     <div className="source-panel-heading">
       <div><span className="source-eyebrow">CASE MANAGEMENT</span><h3 id="related-cases-heading"><BriefcaseBusiness aria-hidden="true" />Related Cases</h3></div>
-      {canMutate && <div className="related-cases-actions"><span ref={addTriggerRef} className="related-cases-trigger"><Button view="normal" size="s" onClick={() => setDialogOpen(true)}><Plus aria-hidden="true" />Add to Case</Button></span><span ref={createTriggerRef} className="related-cases-trigger"><Button view="action" size="s" onClick={() => { setCreateError(null); setCreateOpen(true); }}><Plus aria-hidden="true" />Create Case</Button></span></div>}
+      {canMutate && <div className="related-cases-actions"><span className="related-cases-trigger"><Button view="normal" size="s" onClick={() => setDialogOpen(true)}><Plus aria-hidden="true" />Add to Case</Button></span><span className="related-cases-trigger"><Button view="action" size="s" onClick={() => { setCreateError(null); setCreateOpen(true); }}><Plus aria-hidden="true" />Create Case</Button></span></div>}
     </div>
     {success && <div className="success" role="status">{success}</div>}
     {listError && <div className="error" role="alert">{listError} <button type="button" onClick={() => void load()}>Retry</button></div>}
@@ -210,25 +169,19 @@ export function RelatedCases({ indicatorId, canMutate }: Props) {
       {canMutate && <button type="button" aria-label={`Unlink ${caseRecord.caseNumber}`} disabled={busyId === caseRecord.id} onClick={() => void unlink(caseRecord)}>{busyId === caseRecord.id ? <Loader2 className="spin" aria-hidden="true" /> : <Trash2 aria-hidden="true" />}</button>}
     </article>)}</div>}
 
-    {dialogOpen && <div className="case-modal-backdrop related-cases-backdrop"><div ref={addDialogRef} className="case-modal related-cases-dialog" role="dialog" aria-modal="true" aria-labelledby="add-to-case-title">
-      <header><h3 id="add-to-case-title">Add to Case</h3><button type="button" aria-label="Close Case search" onClick={() => setDialogOpen(false)}><X aria-hidden="true" /></button></header>
-      <label><Search aria-hidden="true" /><span className="sr-only">Search Cases</span><input autoFocus value={search} onChange={event => setSearch(event.target.value)} placeholder="Search case number or title..." /></label>
+    <Dialog open={dialogOpen} onOpenChange={setDialogOpen}><DialogContent className="cti-case-picker" initialFocusRef={searchRef}><DialogHeader><DialogTitle>Add to Case</DialogTitle><OverlayClose label="Close Case search" /></DialogHeader><DialogBody>
+      <label className="cti-case-search"><Search aria-hidden="true" /><span className="sr-only">Search Cases</span><input ref={searchRef} value={search} onChange={event => setSearch(event.target.value)} placeholder="Search case number or title..." /></label>
       {searchError && <div className="error" role="alert">{searchError} <button type="button" onClick={() => void loadAvailable(search)}>Retry search</button></div>}
       {!searchError && (searching ? <div className="related-cases-state" role="status"><Loader2 className="spin" aria-hidden="true" />Searching Cases...</div> : available.length === 0 ? <div className="related-cases-state">No available Cases found.</div> : <div className="related-case-options">{available.map(caseRecord => <article key={caseRecord.id}><div><strong>{caseRecord.caseNumber}</strong><span>{caseRecord.title}</span><small>{caseRecord.status} / {caseRecord.priority}</small></div><Button view="action" size="s" aria-label={`Link ${caseRecord.caseNumber}`} disabled={busyId === caseRecord.id} onClick={() => void link(caseRecord)}>{busyId === caseRecord.id ? 'Linking...' : 'Link'}</Button></article>)}</div>)}
-    </div></div>}
+    </DialogBody></DialogContent></Dialog>
 
-    {createOpen && <div className="case-modal-backdrop related-cases-backdrop"><div ref={createDialogRef} className="case-modal related-cases-dialog related-cases-create-dialog" role="dialog" aria-modal="true" aria-labelledby="create-indicator-case-title">
-      <header><h3 id="create-indicator-case-title">Create Case from Indicator</h3><button type="button" aria-label="Close Create Case" onClick={() => setCreateOpen(false)}><X aria-hidden="true" /></button></header>
-      {createError && <div className="error" role="alert">{createError}</div>}
-      <form onSubmit={event => void createCase(event)}>
-        <label><span>Title</span><input autoFocus required value={createForm.title} onChange={event => setCreateForm(current => ({ ...current, title: event.target.value }))} /></label>
-        <label><span>Description</span><textarea rows={4} value={createForm.description} onChange={event => setCreateForm(current => ({ ...current, description: event.target.value }))} /></label>
-        <div className="related-cases-create-grid">
-          <label><span>Priority</span><select value={createForm.priority} onChange={event => { const value = event.target.value; if (isCaseLevel(value)) setCreateForm(current => ({ ...current, priority: value })); }}><option value="LOW">Low</option><option value="MEDIUM">Medium</option><option value="HIGH">High</option><option value="CRITICAL">Critical</option></select></label>
-          <label><span>Severity</span><select value={createForm.severity} onChange={event => { const value = event.target.value; if (isCaseLevel(value)) setCreateForm(current => ({ ...current, severity: value })); }}><option value="LOW">Low</option><option value="MEDIUM">Medium</option><option value="HIGH">High</option><option value="CRITICAL">Critical</option></select></label>
-        </div>
-        <div className="related-cases-form-actions"><Button type="button" view="normal" onClick={() => setCreateOpen(false)}>Cancel</Button><Button type="submit" view="action" disabled={creating}>{creating ? 'Creating...' : 'Create Case'}</Button></div>
-      </form>
-    </div></div>}
+    <FormModal open={createOpen} onOpenChange={setCreateOpen} title="Create Case from Indicator" onSubmit={createCase} loading={creating} error={createError} submitLabel="Create Case"><div className="ioc-form">
+      <label><span>Title</span><input required value={createForm.title} onChange={event => setCreateForm(current => ({ ...current, title: event.target.value }))} /></label>
+      <label><span>Description</span><textarea rows={4} value={createForm.description} onChange={event => setCreateForm(current => ({ ...current, description: event.target.value }))} /></label>
+      <div className="related-cases-create-grid">
+        <label><span>Priority</span><select value={createForm.priority} onChange={event => { const value = event.target.value; if (isCaseLevel(value)) setCreateForm(current => ({ ...current, priority: value })); }}><option value="LOW">Low</option><option value="MEDIUM">Medium</option><option value="HIGH">High</option><option value="CRITICAL">Critical</option></select></label>
+        <label><span>Severity</span><select value={createForm.severity} onChange={event => { const value = event.target.value; if (isCaseLevel(value)) setCreateForm(current => ({ ...current, severity: value })); }}><option value="LOW">Low</option><option value="MEDIUM">Medium</option><option value="HIGH">High</option><option value="CRITICAL">Critical</option></select></label>
+      </div>
+    </div></FormModal>
   </section>;
 }

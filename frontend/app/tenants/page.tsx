@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Table } from '@/components/ui/table';
+import { ConfirmationModal, FormModal } from '@/components/ui/modal-patterns';
 import SharedSidebar from '../../components/dashboard/Sidebar';
 import type { ModulePolicy } from '../../lib/access-policy';
 
@@ -96,6 +97,7 @@ export default function TenantsPage() {
   const detailSequence = useRef(0);
 
   const [showForm, setShowForm] = useState(false);
+  const [statusTarget, setStatusTarget] = useState<Tenant | null>(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ name: '', slug: '', adminName: '', adminEmail: '', adminPassword: '' });
 
@@ -133,6 +135,7 @@ export default function TenantsPage() {
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
+    if (saving) return;
     setError(''); setSuccess('');
     if (!form.name || !form.slug || !form.adminName || !form.adminEmail || !form.adminPassword) { setError('Semua field wajib diisi.'); return; }
     if (form.adminPassword.length < 8) { setError('Password minimal 8 karakter.'); return; }
@@ -153,17 +156,23 @@ export default function TenantsPage() {
   }
 
   async function toggleStatus(tenant: Tenant) {
-    if (!window.confirm('Yakin ingin ' + (tenant.isActive ? 'menonaktifkan' : 'mengaktifkan') + ' tenant "' + tenant.name + '"?')) return;
+    setError(''); setStatusTarget(tenant);
+  }
+
+  async function confirmStatus() {
+    const tenant = statusTarget;
+    if (!tenant || saving) return;
+    setSaving(true);
     setError(''); setSuccess('');
     try {
       const res = await fetch(API + '/tenants/' + tenant.id + '/status', { method: 'PATCH', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ isActive: !tenant.isActive }) });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.message || 'Gagal mengubah status tenant.');
       setSuccess('Tenant "' + tenant.name + '" berhasil ' + (tenant.isActive ? 'dinonaktifkan' : 'diaktifkan') + '.');
-      setTenants(await loadTenants());
+      setTenants(await loadTenants()); setStatusTarget(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Gagal mengubah status tenant.');
-    }
+    } finally { setSaving(false); }
   }
 
   async function viewTenant(tenant: Tenant) {
@@ -213,10 +222,7 @@ export default function TenantsPage() {
           {error && <div className="error" style={{ marginBottom: 16 }}>{error}</div>}
           {success && <div className="success" style={{ marginBottom: 16 }}>{success}</div>}
 
-          {showForm && (
-            <Card view="outlined" style={{ padding: 28, marginBottom: 24 }}>
-              <h2 style={{ margin: '0 0 20px' }}>Buat Tenant Baru</h2>
-              <form onSubmit={handleCreate}>
+          <FormModal open={showForm} onOpenChange={open => { if (!open) setShowForm(false); }} title="Buat Tenant Baru" loading={saving} error={showForm ? error : ''} submitLabel="Buat Tenant" onSubmit={handleCreate}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                   <div className="field">
                     <label>Nama Organisasi *</label>
@@ -243,13 +249,8 @@ export default function TenantsPage() {
                     <input type="password" value={form.adminPassword} onChange={e => setForm(f => ({ ...f, adminPassword: e.target.value }))} placeholder="Minimal 8 karakter" minLength={8} required />
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
-                  <Button type="submit" view="action" size="l" disabled={saving}>{saving ? 'Membuat…' : 'Buat Tenant'}</Button>
-                  <Button type="button" view="outlined" size="l" disabled={saving} onClick={() => { setShowForm(false); setForm({ name: '', slug: '', adminName: '', adminEmail: '', adminPassword: '' }); }}>Batal</Button>
-                </div>
-              </form>
-            </Card>
-          )}
+          </FormModal>
+          <ConfirmationModal open={Boolean(statusTarget)} onOpenChange={open => { if (!open) setStatusTarget(null); }} title={statusTarget?.isActive ? 'Nonaktifkan organisasi' : 'Aktifkan organisasi'} target={statusTarget?.name} confirmLabel={statusTarget?.isActive ? 'Nonaktifkan' : 'Aktifkan'} destructive={statusTarget?.isActive} loading={saving} error={statusTarget ? error : ''} onConfirm={confirmStatus} />
 
           <Card view="outlined" className="admin-directory" style={{ padding: 24 }}>
             <h2 style={{ margin: '0 0 20px' }}>Daftar Tenant ({tenants.length})</h2>

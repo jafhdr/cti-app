@@ -45,7 +45,7 @@ test('admin completes campaign CRUD using existing actor and indicators', async 
   await page.getByRole('button', { name: 'Close' }).click();
   await page.getByLabel('Search campaigns').fill('phantom');
   await expect.poll(() => requestUrl).toContain('search=phantom');
-  await page.getByRole('button', { name: '+ Add campaign' }).click();
+  await page.getByRole('button', { name: '+ Add campaign' }).click(); for (const width of [1440, 768, 375]) { await page.setViewportSize({ width, height: 900 }); const dialog = page.getByRole('dialog', { name: 'Create campaign' }); await expect(dialog).toBeVisible(); await expect.poll(() => dialog.evaluate(node => { const box = node.getBoundingClientRect(); return box.left >= 0 && box.right <= innerWidth; })).toBe(true); await page.screenshot({ path: `../.omo/evidence/threat-intelligence/modal-migration/campaign-create-${width}.png` }); } await page.setViewportSize({ width: 1440, height: 900 });
   await page.getByLabel('Name').fill('New Campaign');
   await page.locator('form').getByLabel('Threat actor').selectOption(actor.id);
   await page.locator('form').getByLabel('Indicators').selectOption(indicator.id);
@@ -56,8 +56,10 @@ test('admin completes campaign CRUD using existing actor and indicators', async 
   await page.getByLabel('Objective').fill('Updated objective');
   await page.getByRole('button', { name: 'Save campaign' }).click();
   await expect.poll(() => methods).toContain('PATCH');
-  page.on('dialog', dialog => dialog.accept());
   await page.getByRole('button', { name: 'Delete' }).click();
+  const confirmation = page.getByRole('dialog', { name: 'Delete campaign' });
+  await expect(confirmation).toBeVisible();
+  await confirmation.getByRole('button', { name: 'Delete' }).click();
   await expect.poll(() => methods).toContain('DELETE');
 });
 

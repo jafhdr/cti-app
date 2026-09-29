@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
+import { FormModal } from '@/components/ui/modal-patterns';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -30,17 +31,10 @@ export default function EditCaseModal({ caseDetail, onClose, onSuccess }: Props)
     finally { setSaving(false); }
   }
 
-  return <div className="case-modal-backdrop fixed inset-0 z-50 flex items-center justify-center" role="presentation">
-    <div className="case-modal mx-4 w-full max-w-md" role="dialog" aria-modal="true" aria-labelledby="edit-case-title">
-      <span className="source-eyebrow">CASE OPERATIONS</span><h2 id="edit-case-title" className="mb-4 text-2xl font-bold text-card-foreground">Edit case</h2>
-      {error && <p role="alert" className="error mb-4 rounded px-3 py-2">{error}</p>}
-      <form onSubmit={save} className="space-y-4">
-        <label className="block text-sm font-medium">Title<input required value={title} onChange={event => setTitle(event.target.value)} /></label>
-        <label className="block text-sm font-medium">Description<textarea rows={4} value={description} onChange={event => setDescription(event.target.value)} /></label>
-        <label className="block text-sm font-medium">Status<select value={status} onChange={event => setStatus(event.target.value)}>{['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'].map(value => <option key={value} value={value}>{value.replaceAll('_', ' ')}</option>)}</select></label>
-        <label className="block text-sm font-medium">Priority<select value={priority} onChange={event => setPriority(event.target.value)}>{['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].map(value => <option key={value} value={value}>{value}</option>)}</select></label>
-        <div className="flex gap-3 pt-2"><button type="button" onClick={onClose} className="soc-button-outline flex-1 rounded px-4 py-2">Cancel</button><button type="submit" disabled={saving} className="soc-button-primary flex-1 rounded px-4 py-2 disabled:opacity-50">{saving ? 'Saving...' : 'Save changes'}</button></div>
-      </form>
-    </div>
-  </div>;
+  return <FormModal open onOpenChange={open => { if (!open) onClose(); }} title="Edit case" onSubmit={save} loading={saving} error={error} submitLabel="Save changes">
+    <label>Title<input required value={title} onChange={event => setTitle(event.target.value)} /></label>
+    <label>Description<textarea rows={4} value={description} onChange={event => setDescription(event.target.value)} /></label>
+    <label>Status<select value={status} onChange={event => setStatus(event.target.value)}>{['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'].map(value => <option key={value} value={value}>{value.replaceAll('_', ' ')}</option>)}</select></label>
+    <label>Priority<select value={priority} onChange={event => setPriority(event.target.value)}>{['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].map(value => <option key={value} value={value}>{value}</option>)}</select></label>
+  </FormModal>;
 }

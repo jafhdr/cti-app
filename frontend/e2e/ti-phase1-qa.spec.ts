@@ -85,8 +85,8 @@ test('search, filters, reset, create, edit, and deactivate use API state', async
   await page.getByLabel('Value').fill('edited.example');
   await page.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByText('edited.example')).toBeVisible();
-  page.once('dialog', dialog => dialog.accept());
   await page.getByRole('button', { name: 'Deactivate' }).first().click();
+  await page.getByRole('dialog', { name: 'Deactivate indicator' }).getByRole('button', { name: 'Deactivate' }).click();
   await expect(page.getByText('Indicator dinonaktifkan.')).toBeVisible();
 });
 

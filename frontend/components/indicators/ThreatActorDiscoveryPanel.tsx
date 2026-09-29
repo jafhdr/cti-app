@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { ConfirmationModal } from '@/components/ui/modal-patterns';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -47,6 +48,7 @@ export function ThreatActorDiscoveryPanel({ indicatorId }: { readonly indicatorI
   const [confirmedCandidate, setConfirmedCandidate] = useState<ConfirmationResult['candidate'] | null>(null);
   const [confirmingCandidateId, setConfirmingCandidateId] = useState<string | null>(null);
   const [attributingCandidateId, setAttributingCandidateId] = useState<string | null>(null);
+  const [attributeOpen, setAttributeOpen] = useState(false);
   const [attributedActor, setAttributedActor] = useState<AttributionResult['candidate'] | null>(null);
   const [error, setError] = useState('');
   const [confirmationError, setConfirmationError] = useState('');
@@ -99,8 +101,6 @@ export function ThreatActorDiscoveryPanel({ indicatorId }: { readonly indicatorI
 
   async function attribute(): Promise<void> {
     if (!confirmedCandidate) return;
-    if (!window.confirm(`Attribute indicator ini ke ${confirmedCandidate.name}?`)) return;
-
     setAttributingCandidateId(confirmedCandidate.id);
     setAttributionError('');
     try {
@@ -114,6 +114,7 @@ export function ThreatActorDiscoveryPanel({ indicatorId }: { readonly indicatorI
       if (!response.ok) throw new Error(messageFrom(data, 'Attribution Threat Actor gagal dijalankan.'));
       if (!isAttributionResult(data)) throw new Error(attributionErrorFrom(data));
       setAttributedActor(data.candidate);
+      setAttributeOpen(false);
       setConfirmedCandidate(null);
       setResult(null);
     } catch (cause) {
@@ -149,7 +150,7 @@ export function ThreatActorDiscoveryPanel({ indicatorId }: { readonly indicatorI
           <Button
             view="action"
             disabled={attributingCandidateId !== null}
-            onClick={() => void attribute()}
+            onClick={() => { setAttributionError(''); setAttributeOpen(true); }}
           >
             {attributingCandidateId ? 'Attributing...' : 'Attribute'}
           </Button>
@@ -186,6 +187,7 @@ export function ThreatActorDiscoveryPanel({ indicatorId }: { readonly indicatorI
       </article>)}
       {result.overflow && <div className="discovery-overflow" role="note">More candidates are available but are not displayed.</div>}
     </div>}
+    <ConfirmationModal open={attributeOpen} onOpenChange={setAttributeOpen} title="Attribute indicator" target={confirmedCandidate?.name} consequence="Link this indicator to the confirmed threat actor." confirmLabel="Attribute" loading={attributingCandidateId !== null} error={attributionError} onConfirm={attribute} />
   </section>;
 }
 

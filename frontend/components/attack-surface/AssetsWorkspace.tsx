@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Table } from '@/components/ui/table';
+import { ConfirmationModal } from '@/components/ui/modal-patterns';
 import { AssetPanel, formatDate } from './AssetPanel';
 import { useAttackSurface } from './AttackSurfaceShell';
 import { assetCriticalities, assetStatuses, assetTypes, emptyAssetForm, type Asset, type AssetFormValue, type DiscoverySummary } from './types';
@@ -16,6 +17,8 @@ type ErrorBody = { readonly message?: string | readonly string[] };
 
 export function AssetsWorkspace() {
   const latestLoad = useRef(0);
+  const detailWorkspaceRef = useRef<HTMLElement>(null);
+  const detailTriggerRef = useRef<HTMLElement | null>(null);
   const { role, tenantId, ready } = useAttackSurface();
   const [items, setItems] = useState<readonly Asset[]>([]);
   const [page, setPage] = useState(1); const [total, setTotal] = useState(0); const [pages, setPages] = useState(1);
@@ -24,6 +27,9 @@ export function AssetsWorkspace() {
   const [panel, setPanel] = useState<'closed' | 'form' | 'detail'>('closed'); const [selected, setSelected] = useState<Asset | null>(null); const [form, setForm] = useState<AssetFormValue>(emptyAssetForm); const [saving, setSaving] = useState(false);
   const [discovering, setDiscovering] = useState(''); const [discovery, setDiscovery] = useState<DiscoverySummary | null>(null); const [discoveryError, setDiscoveryError] = useState(''); const [lastDiscoveryAsset, setLastDiscoveryAsset] = useState<Asset | null>(null);
   const [discoveryRun, setDiscoveryRun] = useState(0);
+  const [deleteTarget, setDeleteTarget] = useState<Asset | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
   const canManage = role === 'SUPER_ADMIN' || role === 'ADMIN';
   const tenantQuery = role === 'SUPER_ADMIN' ? `tenantId=${encodeURIComponent(tenantId)}` : '';
 
@@ -44,7 +50,14 @@ export function AssetsWorkspace() {
     finally { if (requestId === latestLoad.current) setLoading(false); }
   }, [criticality, page, ready, search, status, tenantId, tenantQuery, type]);
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    if (panel !== 'detail') return;
+    const frame = requestAnimationFrame(() => { detailWorkspaceRef.current?.scrollIntoView({ block: 'start' }); detailWorkspaceRef.current?.focus({ preventScroll: true }); });
+    return () => cancelAnimationFrame(frame);
+  }, [panel, selected]);
 
+  function openDetail(asset: Asset): void { detailTriggerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; setSelected(asset); setPanel('detail'); }
+  function closePanel(): void { setPanel('closed'); if (panel === 'detail' && detailTriggerRef.current?.isConnected) detailTriggerRef.current.focus(); }
   function openCreate(): void { setSelected(null); setForm(emptyAssetForm); setPanel('form'); setError(''); }
   function openEdit(asset: Asset): void { setSelected(asset); setForm(toForm(asset)); setPanel('form'); setError(''); }
   function setField(key: keyof AssetFormValue, value: string): void { setForm(current => ({ ...current, [key]: value })); }
@@ -58,10 +71,13 @@ export function AssetsWorkspace() {
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Failed to save asset.'); } finally { setSaving(false); }
   }
   async function remove(asset: Asset): Promise<void> {
-    if (!window.confirm(`Delete asset ${asset.name}?`)) return;
-    const response = await fetch(`${API}/attack-surface/assets/${asset.id}${tenantQuery ? `?${tenantQuery}` : ''}`, { method: 'DELETE', credentials: 'include' });
-    const body: ErrorBody = await response.json(); if (!response.ok) { setError(messageOf(body, 'Failed to delete asset.')); return; }
-    setNotice('Asset deleted successfully.'); await load();
+    setDeleting(true); setDeleteError('');
+    try {
+      const response = await fetch(`${API}/attack-surface/assets/${asset.id}${tenantQuery ? `?${tenantQuery}` : ''}`, { method: 'DELETE', credentials: 'include' });
+      const body: ErrorBody = await response.json(); if (!response.ok) throw new Error(messageOf(body, 'Failed to delete asset.'));
+      setDeleteTarget(null); setNotice('Asset deleted successfully.'); await load();
+    } catch (cause) { setDeleteError(cause instanceof Error ? cause.message : 'Failed to delete asset.'); }
+    finally { setDeleting(false); }
   }
   async function discover(asset: Asset): Promise<void> {
     setDiscovering(asset.id); setLastDiscoveryAsset(asset); setDiscovery(null); setDiscoveryError('');
@@ -81,14 +97,15 @@ export function AssetsWorkspace() {
     {discoveryError && <div className="error" role="alert">{discoveryError} {lastDiscoveryAsset && <button type="button" onClick={() => void discover(lastDiscoveryAsset)}>Retry discovery</button>}</div>}
     {discovery && <DiscoveryResult summary={discovery} />}
     <Card view="outlined" className="asm-card"><div className="asm-filters"><label><Search size={15} /><input aria-label="Search assets" placeholder="Search name or value" value={search} onChange={event => { setPage(1); setSearch(event.target.value); }} /></label><select aria-label="Filter type" value={type} onChange={event => { setPage(1); setType(event.target.value); }}><option value="">All types</option>{assetTypes.map(value => <option key={value}>{value}</option>)}</select><select aria-label="Filter status" value={status} onChange={event => { setPage(1); setStatus(event.target.value); }}><option value="">All status</option>{assetStatuses.map(value => <option key={value}>{value}</option>)}</select><select aria-label="Filter criticality" value={criticality} onChange={event => { setPage(1); setCriticality(event.target.value); }}><option value="">All criticality</option>{assetCriticalities.map(value => <option key={value}>{value}</option>)}</select></div>
-      {loading ? <div className="asm-state" aria-live="polite"><RefreshCw className="spin" size={18} />Loading assets...</div> : denied ? <div className="asm-state asm-denied" role="alert"><AlertTriangle size={22} /><strong>Module access required</strong><span>Your account cannot access Attack Surface Management.</span><Link href="/dashboard">Back to Dashboard</Link></div> : error ? null : items.length === 0 ? <div className="asm-state"><Radar size={24} /><strong>No assets found</strong><span>{canManage ? 'Adjust the filters or create your first asset.' : 'Adjust the filters or contact an administrator to add assets.'}</span></div> : <AssetTable items={items} canManage={canManage} discovering={discovering} onDetail={asset => { setSelected(asset); setPanel('detail'); }} onEdit={openEdit} onDelete={remove} onDiscover={discover} />}
+      {loading ? <div className="asm-state" aria-live="polite"><RefreshCw className="spin" size={18} />Loading assets...</div> : denied ? <div className="asm-state asm-denied" role="alert"><AlertTriangle size={22} /><strong>Module access required</strong><span>Your account cannot access Attack Surface Management.</span><Link href="/dashboard">Back to Dashboard</Link></div> : error ? null : items.length === 0 ? <div className="asm-state"><Radar size={24} /><strong>No assets found</strong><span>{canManage ? 'Adjust the filters or create your first asset.' : 'Adjust the filters or contact an administrator to add assets.'}</span></div> : <AssetTable items={items} canManage={canManage} discovering={discovering} onDetail={openDetail} onEdit={openEdit} onDelete={asset => { setDeleteTarget(asset); setDeleteError(''); }} onDiscover={discover} />}
       <div className="asm-pagination"><span>{total} assets · Page {page} of {pages}</span><div><Button view="outlined" size="s" disabled={page <= 1 || loading} onClick={() => setPage(value => value - 1)}>Previous</Button><Button view="outlined" size="s" disabled={page >= pages || loading} onClick={() => setPage(value => value + 1)}>Next</Button></div></div>
-    </Card>{panel !== 'closed' && <AssetPanel asset={selected} form={form} mode={panel} saving={saving} onChange={setField} onClose={() => setPanel('closed')} onSubmit={submit} tenantQuery={tenantQuery} canManage={canManage} discovery={selected?.id === lastDiscoveryAsset?.id ? discovery : null} discoveryError={selected?.id === lastDiscoveryAsset?.id ? discoveryError : ''} discoveryRun={discoveryRun} discovering={discovering === selected?.id} onDiscoverAsset={discover} />}
+    </Card>{panel !== 'closed' && <AssetPanel asset={selected} form={form} mode={panel} saving={saving} error={error} onChange={setField} onClose={closePanel} onSubmit={submit} tenantQuery={tenantQuery} canManage={canManage} discovery={selected?.id === lastDiscoveryAsset?.id ? discovery : null} discoveryError={selected?.id === lastDiscoveryAsset?.id ? discoveryError : ''} discoveryRun={discoveryRun} discovering={discovering === selected?.id} onDiscoverAsset={discover} workspaceRef={detailWorkspaceRef} />}
+    <ConfirmationModal open={deleteTarget !== null} onOpenChange={open => { if (!open) setDeleteTarget(null); }} title="Delete Asset?" description="You are about to delete this asset." target={deleteTarget?.name} consequence="This action cannot be undone." confirmLabel="Delete Asset" destructive loading={deleting} error={deleteError} onConfirm={() => deleteTarget ? remove(deleteTarget) : undefined} />
   </main>;
 }
 
-function AssetTable({ items, canManage, discovering, onDetail, onEdit, onDelete, onDiscover }: { readonly items: readonly Asset[]; readonly canManage: boolean; readonly discovering: string; readonly onDetail: (asset: Asset) => void; readonly onEdit: (asset: Asset) => void; readonly onDelete: (asset: Asset) => Promise<void>; readonly onDiscover: (asset: Asset) => Promise<void> }) {
-  return <Table data={items} columns={[{ id: 'name', name: 'Asset', template: asset => <button className="source-name" onClick={() => onDetail(asset)}>{asset.name}</button> }, { id: 'type', name: 'Type', template: asset => <span className="asm-type">{asset.type}</span> }, { id: 'value', name: 'Value', template: asset => <code>{asset.value}</code> }, { id: 'status', name: 'Status', template: asset => <span className={`cti-status is-${asset.status.toLowerCase()}`}>{asset.status}</span> }, { id: 'criticality', name: 'Criticality', template: asset => <span className={`ioc-severity severity-${asset.criticality.toLowerCase()}`}>{asset.criticality}</span> }, { id: 'owner', name: 'Owner', template: asset => asset.owner || '-' }, { id: 'updated', name: 'Updated', template: asset => formatDate(asset.updatedAt) }, { id: 'actions', name: 'Actions', template: asset => <div className="ioc-actions"><Button view="flat" size="s" onClick={() => onDetail(asset)}>Detail</Button>{(asset.type === 'DOMAIN' || asset.type === 'SUBDOMAIN') && <Button view="outlined" size="s" disabled={discovering === asset.id} onClick={() => void onDiscover(asset)}>{discovering === asset.id ? 'Discovering...' : asset.type === 'DOMAIN' ? 'Discover Subdomains' : 'Discover DNS/IP'}</Button>}{canManage && <><Button view="flat" size="s" onClick={() => onEdit(asset)}>Edit</Button><Button view="flat-danger" size="s" onClick={() => void onDelete(asset)}>Delete</Button></>}</div> }]}/>;
+function AssetTable({ items, canManage, discovering, onDetail, onEdit, onDelete, onDiscover }: { readonly items: readonly Asset[]; readonly canManage: boolean; readonly discovering: string; readonly onDetail: (asset: Asset) => void; readonly onEdit: (asset: Asset) => void; readonly onDelete: (asset: Asset) => void; readonly onDiscover: (asset: Asset) => Promise<void> }) {
+  return <Table data={items} columns={[{ id: 'name', name: 'Asset', template: asset => <button className="source-name" onClick={() => onDetail(asset)}>{asset.name}</button> }, { id: 'type', name: 'Type', template: asset => <span className="asm-type">{asset.type}</span> }, { id: 'value', name: 'Value', template: asset => <code>{asset.value}</code> }, { id: 'status', name: 'Status', template: asset => <span className={`cti-status is-${asset.status.toLowerCase()}`}>{asset.status}</span> }, { id: 'criticality', name: 'Criticality', template: asset => <span className={`ioc-severity severity-${asset.criticality.toLowerCase()}`}>{asset.criticality}</span> }, { id: 'owner', name: 'Owner', template: asset => asset.owner || '-' }, { id: 'updated', name: 'Updated', template: asset => formatDate(asset.updatedAt) }, { id: 'actions', name: 'Actions', template: asset => <div className="ioc-actions"><Button view="flat" size="s" onClick={() => onDetail(asset)}>Detail</Button>{(asset.type === 'DOMAIN' || asset.type === 'SUBDOMAIN') && <Button view="outlined" size="s" disabled={discovering === asset.id} onClick={() => void onDiscover(asset)}>{discovering === asset.id ? 'Discovering...' : asset.type === 'DOMAIN' ? 'Discover Subdomains' : 'Discover DNS/IP'}</Button>}{canManage && <><Button view="flat" size="s" onClick={() => onEdit(asset)}>Edit</Button><Button view="flat-danger" size="s" onClick={() => onDelete(asset)}>Delete</Button></>}</div> }]}/>;
 }
 
 function DiscoveryResult({ summary }: { readonly summary: DiscoverySummary }) {

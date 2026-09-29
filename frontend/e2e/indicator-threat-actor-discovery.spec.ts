@@ -6,7 +6,7 @@ const candidate = { threatActorId: 'actor-1', name: 'Cozy Bear', score: 85, conf
 const actor = { id: 'actor-1', aliases: ['APT 29'], motivation: 'Espionage', targetSectors: ['Government'], country: 'Russia', region: 'Europe', status: 'ACTIVE', createdAt: '2026-09-01T00:00:00Z', updatedAt: '2026-09-08T00:00:00Z', entity: { id: 'entity-1', name: 'Cozy Bear', description: 'State-linked intrusion set', externalId: 'TA-001', confidence: 92, severity: 'CRITICAL', metadata: null, _count: { outgoingRelationships: 0, incomingRelationships: 0, indicators: 1 }, outgoingRelationships: [], incomingRelationships: [], indicators: [{ id: 'ioc-1', name: 'example.com', type: 'DOMAIN', severity: 'HIGH' }] } } as const;
 
 async function indicatorSession(page: Page): Promise<void> {
-  await page.route(/\/auth\/me$/, route => route.fulfill({ json: { id: 'admin', name: 'QA Admin', email: 'admin@example.test', role: 'ADMIN', tenantId: 'tenant-a', moduleAccess: [{ moduleId: 'intel', moduleSlug: 'threat-intelligence', moduleName: 'Threat Intelligence', assigned: true, featureKeys: [] }] } }));
+  await page.route(/\/auth\/me$/, route => route.fulfill({ json: { id: 'admin', name: 'QA Admin', email: 'admin@example.test', role: 'ADMIN', tenantId: 'tenant-a', moduleAccess: [{ moduleId: 'intel', moduleSlug: 'threat-intelligence', moduleName: 'Threat Intelligence', assigned: true, accessible: true, featureKeys: [] }] } }));
   await page.route(/\/intelligence\/overview(?:\?.*)?$/, route => route.fulfill({ json: { entities: [] } }));
   await page.route(/\/indicators\?.+$/, route => route.fulfill({ json: { items: [indicator], total: 1, page: 1, limit: 100 } }));
   await page.route(/\/indicators\/indicator-1\/enrichments$/, route => route.fulfill({ json: [] }));
@@ -61,8 +61,10 @@ test('candidate can be confirmed and attributed with its explicit id', async ({ 
   await page.getByRole('button', { name: 'Discover Threat Actors' }).click();
   await page.getByRole('button', { name: 'Confirm', exact: true }).click();
 
-  page.once('dialog', dialog => dialog.accept());
   await page.getByRole('button', { name: 'Attribute', exact: true }).click();
+  const confirmation = page.getByRole('dialog', { name: 'Attribute indicator' });
+  await expect(confirmation).toContainText('Cozy Bear');
+  await confirmation.getByRole('button', { name: 'Attribute' }).click();
 
   await expect(page.getByRole('status')).toContainText('Indicator sudah terhubung ke Threat Actor Cozy Bear.');
   expect(attributionBodies).toEqual([{ threatActorId: candidate.threatActorId }]);
@@ -88,8 +90,8 @@ test('cancelling confirmation does not attribute the candidate', async ({ page }
   await page.getByRole('button', { name: 'Discover Threat Actors' }).click();
   await page.getByRole('button', { name: 'Confirm', exact: true }).click();
 
-  page.once('dialog', dialog => dialog.dismiss());
   await page.getByRole('button', { name: 'Attribute', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Attribute indicator' }).getByRole('button', { name: 'Cancel' }).click();
 
   await expect(page.getByRole('button', { name: 'Attribute', exact: true })).toBeVisible();
   expect(attributionRequests).toBe(0);
@@ -104,10 +106,12 @@ test('attribution error is shown clearly', async ({ page }) => {
   await page.getByRole('button', { name: 'Discover Threat Actors' }).click();
   await page.getByRole('button', { name: 'Confirm', exact: true }).click();
 
-  page.once('dialog', dialog => dialog.accept());
   await page.getByRole('button', { name: 'Attribute', exact: true }).click();
+  const confirmation = page.getByRole('dialog', { name: 'Attribute indicator' });
+  await expect(confirmation).toContainText('Cozy Bear');
+  await confirmation.getByRole('button', { name: 'Attribute' }).click();
 
-  await expect(page.getByText('Candidate attribution is no longer valid', { exact: true })).toBeVisible();
+  await expect(confirmation.getByRole('alert')).toContainText('Candidate attribution is no longer valid');
 });
 
 test('discovery displays no-match state', async ({ page }) => {

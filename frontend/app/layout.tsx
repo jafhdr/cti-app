@@ -2,6 +2,7 @@ import './globals.css';
 import './soc-theme.css';
 import './editorial.css';
 import { ThemeProvider } from '../components/ThemeProvider';
+import '../components/ui/overlay.css';
 
 export default function RootLayout({
   children,

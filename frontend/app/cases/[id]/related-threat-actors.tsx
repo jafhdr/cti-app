@@ -1,10 +1,11 @@
 'use client';
 
-import { Loader2, Plus, Search, ShieldAlert, Trash2, X } from 'lucide-react';
+import { Loader2, Plus, Search, ShieldAlert, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Card } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
+import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle, OverlayClose } from '@/components/ui/overlay';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -44,7 +45,6 @@ export function RelatedThreatActors({ caseId, canMutate }: Props) {
   const [dialogError, setDialogError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [search, setSearch] = useState('');
-  const dialogRef = useRef<HTMLDialogElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
@@ -77,13 +77,6 @@ export function RelatedThreatActors({ caseId, canMutate }: Props) {
   }, [caseId]);
 
   useEffect(() => { void load(); }, [load]);
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (dialogOpen && dialog && !dialog.open) {
-      dialog.showModal();
-      searchInputRef.current?.focus();
-    }
-  }, [dialogOpen]);
   useEffect(() => {
     if (!dialogOpen) return;
     const timeoutId = window.setTimeout(() => { void loadAvailable(search); }, 250);
@@ -145,7 +138,7 @@ export function RelatedThreatActors({ caseId, canMutate }: Props) {
         )}
       </Card>
 
-      {dialogOpen && <dialog ref={dialogRef} onClose={() => setDialogOpen(false)} aria-labelledby="add-threat-actor-title" className="m-auto max-h-[85dvh] w-[calc(100%-2rem)] max-w-2xl overflow-y-auto rounded-md border border-input bg-card p-5 shadow-xl backdrop:bg-black/60"><div className="flex items-center justify-between gap-3"><h3 id="add-threat-actor-title" className="text-lg font-semibold !text-card-foreground">Add Threat Actor</h3><Button type="button" variant="ghost" size="s" aria-label="Tutup" onClick={() => dialogRef.current?.close()}><X className="h-5 w-5" /></Button></div><label className="mt-4 flex items-center gap-2 rounded-md border border-input bg-card px-3"><Search className="h-4 w-4 text-muted-foreground" /><span className="sr-only">Cari Threat Actor</span><input ref={searchInputRef} value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cari nama, alias, motivasi, atau negara..." className="min-w-0 flex-1 bg-transparent py-2.5 text-sm text-card-foreground outline-none" /></label>{dialogError && <div role="alert" className="mt-4 rounded-md border border-destructive px-4 py-3 text-sm text-destructive">{dialogError}<button type="button" onClick={() => void loadAvailable(search)} className="ml-3 font-semibold underline">Coba lagi</button></div>}<div className="mt-4 space-y-2">{availableLoading ? <div role="status" aria-label="Memuat Threat Actor tersedia" className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div> : available.length === 0 ? <p className="rounded-md bg-muted py-10 text-center text-sm text-muted-foreground">Tidak ada Threat Actor tersedia.</p> : available.map((threatActor) => <div key={threatActor.id} className="flex items-center justify-between gap-3 rounded-md border border-input p-3"><div className="min-w-0"><p className="truncate text-sm font-semibold !text-card-foreground">{threatActor.entity.name}</p><p className="mt-1 text-xs text-muted-foreground">{threatActor.entity.severity} / {threatActor.status}{threatActor.aliases.length > 0 ? ` / ${threatActor.aliases.join(', ')}` : ''}</p></div><Button type="button" aria-label={`Hubungkan ${threatActor.entity.name}`} disabled={busyId === threatActor.id} onClick={() => void link(threatActor)}>{busyId === threatActor.id ? 'Menambahkan...' : 'Add'}</Button></div>)}</div></dialog>}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}><DialogContent className="cti-case-picker" initialFocusRef={searchInputRef}><DialogHeader><DialogTitle>Add Threat Actor</DialogTitle><OverlayClose label="Tutup" /></DialogHeader><DialogBody><label className="mt-4 flex items-center gap-2 rounded-md border border-input bg-card px-3"><Search className="h-4 w-4 text-muted-foreground" /><span className="sr-only">Cari Threat Actor</span><input ref={searchInputRef} value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cari nama, alias, motivasi, atau negara..." className="min-w-0 flex-1 bg-transparent py-2.5 text-sm text-card-foreground outline-none" /></label>{dialogError && <div role="alert" className="mt-4 rounded-md border border-destructive px-4 py-3 text-sm text-destructive">{dialogError}<button type="button" onClick={() => void loadAvailable(search)} className="ml-3 font-semibold underline">Coba lagi</button></div>}<div className="mt-4 space-y-2">{availableLoading ? <div role="status" aria-label="Memuat Threat Actor tersedia" className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div> : available.length === 0 ? <p className="rounded-md bg-muted py-10 text-center text-sm text-muted-foreground">Tidak ada Threat Actor tersedia.</p> : available.map((threatActor) => <div key={threatActor.id} className="flex items-center justify-between gap-3 rounded-md border border-input p-3"><div className="min-w-0"><p className="truncate text-sm font-semibold !text-card-foreground">{threatActor.entity.name}</p><p className="mt-1 text-xs text-muted-foreground">{threatActor.entity.severity} / {threatActor.status}{threatActor.aliases.length > 0 ? ` / ${threatActor.aliases.join(', ')}` : ''}</p></div><Button type="button" aria-label={`Hubungkan ${threatActor.entity.name}`} disabled={busyId === threatActor.id} onClick={() => void link(threatActor)}>{busyId === threatActor.id ? 'Menambahkan...' : 'Add'}</Button></div>)}</div></DialogBody></DialogContent></Dialog>
     </section>
   );
 }

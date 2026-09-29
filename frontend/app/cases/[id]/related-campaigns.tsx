@@ -1,9 +1,10 @@
 'use client';
 
-import { Flag, Loader2, Plus, Search, Trash2, X } from 'lucide-react';
+import { Flag, Loader2, Plus, Search, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '../../../components/ui/button';
+import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle, OverlayClose } from '@/components/ui/overlay';
 import { Card } from '../../../components/ui/card';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -38,7 +39,6 @@ export function RelatedCampaigns({ caseId, canMutate }: Props) {
   const [dialogError, setDialogError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [search, setSearch] = useState('');
-  const dialogRef = useRef<HTMLDialogElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
@@ -63,7 +63,6 @@ export function RelatedCampaigns({ caseId, canMutate }: Props) {
   }, [caseId]);
 
   useEffect(() => { void load(); }, [load]);
-  useEffect(() => { if (dialogOpen && dialogRef.current && !dialogRef.current.open) { dialogRef.current.showModal(); searchInputRef.current?.focus(); } }, [dialogOpen]);
   useEffect(() => { if (!dialogOpen) return; const timeoutId = window.setTimeout(() => { void loadAvailable(search); }, 250); return () => window.clearTimeout(timeoutId); }, [dialogOpen, loadAvailable, search]);
 
   async function link(campaign: Campaign): Promise<void> {
@@ -71,7 +70,7 @@ export function RelatedCampaigns({ caseId, canMutate }: Props) {
     try {
       const response = await fetch(`${API}/cases/${caseId}/campaigns`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ campaignId: campaign.id }) });
       if (!response.ok) throw new Error(await responseMessage(response, 'Campaign gagal dihubungkan'));
-      dialogRef.current?.close(); setSearch(''); await load();
+      setDialogOpen(false); setSearch(''); await load();
     } catch (caught) { setDialogError(caught instanceof Error ? caught.message : 'Campaign gagal dihubungkan'); }
     finally { setBusyId(null); }
   }
@@ -92,6 +91,6 @@ export function RelatedCampaigns({ caseId, canMutate }: Props) {
       {error && <div role="alert" className="mt-4 rounded-md border border-destructive px-4 py-3 text-sm text-destructive">{error}<button type="button" onClick={() => void load()} className="ml-3 font-semibold underline">Coba lagi</button></div>}
       {loading ? <div role="status" aria-label="Memuat Campaign terkait" className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div> : <div className="case-related-grid mt-5 grid gap-3">{items.length === 0 ? <p className="col-span-full rounded-md bg-muted py-10 text-center text-sm text-muted-foreground">Belum ada Campaign yang terhubung.</p> : items.map((campaign) => <article key={campaign.id} className="min-w-0 rounded-md border border-input p-4"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><h3 className="truncate text-sm font-semibold !text-card-foreground"><Link href={`/threat-intelligence/campaigns?campaignId=${encodeURIComponent(campaign.id)}`} className="hover:underline">{campaign.name}</Link></h3><p className="mt-1 text-xs text-muted-foreground">{campaign.severity} / {campaign.status} / Confidence {campaign.confidence}%</p></div>{canMutate && <button type="button" aria-label={`Lepas ${campaign.name}`} disabled={busyId === campaign.id} onClick={() => void unlink(campaign)} className="rounded-md p-3 text-destructive hover:bg-muted disabled:opacity-50">{busyId === campaign.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}</button>}</div><p className="mt-3 truncate text-xs text-muted-foreground">{campaign.externalId || 'Tanpa external ID'} / {campaign.threatActor.entity.name}</p></article>)}</div>}
     </Card>
-    {dialogOpen && <dialog ref={dialogRef} onClose={() => setDialogOpen(false)} aria-labelledby="add-campaign-title" className="m-auto max-h-[85dvh] w-[calc(100%-2rem)] max-w-2xl overflow-y-auto rounded-md border border-input bg-card p-5 shadow-xl backdrop:bg-black/60"><div className="flex items-center justify-between gap-3"><h3 id="add-campaign-title" className="text-lg font-semibold !text-card-foreground">Add Campaign</h3><Button type="button" variant="ghost" size="s" aria-label="Tutup" onClick={() => dialogRef.current?.close()}><X className="h-5 w-5" /></Button></div><label className="mt-4 flex items-center gap-2 rounded-md border border-input bg-card px-3 focus-within:border-primary focus-within:ring-2 focus-within:ring-ring"><Search className="h-4 w-4 text-muted-foreground" /><span className="sr-only">Cari Campaign</span><input ref={searchInputRef} value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cari nama, deskripsi, objective, atau external ID..." className="min-w-0 flex-1 !border-0 !bg-transparent py-2.5 text-sm text-card-foreground !shadow-none !outline-none !ring-0" /></label>{dialogError && <div role="alert" className="mt-4 rounded-md border border-destructive px-4 py-3 text-sm text-destructive">{dialogError}<button type="button" onClick={() => void loadAvailable(search)} className="ml-3 font-semibold underline">Coba lagi</button></div>}<div className="mt-4 space-y-2">{availableLoading ? <div role="status" aria-label="Memuat Campaign tersedia" className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div> : available.length === 0 ? <p className="rounded-md bg-muted py-10 text-center text-sm text-muted-foreground">Tidak ada Campaign tersedia.</p> : available.map((campaign) => <div key={campaign.id} className="flex items-center justify-between gap-3 rounded-md border border-input p-3"><div className="min-w-0"><p className="truncate text-sm font-semibold !text-card-foreground">{campaign.name}</p><p className="mt-1 text-xs text-muted-foreground">{campaign.severity} / {campaign.status} / {campaign.threatActor.entity.name}</p></div><Button type="button" aria-label={`Hubungkan ${campaign.name}`} disabled={busyId === campaign.id} onClick={() => void link(campaign)}>{busyId === campaign.id ? 'Menambahkan...' : 'Add'}</Button></div>)}</div></dialog>}
+    <Dialog open={dialogOpen} onOpenChange={setDialogOpen}><DialogContent className="cti-case-picker" initialFocusRef={searchInputRef}><DialogHeader><DialogTitle>Add Campaign</DialogTitle><OverlayClose label="Tutup" /></DialogHeader><DialogBody><label className="mt-4 flex items-center gap-2 rounded-md border border-input bg-card px-3 focus-within:border-primary focus-within:ring-2 focus-within:ring-ring"><Search className="h-4 w-4 text-muted-foreground" /><span className="sr-only">Cari Campaign</span><input ref={searchInputRef} value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cari nama, deskripsi, objective, atau external ID..." className="min-w-0 flex-1 !border-0 !bg-transparent py-2.5 text-sm text-card-foreground !shadow-none !outline-none !ring-0" /></label>{dialogError && <div role="alert" className="mt-4 rounded-md border border-destructive px-4 py-3 text-sm text-destructive">{dialogError}<button type="button" onClick={() => void loadAvailable(search)} className="ml-3 font-semibold underline">Coba lagi</button></div>}<div className="mt-4 space-y-2">{availableLoading ? <div role="status" aria-label="Memuat Campaign tersedia" className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div> : available.length === 0 ? <p className="rounded-md bg-muted py-10 text-center text-sm text-muted-foreground">Tidak ada Campaign tersedia.</p> : available.map((campaign) => <div key={campaign.id} className="flex items-center justify-between gap-3 rounded-md border border-input p-3"><div className="min-w-0"><p className="truncate text-sm font-semibold !text-card-foreground">{campaign.name}</p><p className="mt-1 text-xs text-muted-foreground">{campaign.severity} / {campaign.status} / {campaign.threatActor.entity.name}</p></div><Button type="button" aria-label={`Hubungkan ${campaign.name}`} disabled={busyId === campaign.id} onClick={() => void link(campaign)}>{busyId === campaign.id ? 'Menambahkan...' : 'Add'}</Button></div>)}</div></DialogBody></DialogContent></Dialog>
   </section>;
 }

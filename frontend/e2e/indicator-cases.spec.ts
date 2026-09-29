@@ -9,8 +9,8 @@ test('searches, links, displays, and unlinks a Case from Indicator detail', asyn
   await page.route(/\/auth\/me$/, route => route.fulfill({ json: {
     id: 'admin', name: 'QA Admin', email: 'admin@example.test', role: 'ADMIN', tenantId: 'tenant-a',
     moduleAccess: [
-      { moduleId: 'intel', moduleSlug: 'threat-intelligence', moduleName: 'Threat Intelligence', assigned: true, featureKeys: [] },
-      { moduleId: 'case', moduleSlug: 'case-management', moduleName: 'Case Management', assigned: true, featureKeys: [] },
+      { moduleId: 'intel', moduleSlug: 'threat-intelligence', moduleName: 'Threat Intelligence', assigned: true, accessible: true, featureKeys: [] },
+      { moduleId: 'case', moduleSlug: 'case-management', moduleName: 'Case Management', assigned: true, accessible: true, featureKeys: [] },
     ],
   } }));
   await page.route(/\/intelligence\/overview(?:\?.*)?$/, route => route.fulfill({ json: { entities: [] } }));
@@ -59,8 +59,8 @@ test('shows dialog loading, empty, search error, and working retry states', asyn
   await page.route(/\/auth\/me$/, route => route.fulfill({ json: {
     id: 'admin', name: 'QA Admin', email: 'admin@example.test', role: 'ADMIN', tenantId: 'tenant-a',
     moduleAccess: [
-      { moduleId: 'intel', moduleSlug: 'threat-intelligence', moduleName: 'Threat Intelligence', assigned: true, featureKeys: [] },
-      { moduleId: 'case', moduleSlug: 'case-management', moduleName: 'Case Management', assigned: true, featureKeys: [] },
+      { moduleId: 'intel', moduleSlug: 'threat-intelligence', moduleName: 'Threat Intelligence', assigned: true, accessible: true, featureKeys: [] },
+      { moduleId: 'case', moduleSlug: 'case-management', moduleName: 'Case Management', assigned: true, accessible: true, featureKeys: [] },
     ],
   } }));
   await page.route(/\/intelligence\/overview(?:\?.*)?$/, route => route.fulfill({ json: { entities: [] } }));
@@ -105,8 +105,8 @@ test('creates a Case from an Indicator, shows it in Related Cases, and opens it'
   await page.route(/\/auth\/me$/, route => route.fulfill({ json: {
     id: 'admin', name: 'QA Admin', email: 'admin@example.test', role: 'ADMIN', tenantId: 'tenant-a',
     moduleAccess: [
-      { moduleId: 'intel', moduleSlug: 'threat-intelligence', moduleName: 'Threat Intelligence', assigned: true, featureKeys: [] },
-      { moduleId: 'case', moduleSlug: 'case-management', moduleName: 'Case Management', assigned: true, featureKeys: [] },
+      { moduleId: 'intel', moduleSlug: 'threat-intelligence', moduleName: 'Threat Intelligence', assigned: true, accessible: true, featureKeys: [] },
+      { moduleId: 'case', moduleSlug: 'case-management', moduleName: 'Case Management', assigned: true, accessible: true, featureKeys: [] },
     ],
   } }));
   await page.route(/\/intelligence\/overview(?:\?.*)?$/, route => route.fulfill({ json: { entities: [] } }));
@@ -126,7 +126,7 @@ test('creates a Case from an Indicator, shows it in Related Cases, and opens it'
   await page.goto(`${app}/indicators`);
   await page.getByRole('button', { name: 'Detail' }).click();
   await page.getByRole('button', { name: 'Create Case' }).click();
-  await page.getByRole('button', { name: 'Close Create Case' }).focus();
+  await page.getByRole('dialog').getByRole('button', { name: 'Close' }).focus();
   await page.keyboard.press('Shift+Tab');
   await expect(page.getByRole('dialog').getByRole('button', { name: 'Create Case', exact: true })).toBeFocused();
   await page.keyboard.press('Escape');
@@ -160,8 +160,8 @@ test('does not expose Create Case to a USER', async ({ page }) => {
   await page.route(/\/auth\/me$/, route => route.fulfill({ json: {
     id: 'user', name: 'QA User', email: 'user@example.test', role: 'USER', tenantId: 'tenant-a',
     moduleAccess: [
-      { moduleId: 'intel', moduleSlug: 'threat-intelligence', moduleName: 'Threat Intelligence', assigned: true, featureKeys: [] },
-      { moduleId: 'case', moduleSlug: 'case-management', moduleName: 'Case Management', assigned: true, featureKeys: [] },
+      { moduleId: 'intel', moduleSlug: 'threat-intelligence', moduleName: 'Threat Intelligence', assigned: true, accessible: true, featureKeys: [] },
+      { moduleId: 'case', moduleSlug: 'case-management', moduleName: 'Case Management', assigned: true, accessible: true, featureKeys: [] },
     ],
   } }));
   await page.route(/\/intelligence\/overview(?:\?.*)?$/, route => route.fulfill({ json: { entities: [] } }));

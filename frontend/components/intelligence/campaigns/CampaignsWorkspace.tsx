@@ -4,6 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Table } from "@/components/ui/table";
+import { ConfirmationModal } from "@/components/ui/modal-patterns";
 import { useThreatIntelligenceTenant } from "../ThreatIntelligenceShell";
 import { CampaignPanel } from "./CampaignPanel";
 import {
@@ -55,6 +56,7 @@ export function CampaignsWorkspace({ role }: { readonly role: Role }) {
   const [saving, setSaving] = useState(false);
   const [panel, setPanel] = useState<"closed" | "form" | "detail">("closed");
   const [selected, setSelected] = useState<Campaign | null>(null);
+  const [deleting, setDeleting] = useState<Campaign | null>(null);
   const [form, setForm] = useState<CampaignForm>(emptyCampaignForm);
   const canManage = role !== "USER";
   const tenantQuery =
@@ -214,7 +216,10 @@ export function CampaignsWorkspace({ role }: { readonly role: Role }) {
     }
   }
   async function remove(campaign: Campaign) {
-    if (!window.confirm(`Hapus campaign ${campaign.name}?`)) return;
+    if (saving) return;
+    setSaving(true);
+    setError("");
+    try {
     const response = await fetch(
       `${API}/intelligence/campaigns/${campaign.id}${tenantQuery}`,
       { method: "DELETE", credentials: "include" },
@@ -224,8 +229,14 @@ export function CampaignsWorkspace({ role }: { readonly role: Role }) {
       setError(body.message || "Gagal menghapus campaign.");
       return;
     }
+    setDeleting(null);
     setNotice("Campaign berhasil dihapus.");
     await load();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Gagal menghapus campaign.");
+    } finally {
+      setSaving(false);
+    }
   }
   return (
     <div className="ti-phase2a">
@@ -273,6 +284,7 @@ export function CampaignsWorkspace({ role }: { readonly role: Role }) {
           mitreTechniques={mitreTechniques}
           readOnly={panel === "detail"}
           saving={saving}
+          error={panel === "form" ? error : undefined}
           onChange={setField}
           onClose={() => setPanel("closed")}
           onSubmit={submit}
@@ -439,7 +451,7 @@ export function CampaignsWorkspace({ role }: { readonly role: Role }) {
                         <Button
                           view="flat-danger"
                           size="s"
-                          onClick={() => void remove(item)}
+                          onClick={() => { setError(""); setDeleting(item); }}
                         >
                           Delete
                         </Button>
@@ -475,6 +487,7 @@ export function CampaignsWorkspace({ role }: { readonly role: Role }) {
           </div>
         </div>
       </Card>
+      <ConfirmationModal open={!!deleting} onOpenChange={open => { if (!open) setDeleting(null); }} title="Delete campaign" target={deleting?.name} consequence="This campaign will be permanently deleted." confirmLabel="Delete" destructive loading={saving} error={deleting ? error : undefined} onConfirm={() => deleting ? remove(deleting) : undefined} />
     </div>
   );
 }

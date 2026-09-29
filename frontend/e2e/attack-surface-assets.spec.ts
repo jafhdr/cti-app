@@ -38,11 +38,12 @@ test('lists, searches, filters, paginates, opens detail, and gates discovery by 
   await page.getByRole('button', { name: 'Next', exact: true }).click();
   await expect.poll(() => requests.some(url => url.searchParams.get('page') === '2')).toBeTruthy();
   await page.getByRole('button', { name: 'Detail' }).first().click();
-  await expect(page.getByRole('dialog').getByRole('heading', { name: 'example.com' })).toBeVisible();
-  await expect(page.getByRole('dialog').getByRole('heading', { name: 'Asset overview' })).toBeVisible();
-  await expect(page.getByRole('dialog').getByText('Security')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Close asset panel' })).toBeFocused();
-  await page.keyboard.press('Escape');
+  await expect(page.getByRole('region', { name: /Asset Intelligence Workspace/ }).getByRole('heading', { name: 'example.com' })).toBeVisible();
+  await expect(page.getByRole('region', { name: /Asset Intelligence Workspace/ }).getByRole('heading', { name: 'Asset overview' })).toBeVisible();
+  await expect(page.getByRole('region', { name: /Asset Intelligence Workspace/ }).getByText('Security')).toBeVisible();
+  await expect(page.getByRole('region', { name: /Asset Intelligence Workspace/ })).toBeFocused();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Back to assets' }).click();
   await expect(page.getByRole('button', { name: 'Detail' }).first()).toBeFocused();
 });
 
@@ -63,7 +64,13 @@ test('creates, edits, and deletes an asset', async ({ page }) => {
   await page.getByRole('button', { name: 'Edit' }).click(); await page.getByLabel('Name').fill('edited.example.com'); await page.getByLabel('Owner').fill(''); await page.getByLabel('Description').fill('Updated asset'); await page.getByLabel('Last seen').fill(''); await page.getByRole('button', { name: 'Save changes' }).click();
   await expect.poll(() => edited).toBeTruthy();
   expect(editPayload).toMatchObject({ owner: '', description: 'Updated asset', lastSeenAt: '' });
-  page.once('dialog', dialog => dialog.accept()); await page.getByRole('button', { name: 'Delete' }).click();
+  await page.getByRole('button', { name: 'Delete', exact: true }).click();
+  const confirmation = page.getByRole('dialog', { name: 'Delete Asset?' });
+  await expect(confirmation).toContainText('example.com');
+  await confirmation.getByRole('button', { name: 'Cancel' }).click();
+  expect(deleted).toBe(false);
+  await page.getByRole('button', { name: 'Delete', exact: true }).click();
+  await confirmation.getByRole('button', { name: 'Delete Asset' }).click();
   await expect.poll(() => deleted).toBeTruthy(); expect(listCalls).toBeGreaterThan(2);
 });
 
@@ -162,7 +169,7 @@ test('shows matching threat intelligence and an empty correlation state', async 
   await page.getByRole('button', { name: 'Detail' }).first().click();
   await expect(page.getByRole('region', { name: 'Threat Intelligence' })).toContainText('1 matched indicators');
   await expect(page.getByRole('region', { name: 'Threat Intelligence' })).toContainText('feed');
-  await page.getByRole('button', { name: 'Close asset panel' }).click();
+  await page.getByRole('button', { name: 'Back to assets' }).click();
   await page.getByRole('button', { name: 'Detail' }).last().click();
   await expect(page.getByRole('region', { name: 'Threat Intelligence' })).toContainText('No matching threat intelligence indicators found.');
 });

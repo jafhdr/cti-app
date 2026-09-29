@@ -4,7 +4,7 @@ const app = process.env.SOURCES_APP_URL || 'http://localhost:3000';
 const technique = { id: 'technique-1', externalId: 'T1059', name: 'Command and Scripting Interpreter', description: 'Executes commands and scripts.', tactic: 'Execution', platform: 'Windows', url: 'https://attack.mitre.org/techniques/T1059/', createdAt: '2026-09-09T00:00:00.000Z', updatedAt: '2026-09-09T00:00:00.000Z', campaigns: [{ campaign: { id: 'campaign-1', name: 'Operation Phantom', status: 'ACTIVE' } }], _count: { campaigns: 1 } } as const;
 
 async function session(page: Page, role: 'ADMIN' | 'USER' = 'ADMIN'): Promise<void> {
-  await page.route('**/auth/me', route => route.fulfill({ json: { id: 'user', email: 'user@example.test', role, tenantId: 'tenant-a', moduleAccess: [{ moduleId: 'intel', moduleSlug: 'threat-intelligence', moduleName: 'Threat Intelligence', assigned: true, featureKeys: [] }] } }));
+  await page.route('**/auth/me', route => route.fulfill({ json: { id: 'user', email: 'user@example.test', role, tenantId: 'tenant-a', moduleAccess: [{ moduleId: 'intel', moduleSlug: 'threat-intelligence', moduleName: 'Threat Intelligence', assigned: true, accessible: true, featureKeys: [] }] } }));
 }
 
 async function mitrePage(page: Page): Promise<void> {
@@ -67,9 +67,9 @@ test('admin completes MITRE technique CRUD and sees campaign relation', async ({
   await page.getByRole('button', { name: 'Close' }).click();
   await page.getByLabel('Search MITRE techniques').fill('T1059');
   await expect.poll(() => requestUrl).toContain('search=T1059');
-  await page.getByRole('button', { name: '+ Add technique' }).click();
+  await page.getByRole('button', { name: '+ Add technique' }).click(); for (const width of [1440, 768, 375]) { await page.setViewportSize({ width, height: 900 }); const dialog = page.getByRole('dialog', { name: 'Create technique' }); await expect(dialog).toBeVisible(); await expect.poll(() => dialog.evaluate(node => { const box = node.getBoundingClientRect(); return box.left >= 0 && box.right <= innerWidth; })).toBe(true); await page.screenshot({ path: `../.omo/evidence/threat-intelligence/modal-migration/mitre-create-${width}.png` }); } await page.setViewportSize({ width: 1440, height: 900 });
   const form = page.locator('form'); await form.getByLabel('External ID').fill('T1003'); await form.getByLabel('Name').fill('OS Credential Dumping'); await form.getByLabel('Tactic').fill('Credential Access'); await form.getByLabel('Platform').fill('Windows'); await page.getByRole('button', { name: 'Save technique' }).click();
-  await expect.poll(() => methods).toContain('POST'); await page.getByRole('button', { name: 'Edit' }).click(); await page.getByLabel('Name').fill('Updated technique'); await page.getByRole('button', { name: 'Save technique' }).click(); await expect.poll(() => methods).toContain('PATCH'); page.on('dialog', dialog => dialog.accept()); await page.getByRole('button', { name: 'Delete' }).click(); await expect.poll(() => methods).toContain('DELETE');
+  await expect.poll(() => methods).toContain('POST'); await page.getByRole('button', { name: 'Edit' }).click(); await page.getByLabel('Name').fill('Updated technique'); await page.getByRole('button', { name: 'Save technique' }).click(); await expect.poll(() => methods).toContain('PATCH'); await page.getByRole('button', { name: 'Delete' }).click(); const confirmation = page.getByRole('dialog', { name: 'Delete technique' }); await expect(confirmation).toContainText('T1059'); await confirmation.getByRole('button', { name: 'Delete' }).click(); await expect.poll(() => methods).toContain('DELETE');
 });
 
 test('user can read MITRE techniques but cannot manage them', async ({ page }) => {

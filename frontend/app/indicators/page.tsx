@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Table } from '@/components/ui/table';
+import { ConfirmationModal, FormModal } from '@/components/ui/modal-patterns';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Sidebar from '../../components/dashboard/Sidebar';
@@ -44,6 +45,8 @@ export default function IndicatorsPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [deactivating, setDeactivating] = useState<Indicator | null>(null);
   const canManage = currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN';
   const canAccessCases = currentUser?.moduleAccess.some(module => module.accessible === true && module.moduleSlug === 'case-management') === true;
 
@@ -97,21 +100,29 @@ export default function IndicatorsPage() {
     setShowForm(true); setError(''); setSuccess('');
   }
   async function submit(event: FormEvent) {
-    event.preventDefault(); setError('');
+    event.preventDefault(); if (saving) return; setError('');
     if (currentUser?.role === 'SUPER_ADMIN' && !form.tenantId) return setError('Tenant wajib dipilih.');
+    setSaving(true);
+    try {
     const body = { ...form, confidence: Number(form.confidence), tags: form.tags.split(',').map(tag => tag.trim()).filter(Boolean), expiresAt: form.expiresAt || null };
     const res = await fetch(`${API}/indicators${editing ? `/${editing.id}` : ''}`, { method: editing ? 'PATCH' : 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) return setError(data.message || 'Gagal menyimpan indicator.');
     setSuccess(editing ? 'Indicator berhasil diperbarui.' : 'Indicator berhasil ditambahkan.');
     setShowForm(false); await loadIndicators();
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Gagal menyimpan indicator.'); }
+    finally { setSaving(false); }
   }
   async function deactivate(item: Indicator) {
-    if (!window.confirm(`Nonaktifkan ${item.value}?`)) return;
+    if (saving) return;
+    setSaving(true); setError('');
+    try {
     const res = await fetch(`${API}/indicators/${item.id}/deactivate`, { method: 'PATCH', credentials: 'include' });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) return setError(data.message || 'Gagal menonaktifkan indicator.');
-    setSuccess('Indicator dinonaktifkan.'); await loadIndicators();
+    setSuccess('Indicator dinonaktifkan.'); setDeactivating(null); await loadIndicators();
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Gagal menonaktifkan indicator.'); }
+    finally { setSaving(false); }
   }
 
   if (loading) {
@@ -150,10 +161,8 @@ export default function IndicatorsPage() {
 
           {selected && <IndicatorEnrichmentPanel indicator={selected} canManage={canManage} canAccessCases={canAccessCases} onClose={() => setSelected(null)} />}
 
-          {showForm && (
-            <Card view="outlined" style={{ padding: 28, marginBottom: 24 }}>
-              <h2 style={{ margin: '0 0 20px' }}>{editing ? 'Edit Indicator' : 'Add Indicator'}</h2>
-              <form onSubmit={submit} className="ioc-form">
+          <FormModal open={showForm} onOpenChange={setShowForm} title={editing ? 'Edit Indicator' : 'Add Indicator'} onSubmit={submit} loading={saving} error={showForm ? error : undefined} submitLabel="Save">
+              <div className="ioc-form">
                 <label>Value<input value={form.value} onChange={e => setField('value', e.target.value)} required placeholder="example.com / 1.2.3.4" /></label>
                 <label>Type<select value={form.type} onChange={e => setField('type', e.target.value)}><option value="DOMAIN">Domain</option><option value="IP_ADDRESS">IP Address</option><option value="URL">URL</option><option value="FILE_HASH">File Hash</option><option value="EMAIL">Email</option></select></label>
                 <label>Severity<select value={form.severity} onChange={e => setField('severity', e.target.value)}><option value="LOW">Low</option><option value="MEDIUM">Medium</option><option value="HIGH">High</option><option value="CRITICAL">Critical</option></select></label>
@@ -165,10 +174,9 @@ export default function IndicatorsPage() {
                 <label>Source<input value={form.source} onChange={e => setField('source', e.target.value)} placeholder="MISP, analyst, feed" /></label>
                 <label>Expires at<input type="date" value={form.expiresAt} onChange={e => setField('expiresAt', e.target.value)} /></label>
                 <label className="ioc-wide">Description<textarea value={form.description} onChange={e => setField('description', e.target.value)} /></label>
-                <div className="ioc-actions"><Button view="action" type="submit">Save</Button><Button view="outlined" type="button" onClick={() => setShowForm(false)}>Cancel</Button></div>
-              </form>
-            </Card>
-          )}
+              </div>
+          </FormModal>
+          <ConfirmationModal open={!!deactivating} onOpenChange={open => { if (!open) setDeactivating(null); }} title="Deactivate indicator" target={deactivating?.value} consequence="This indicator will become inactive." confirmLabel="Deactivate" destructive loading={saving} error={deactivating ? error : undefined} onConfirm={() => deactivating ? deactivate(deactivating) : undefined} />
 
           <div className="editorial-section-heading"><span className="source-eyebrow">SEARCH & FILTER</span><h2>Find an indicator</h2></div>
           <Card view="outlined" className="ti-inventory" style={{ padding: 24 }}>
@@ -191,7 +199,7 @@ export default function IndicatorsPage() {
                 { id: 'tags', name: 'Tags', template: (item: Indicator) => item.tags.join(', ') || '-' },
                 { id: 'tenant', name: 'Tenant', template: (item: Indicator) => item.tenant.name },
                 { id: 'intelligenceEntity', name: 'Entitas CTI', template: (item: Indicator) => item.intelligenceEntity ? `${item.intelligenceEntity.name} (${item.intelligenceEntity.type})` : '-' },
-                { id: 'actions', name: 'Actions', template: (item: Indicator) => <div className="ioc-actions"><Button view="flat" size="s" onClick={() => setSelected(item)}>Detail</Button>{canManage && <><Button view="flat" size="s" onClick={() => openEdit(item)}>Edit</Button>{item.status === 'ACTIVE' && <Button view="flat-danger" size="s" onClick={() => deactivate(item)}>Deactivate</Button>}</>}</div> },
+                { id: 'actions', name: 'Actions', template: (item: Indicator) => <div className="ioc-actions"><Button view="flat" size="s" onClick={() => setSelected(item)}>Detail</Button>{canManage && <><Button view="flat" size="s" onClick={() => openEdit(item)}>Edit</Button>{item.status === 'ACTIVE' && <Button view="flat-danger" size="s" onClick={() => { setError(''); setDeactivating(item); }}>Deactivate</Button>}</>}</div> },
               ]}
             /></div>
           </Card>

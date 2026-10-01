@@ -53,6 +53,15 @@ temp/
 frontend/.omo/
 *.tsbuildinfo
 
+# Playwright test output
+test-results/
+frontend/test-results/
+playwright-report/
+frontend/playwright-report/
+
+# Standalone mockup/prototype apps
+/spectra/
+
 # Secrets/redacted files
 *.secret
 secrets/

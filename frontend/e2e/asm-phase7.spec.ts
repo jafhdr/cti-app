@@ -1,0 +1,110 @@
+import { expect, test, type Route } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
+const json = (route: Route, body: unknown) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+const base = { assetCount: 0, newAssets: 0, newPorts: 0, findings: {}, confirmedVulnerabilities: 0, openAlerts: 0, acknowledgedAlerts: 0, resolvedAlerts: 0, linkedCases: 0, currentRiskScore: 0, riskTrend: [], importantChanges: [] };
+test('ASM report empty, populated, period switch, notification read, and mobile layout', async ({ page }) => {
+  await page.route('**/auth/me', route => json(route, { email: 'qa@example.invalid', role: 'ADMIN', moduleAccess: [{ moduleSlug: 'attack-surface-management', accessible: true, featureKeys: ['asset-management'] }] }));
+  let populated = false;
+  const periods: string[] = [];
+  await page.route('**/attack-surface/reports/summary?*', route => { periods.push(new URL(route.request().url()).searchParams.get('period') ?? ''); return json(route, populated ? { ...base, assetCount: 4, newPorts: 2, findings: { HIGH: 1 }, openAlerts: 1, currentRiskScore: 8, importantChanges: [{ id: 'change-1', assetId: 'asset-1', type: 'PORT_OPENED', detectedAt: '2026-10-01T00:00:00Z', currentValue: 'TCP 22' }] } : base); });
+  await page.route('**/attack-surface/notifications*', route => json(route, populated ? [{ id: 'notice-1', readAt: null, alert: { id: 'alert-1', title: 'Port opened', severity: 'HIGH', source: 'ASM', assetId: 'asset-1', caseId: null, firstSeenAt: '2026-10-01T00:00:00Z' } }] : []));
+  await page.route('**/attack-surface/notifications/preferences*', route => json(route, { enabled: true, minimumSeverity: 'HIGH', channel: 'IN_APP' }));
+  await page.goto('http://localhost:3000/attack-surface/reports');
+  await expect(page.getByRole('heading', { name: 'Posture report' })).toBeVisible();
+  await expect(page.getByText('No notifications yet.')).toBeVisible();
+  populated = true;
+  await page.getByRole('button', { name: 'Refresh' }).click();
+  await expect(page.getByText('PORT OPENED', { exact: true })).toBeVisible();
+  await expect(page.getByText(/ASM \/ Port opened/)).toBeVisible();
+  await page.getByLabel('Period').selectOption('24h');
+  await expect.poll(() => periods.at(-1)).toBe('24h');
+  await page.route('**/attack-surface/notifications/notice-1/read*', route => json(route, { readAt: '2026-10-01T00:00:00Z' }));
+  await page.getByRole('button', { name: 'Mark read' }).click();
+  await expect(page.getByText(/Read/).last()).toBeVisible();
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export changes CSV' }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe('asm-changes-24h.csv');
+  expect(await readFile(await download.path(), 'utf8')).toBe('"Type","Asset ID","Detected at","Current value"\r\n"PORT_OPENED","asset-1","2026-10-01T00:00:00Z","TCP 22"');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByRole('heading', { name: 'Posture report' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Export changes CSV' })).toBeVisible();
+  await page.screenshot({ path: 'test-results/asm-phase7-mobile.png', fullPage: true });
+});
+
+test('ASM report shows recoverable API error', async ({ page }) => {
+  await page.route('**/auth/me', route => json(route, { email: 'qa@example.invalid', role: 'ADMIN', moduleAccess: [{ moduleSlug: 'attack-surface-management', accessible: true, featureKeys: ['asset-management'] }] }));
+  await page.route('**/attack-surface/reports/summary?*', route => route.fulfill({ status: 500, contentType: 'application/json', body: '{}' }));
+  await page.route('**/attack-surface/notifications*', route => json(route, []));
+  await page.route('**/attack-surface/notifications/preferences*', route => json(route, { enabled: true, minimumSeverity: 'HIGH', channel: 'IN_APP' }));
+  await page.goto('http://localhost:3000/attack-surface/reports');
+  await expect(page.locator('p.error[role=alert]')).toContainText('Unable to load ASM report');
+  await expect(page.getByRole('button', { name: 'Retry' })).toBeVisible();
+});
+
+test('notification preferences load, save, fail safely, and remain read-only for USER', async ({ page }) => {
+  let role = 'ADMIN';
+  let preference = { enabled: true, minimumSeverity: 'HIGH' };
+  let failSave = false;
+  await page.route('**/auth/me', route => json(route, { email: 'qa@example.invalid', role, moduleAccess: [{ moduleSlug: 'attack-surface-management', accessible: true, featureKeys: ['asset-management'] }] }));
+  await page.route('**/attack-surface/reports/summary?*', route => json(route, base));
+  await page.route('**/attack-surface/notifications*', route => json(route, []));
+  await page.route('**/attack-surface/notifications/preferences*', async route => {
+    if (route.request().method() === 'PUT') {
+      if (failSave) return route.fulfill({ status: 500, contentType: 'application/json', body: '{}' });
+      const body: unknown = route.request().postDataJSON();
+      if (typeof body !== 'object' || body === null || !('enabled' in body) || !('minimumSeverity' in body)) throw new Error('Invalid test request');
+      preference = { enabled: body.enabled === true, minimumSeverity: body.minimumSeverity === 'CRITICAL' ? 'CRITICAL' : 'HIGH' };
+    }
+    return json(route, preference);
+  });
+  await page.goto('http://localhost:3000/attack-surface/reports');
+  const section = page.getByRole('region', { name: 'Notification preferences' });
+  await expect(section.getByLabel('Notification channel')).toHaveValue('In-App');
+  await expect(section.getByLabel('Notification channel')).toBeDisabled();
+  await expect(section.getByLabel('Minimum severity')).toHaveValue('HIGH');
+  await section.getByLabel('Minimum severity').selectOption('CRITICAL');
+  await section.getByRole('button', { name: 'Save preferences' }).click();
+  await expect(section.getByText('Notification preferences saved.')).toBeVisible();
+  expect(preference.minimumSeverity).toBe('CRITICAL');
+  await section.getByLabel('Enabled').uncheck();
+  await expect(section.getByLabel('Minimum severity')).toBeDisabled();
+  await section.getByRole('button', { name: 'Save preferences' }).click();
+  await expect(section.getByText('Notification preferences saved.')).toBeVisible();
+  expect(preference.enabled).toBe(false);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await section.screenshot({ path: 'test-results/asm-phase7b-preferences-saved-mobile.png' });
+  await section.getByLabel('Enabled').check();
+  failSave = true;
+  await section.getByRole('button', { name: 'Save preferences' }).click();
+  await expect(section.getByRole('alert')).toContainText('Unable to save notification preferences.');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await section.screenshot({ path: 'test-results/asm-phase7b-preferences-mobile.png' });
+  role = 'USER'; failSave = false;
+  await page.reload();
+  await expect(section.getByLabel('Enabled')).toBeDisabled();
+  await expect(section.getByLabel('Minimum severity')).toBeDisabled();
+  await expect(section.getByText('Only an administrator can change notification preferences.')).toBeVisible();
+  await expect(section.getByRole('button', { name: 'Save preferences' })).toHaveCount(0);
+});
+
+test('SUPER_ADMIN tenant switch ignores a late preference response', async ({ page }) => {
+  await page.route('**/auth/me', route => json(route, { email: 'super@example.invalid', role: 'SUPER_ADMIN', moduleAccess: [{ moduleSlug: 'attack-surface-management', accessible: true, featureKeys: ['asset-management'] }] }));
+  await page.route('**/users/tenants', route => json(route, [{ id: 'tenant-a', name: 'Tenant A' }, { id: 'tenant-b', name: 'Tenant B' }]));
+  await page.route('**/attack-surface/reports/summary?*', route => json(route, base));
+  await page.route('**/attack-surface/notifications?*', route => json(route, []));
+  let releaseA: () => void = () => undefined;
+  const waitA = new Promise<void>(resolve => { releaseA = resolve; });
+  await page.route('**/attack-surface/notifications/preferences?tenantId=tenant-a', async route => { await waitA; return json(route, { enabled: true, minimumSeverity: 'HIGH' }); });
+  await page.route('**/attack-surface/notifications/preferences?tenantId=tenant-b', route => json(route, { enabled: false, minimumSeverity: 'CRITICAL' }));
+  await page.goto('http://localhost:3000/attack-surface/reports');
+  const tenant = page.getByLabel('Tenant Attack Surface');
+  await expect(tenant).toHaveValue('tenant-a');
+  await tenant.selectOption('tenant-b');
+  const section = page.getByRole('region', { name: 'Notification preferences' });
+  await expect(section.getByLabel('Minimum severity')).toHaveValue('CRITICAL');
+  await expect(section.getByLabel('Enabled')).not.toBeChecked();
+  releaseA();
+  await expect(section.getByLabel('Minimum severity')).toHaveValue('CRITICAL');
+  await expect(section.getByLabel('Enabled')).not.toBeChecked();
+});

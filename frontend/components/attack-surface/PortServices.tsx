@@ -7,7 +7,7 @@ import type { Asset, PortDiscoverySummary, PortService } from './types';
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 const formatDate = (value: string): string => new Date(value).toLocaleString('id-ID');
 
-export function PortServices({ asset, tenantQuery, canDiscover }: { readonly asset: Asset; readonly tenantQuery: string; readonly canDiscover: boolean }) {
+export function PortServices({ asset, tenantQuery, canDiscover, onDiscoveryComplete }: { readonly asset: Asset; readonly tenantQuery: string; readonly canDiscover: boolean; readonly onDiscoveryComplete: () => void }) {
   const [services, setServices] = useState<readonly PortService[]>([]);
   const [summary, setSummary] = useState<PortDiscoverySummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -35,6 +35,7 @@ export function PortServices({ asset, tenantQuery, canDiscover }: { readonly ass
       if (!response.ok) throw new Error(body.message || 'Port discovery failed.');
       setSummary(body);
       await load();
+      onDiscoveryComplete();
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Port discovery failed.'); }
     finally { setDiscovering(false); }
   }

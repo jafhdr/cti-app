@@ -51,6 +51,18 @@ export function AssetsWorkspace() {
   }, [criticality, page, ready, search, status, tenantId, tenantQuery, type]);
   useEffect(() => { void load(); }, [load]);
   useEffect(() => {
+    if (!ready) return;
+    const assetId = new URLSearchParams(window.location.search).get('assetId');
+    if (!assetId) return;
+    let cancelled = false;
+    void fetch(`${API}/attack-surface/assets/${encodeURIComponent(assetId)}${tenantQuery ? `?${tenantQuery}` : ''}`, { credentials: 'include', cache: 'no-store' })
+      .then(async response => { if (!response.ok) throw new Error('Linked asset is unavailable.'); return response.json() as Promise<Asset>; })
+      .then(asset => { if (!cancelled) { setSelected(asset); setPanel('detail'); } })
+      .catch((cause: unknown) => { if (!cancelled) setError(cause instanceof Error ? cause.message : 'Linked asset is unavailable.'); });
+    return () => { cancelled = true; };
+  }, [ready, tenantQuery]);
+
+  useEffect(() => {
     if (panel !== 'detail') return;
     const frame = requestAnimationFrame(() => { detailWorkspaceRef.current?.scrollIntoView({ block: 'start' }); detailWorkspaceRef.current?.focus({ preventScroll: true }); });
     return () => cancelAnimationFrame(frame);

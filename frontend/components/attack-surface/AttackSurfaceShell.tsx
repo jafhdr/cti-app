@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import Sidebar from '@/components/dashboard/Sidebar';
 import type { ModuleAccess } from '@/lib/module-access';
@@ -10,7 +10,7 @@ const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 type Role = 'SUPER_ADMIN' | 'ADMIN' | 'USER';
 type CurrentUser = { readonly email: string; readonly role: Role; readonly moduleAccess: readonly ModuleAccess[] };
 type Tenant = { readonly id: string; readonly name: string };
-type ContextValue = { readonly role: Role; readonly tenantId: string; readonly ready: boolean };
+type ContextValue = { readonly role: Role; readonly tenantId: string; readonly ready: boolean; readonly canCreateCase: boolean };
 const AttackSurfaceContext = createContext<ContextValue | null>(null);
 
 export function useAttackSurface(): ContextValue {
@@ -21,6 +21,7 @@ export function useAttackSurface(): ContextValue {
 
 export function AttackSurfaceShell({ children }: { readonly children: ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [tenants, setTenants] = useState<readonly Tenant[]>([]);
   const [tenantId, setTenantId] = useState('');
@@ -41,7 +42,7 @@ export function AttackSurfaceShell({ children }: { readonly children: ReactNode 
           const tenantResponse = await fetch(`${API}/users/tenants`, { credentials: 'include', cache: 'no-store' });
           if (!tenantResponse.ok) throw new Error('Gagal memuat daftar tenant.');
           const available: readonly Tenant[] = await tenantResponse.json();
-          if (!cancelled) { setTenants(available); setTenantId(available[0]?.id ?? ''); }
+          if (!cancelled) { setTenants(available); setTenantId(available.find(tenant => tenant.id === new URLSearchParams(window.location.search).get('tenantId'))?.id ?? available[0]?.id ?? ''); }
         }
       } catch (cause) {
         if (!cancelled) setSessionError(cause instanceof Error ? cause.message : 'Gagal memuat sesi pengguna.');
@@ -57,10 +58,11 @@ export function AttackSurfaceShell({ children }: { readonly children: ReactNode 
   }
 
   const hasAccess = user?.moduleAccess.some(module => module.accessible === true && module.moduleSlug === 'attack-surface-management');
-  return <div className="app"><Sidebar role={user?.role} moduleAccess={user?.moduleAccess ?? []} onLogout={user ? logout : undefined} /><section className="main"><header className="topbar"><strong>Attack Surface Management / Assets</strong><span>{user?.role === 'SUPER_ADMIN' && <select aria-label="Tenant Attack Surface" value={tenantId} onChange={event => setTenantId(event.target.value)}>{tenants.map(tenant => <option key={tenant.id} value={tenant.id}>{tenant.name}</option>)}</select>}{user?.email}</span></header>
+  const canCreateCase = user?.role === 'SUPER_ADMIN' || (user?.role === 'ADMIN' && user.moduleAccess.some(module => module.accessible && module.moduleSlug === 'case-management' && module.featureKeys.includes('case-workflow')));
+  return <div className="app"><Sidebar role={user?.role} moduleAccess={user?.moduleAccess ?? []} onLogout={user ? logout : undefined} /><section className="main"><header className="topbar"><strong>Attack Surface Management / {pathname.startsWith('/attack-surface/reports') ? 'Reports' : 'Assets'}</strong><span>{user?.role === 'SUPER_ADMIN' && <select aria-label="Tenant Attack Surface" value={tenantId} onChange={event => setTenantId(event.target.value)}>{tenants.map(tenant => <option key={tenant.id} value={tenant.id}>{tenant.name}</option>)}</select>}{user?.email}</span></header>
     {loading ? <main className="content"><div className="asm-state" aria-live="polite">Loading Attack Surface Management...</div></main>
       : sessionError ? <main className="content"><div className="asm-state asm-denied" role="alert"><strong>Unable to load Attack Surface Management</strong><span>{sessionError}</span><Link href="/dashboard">Back to Dashboard</Link></div></main>
-      : user && hasAccess ? <AttackSurfaceContext.Provider value={{ role: user.role, tenantId, ready: user.role !== 'SUPER_ADMIN' || Boolean(tenantId) }}>{children}</AttackSurfaceContext.Provider>
+      : user && hasAccess ? <AttackSurfaceContext.Provider value={{ role: user.role, tenantId, ready: user.role !== 'SUPER_ADMIN' || Boolean(tenantId), canCreateCase: Boolean(canCreateCase) }}>{children}</AttackSurfaceContext.Provider>
       : <main className="content"><div className="asm-state asm-denied" role="alert"><strong>Access denied</strong><span>You do not have access to Attack Surface Management.</span><Link href="/dashboard">Back to Dashboard</Link></div></main>}
   </section></div>;
 }

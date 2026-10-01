@@ -100,6 +100,7 @@ export class CasesService {
     const detail = await this.prisma.case.findUnique({
       where: { id: caseId },
       include: {
+        alerts: { where: { source: 'ASM' }, orderBy: { firstSeenAt: 'desc' }, include: { asset: { select: { id: true, value: true } }, finding: { select: { id: true, title: true } }, changeEvent: { select: { id: true, type: true, detectedAt: true } }, vulnerabilityCorrelation: { include: { vulnerability: { select: { cveId: true, name: true } } } } } },
         tenant: { select: { id: true, name: true, slug: true } },
         creator: { select: { id: true, name: true, email: true } },
         assignee: { select: { id: true, name: true, email: true } },
@@ -710,6 +711,54 @@ export class CasesService {
       });
 
       return newCase;
+    });
+  }
+
+  async createFromAsmAlert(user: AuthUser, alertId: string, input: CreateCaseInput) {
+    const tenantId = user.role === 'SUPER_ADMIN' ? input.tenantId : this.tenantId(user);
+    if (!tenantId) throw new BadRequestException('Tenant wajib');
+    const alert = await this.prisma.alert.findFirst({ where: { id: alertId, tenantId, source: 'ASM' } });
+    if (!alert) throw new NotFoundException('Alert tidak ditemukan');
+    if (alert.caseId) return this.prisma.case.findFirst({ where: { id: alert.caseId, tenantId } });
+    return this.prisma.$transaction(async tx => {
+      const caseNumber = await this.generateCaseNumber(tenantId, tx);
+      const created = await tx.case.create({ data: { tenantId, caseNumber, title: input.title?.trim() || alert.title, description: input.description?.trim() || alert.description, severity: alert.severity, priority: alert.severity === 'CRITICAL' || alert.severity === 'HIGH' ? CasePriority.HIGH : CasePriority.MEDIUM, createdBy: user.sub } });
+      const linked = await tx.alert.updateMany({ where: { id: alertId, tenantId, caseId: null }, data: { caseId: created.id } });
+      if (linked.count !== 1) throw new ConflictException('Alert sudah terhubung ke Case');
+      const metadata = { alertId, assetId: alert.assetId, findingId: alert.findingId, changeEventId: alert.changeEventId, vulnerabilityCorrelationId: alert.vulnerabilityCorrelationId, detectedAt: alert.firstSeenAt.toISOString() };
+      await tx.caseActivity.create({ data: { tenantId, caseId: created.id, actorId: user.sub, action: 'ASM_ALERT_LINKED', metadata } });
+      await tx.auditLog.create({ data: { tenantId, userId: user.sub, action: 'ASM_CASE_CREATED', metadata: { caseId: created.id, ...metadata } } });
+      await tx.auditLog.create({ data: { tenantId, userId: user.sub, action: 'ASM_ALERT_CASE_LINKED', metadata: { caseId: created.id, alertId } } });
+      return created;
+    });
+  }
+
+  async createFromAsmFinding(user: AuthUser, findingId: string, input: CreateCaseInput) {
+    const tenantId = user.role === 'SUPER_ADMIN' ? input.tenantId : this.tenantId(user);
+    if (!tenantId) throw new BadRequestException('Tenant wajib');
+    const finding = await this.prisma.assetFinding.findFirst({ where: { id: findingId, tenantId } });
+    if (!finding) throw new NotFoundException('Finding tidak ditemukan');
+    const sourceKey = `finding:${finding.id}`;
+    const existing = await this.prisma.alert.findUnique({ where: { tenantId_source_sourceKey: { tenantId, source: 'ASM', sourceKey } } });
+    const alert = await this.prisma.alert.upsert({ where: { tenantId_source_sourceKey: { tenantId, source: 'ASM', sourceKey } }, create: { tenantId, assetId: finding.assetId, findingId, source: 'ASM', sourceKey, title: finding.title, description: finding.description, severity: finding.severity, firstSeenAt: finding.firstSeenAt, lastSeenAt: finding.lastSeenAt }, update: { lastSeenAt: new Date() } });
+    if (!existing) await this.prisma.auditLog.create({ data: { tenantId, userId: user.sub, action: 'ASM_ALERT_CREATED', metadata: { alertId: alert.id, assetId: finding.assetId, findingId } } });
+    return this.createFromAsmAlert(user, alert.id, input);
+  }
+
+  async linkAsmAlert(user: AuthUser, caseId: string, alertId: string, requestedTenantId?: string) {
+    if (user.role === 'SUPER_ADMIN' && !requestedTenantId) throw new BadRequestException('Tenant wajib');
+    const caseRecord = await this.scopedCase(user, caseId);
+    if (user.role === 'SUPER_ADMIN' && caseRecord.tenantId !== requestedTenantId) throw new NotFoundException('Case tidak ditemukan');
+    const alert = await this.prisma.alert.findFirst({ where: { id: alertId, tenantId: caseRecord.tenantId, source: 'ASM' } });
+    if (!alert) throw new NotFoundException('Alert tidak ditemukan');
+    if (alert.caseId === caseId) return caseRecord;
+    if (alert.caseId) throw new ConflictException('Alert sudah terhubung ke Case');
+    return this.prisma.$transaction(async tx => {
+      const linked = await tx.alert.updateMany({ where: { id: alertId, tenantId: caseRecord.tenantId, caseId: null }, data: { caseId } });
+      if (linked.count !== 1) throw new ConflictException('Alert sudah terhubung ke Case');
+      await tx.caseActivity.create({ data: { tenantId: caseRecord.tenantId, caseId, actorId: user.sub, action: 'ASM_ALERT_LINKED', metadata: { alertId, assetId: alert.assetId, findingId: alert.findingId } } });
+      await tx.auditLog.create({ data: { tenantId: caseRecord.tenantId, userId: user.sub, action: 'ASM_ALERT_CASE_LINKED', metadata: { caseId, alertId } } });
+      return caseRecord;
     });
   }
 

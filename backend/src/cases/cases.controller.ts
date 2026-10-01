@@ -3,6 +3,8 @@ import { AuthGuard } from '../auth/auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { ModuleAccessGuard } from '../auth/module-access.guard';
+import { ModuleAccessService } from '../auth/module-access.service';
+import { ForbiddenException } from '@nestjs/common';
 import { RequiresModule, RequiresModuleFeature } from '../auth/module-access.decorator';
 import { AuthUser } from '../users/users.types';
 import { CasesService } from './cases.service';
@@ -13,7 +15,7 @@ import { CreateCaseInput, CreateEvidenceInput, CreateInvestigationNoteInput, Lin
 @RequiresModule('case-management')
 @RequiresModuleFeature('case-workflow')
 export class CasesController {
-  constructor(private readonly casesService: CasesService) {}
+  constructor(private readonly casesService: CasesService, private readonly moduleAccess: ModuleAccessService) {}
 
   @Get()
   @Roles('SUPER_ADMIN', 'ADMIN', 'USER')
@@ -149,6 +151,30 @@ export class CasesController {
     @Body() body: CreateCaseInput,
   ) {
     return this.casesService.createFromIndicator(req.user, indicatorId, body);
+  }
+
+  @Post('from-asm-alert/:alertId')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  async createFromAsmAlert(@Req() req: { user: AuthUser }, @Param('alertId') alertId: string, @Body() body: CreateCaseInput) {
+    const access = await this.moduleAccess.evaluate(req.user, 'attack-surface-management', ['asset-management']);
+    if (!access.accessible) throw new ForbiddenException(access.reason);
+    return this.casesService.createFromAsmAlert(req.user, alertId, body);
+  }
+
+  @Post('from-asm-finding/:findingId')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  async createFromAsmFinding(@Req() req: { user: AuthUser }, @Param('findingId') findingId: string, @Body() body: CreateCaseInput) {
+    const access = await this.moduleAccess.evaluate(req.user, 'attack-surface-management', ['asset-management']);
+    if (!access.accessible) throw new ForbiddenException(access.reason);
+    return this.casesService.createFromAsmFinding(req.user, findingId, body);
+  }
+
+  @Post(':id/asm-alerts/:alertId')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  async linkAsmAlert(@Req() req: { user: AuthUser }, @Param('id') caseId: string, @Param('alertId') alertId: string, @Body() body: { tenantId?: string }) {
+    const access = await this.moduleAccess.evaluate(req.user, 'attack-surface-management', ['asset-management']);
+    if (!access.accessible) throw new ForbiddenException(access.reason);
+    return this.casesService.linkAsmAlert(req.user, caseId, alertId, body.tenantId);
   }
 
   @Patch(':id')

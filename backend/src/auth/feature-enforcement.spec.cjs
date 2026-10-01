@@ -77,14 +77,14 @@ test('ASM HTTP endpoint denies unassigned discovery and allows assigned discover
   const { AuthGuard } = require('../../dist/src/auth/auth.guard.js');
   const { AssetsController } = require('../../dist/src/attack-surface-management/assets.controller.js');
   const { AssetsService } = require('../../dist/src/attack-surface-management/assets.service.js');
-  const { DiscoveryService } = require('../../dist/src/attack-surface-management/discovery.service.js');
+  const { DiscoveryRunsService } = require('../../dist/src/attack-surface-management/discovery-runs.service.js');
   let featureKeys = [];
   let discoveryCalls = 0;
   const fixture = await Test.createTestingModule({
     controllers: [AssetsController],
     providers: [
       { provide: AssetsService, useValue: {} },
-      { provide: DiscoveryService, useValue: { runDiscovery: () => { discoveryCalls += 1; return { started: true }; } } },
+      { provide: DiscoveryRunsService, useValue: { run: async () => { discoveryCalls += 1; return { id: 'run-a', legacySummary: { started: true } }; } } },
     ],
   })
     .overrideGuard(AuthGuard).useValue({ canActivate(context) {
@@ -106,7 +106,7 @@ test('ASM HTTP endpoint denies unassigned discovery and allows assigned discover
     // When that feature is assigned, then the same route executes successfully.
     const allowed = await fetch(url, { method: 'POST' });
     assert.equal(allowed.status, 201);
-    assert.deepEqual(await allowed.json(), { started: true });
+    assert.deepEqual(await allowed.json(), { started: true, runId: 'run-a' });
     assert.equal(discoveryCalls, 1);
   } finally {
     await app.close();

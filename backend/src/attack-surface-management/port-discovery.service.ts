@@ -1,14 +1,23 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { AssetType, NetworkProtocol, PortDiscoveryStatus } from '@prisma/client';
+import { AssetType, AssetFindingSeverity, NetworkProtocol, PortDiscoveryStatus } from '@prisma/client';
 import { isIP } from 'node:net';
 import { PrismaService } from '../prisma.service';
 import type { AuthUser } from '../users/users.types';
 import { PortDiscoveryClient, type PortProbeOutcome, type PortProbeResult } from './port-discovery.client';
+import { SENSITIVE_MANAGEMENT_PORTS } from './alert-rules';
 
 const DEFAULT_TCP_PORTS = [
   21, 22, 25, 53, 80, 110, 143, 443, 445, 465, 587, 993, 995,
   1433, 1521, 2049, 3306, 3389, 5432, 5672, 6379, 8080, 8443, 9200, 27017,
 ] as const;
+const EXPOSED_SERVICE_PORTS: Readonly<Record<number, AssetFindingSeverity>> = {
+  21: AssetFindingSeverity.MEDIUM, 445: AssetFindingSeverity.MEDIUM,
+  1433: AssetFindingSeverity.MEDIUM, 1521: AssetFindingSeverity.MEDIUM,
+  3306: AssetFindingSeverity.MEDIUM, 3389: AssetFindingSeverity.MEDIUM,
+  5432: AssetFindingSeverity.MEDIUM, 6379: AssetFindingSeverity.MEDIUM,
+  9200: AssetFindingSeverity.MEDIUM, 27017: AssetFindingSeverity.MEDIUM,
+};
+
 const CONNECTION_TIMEOUT_MS = 1_000;
 const PROBE_CONCURRENCY = 5;
 const SERVICE_NAMES: Readonly<Record<number, string>> = {
@@ -95,6 +104,7 @@ export class PortDiscoveryService {
       const status = persistenceStatus(probe.outcome);
       try {
         await this.prisma.$transaction(async (tx) => {
+          const previous = await tx.assetPortService.findUnique({ where: { tenantId_assetId_protocol_port: { tenantId, assetId, protocol: NetworkProtocol.TCP, port: probe.port } } });
           await tx.assetPortService.upsert({
             where: { tenantId_assetId_protocol_port: {
               tenantId, assetId, protocol: NetworkProtocol.TCP, port: probe.port,
@@ -106,6 +116,21 @@ export class PortDiscoveryService {
             },
             update: { service, status, lastSeenAt: observedAt },
           });
+          if (status === PortDiscoveryStatus.OPEN && previous?.status !== PortDiscoveryStatus.OPEN && SENSITIVE_MANAGEMENT_PORTS.has(probe.port)) {
+            const sourceKey = `port:${assetId}:TCP:${probe.port}`;
+            const existing = await tx.alert.findUnique({ where: { tenantId_source_sourceKey: { tenantId, source: 'ASM', sourceKey } } });
+            const alert = await tx.alert.upsert({ where: { tenantId_source_sourceKey: { tenantId, source: 'ASM', sourceKey } }, create: { tenantId, assetId, source: 'ASM', sourceKey, title: `Management port TCP ${probe.port} opened`, description: `TCP ${probe.port} became reachable during active discovery. Review exposure of this service.`, severity: 'HIGH' }, update: { lastSeenAt: observedAt, status: 'OPEN' } });
+            if (!existing) await tx.auditLog.create({ data: { tenantId, userId: user.sub, action: 'ASM_ALERT_CREATED', metadata: { alertId: alert.id, assetId, sourceKey } } });
+            else if (existing.status !== 'OPEN') await tx.auditLog.create({ data: { tenantId, userId: user.sub, action: 'ASM_ALERT_REOPENED', metadata: { alertId: alert.id, assetId, sourceKey } } });
+          }
+          const severity = EXPOSED_SERVICE_PORTS[probe.port];
+          if (status === PortDiscoveryStatus.OPEN && severity) {
+            await tx.assetFinding.upsert({
+              where: { tenantId_assetId_source_sourceKey: { tenantId, assetId, source: "PORT_DISCOVERY", sourceKey: `TCP:${probe.port}` } },
+              create: { tenantId, assetId, title: `${service ?? "Service"} exposed on TCP ${probe.port}`, description: `TCP port ${probe.port} accepted a connection during active discovery. Review whether this service should be reachable from the scanner network. No vulnerability or authentication weakness was verified.`, type: "EXPOSED_SERVICE", severity, source: "PORT_DISCOVERY", sourceKey: `TCP:${probe.port}`, evidence: { protocol: "TCP", port: probe.port, service, outcome: probe.outcome }, firstSeenAt: observedAt, lastSeenAt: observedAt },
+              update: { status: "OPEN", lastSeenAt: observedAt, evidence: { protocol: "TCP", port: probe.port, service, outcome: probe.outcome } },
+            });
+          }
           await tx.auditLog.create({
             data: {
               userId: user.sub, tenantId, action: 'ASSET_PORT_SERVICE_RECORDED',

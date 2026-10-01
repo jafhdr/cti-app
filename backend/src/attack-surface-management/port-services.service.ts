@@ -22,6 +22,7 @@ export class PortServicesService {
     await this.ipAsset(assetId, tenantId);
     const observedAt = new Date();
     const service = input.service?.trim() || null;
+    const fingerprint = { product: input.product?.trim() || null, version: input.version?.trim() || null, banner: input.banner?.trim() || null, source: input.source?.trim() || 'MANUAL' };
     const mutation = this.prisma.assetPortService.upsert({
       where: {
         tenantId_assetId_protocol_port: {
@@ -37,11 +38,12 @@ export class PortServicesService {
         port: input.port,
         protocol: input.protocol,
         service,
+        ...fingerprint,
         status: input.status,
         firstSeenAt: observedAt,
         lastSeenAt: observedAt,
       },
-      update: { service, status: input.status, lastSeenAt: observedAt },
+      update: { service, ...(input.product !== undefined ? { product: fingerprint.product } : {}), ...(input.version !== undefined ? { version: fingerprint.version } : {}), ...(input.banner !== undefined ? { banner: fingerprint.banner } : {}), ...(input.source !== undefined ? { source: fingerprint.source } : {}), status: input.status, lastSeenAt: observedAt },
     });
     const audit = this.prisma.auditLog.create({
       data: {

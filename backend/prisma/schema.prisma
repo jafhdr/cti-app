@@ -196,6 +196,20 @@ enum AssetCriticality {
   CRITICAL
 }
 
+enum AssetFindingSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AssetFindingStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
 enum NetworkProtocol {
   TCP
   UDP
@@ -212,6 +226,13 @@ enum AlertStatus {
   OPEN
   ACKNOWLEDGED
   CLOSED
+}
+
+enum AsmRiskTrend {
+  BASELINE
+  INCREASED
+  DECREASED
+  UNCHANGED
 }
 
 enum SubscriptionPackageType {
@@ -258,6 +279,7 @@ model Tenant {
   threatActorMalwareTools    ThreatActorMalwareTool[]
   campaignMalwareTools       CampaignMalwareTool[]
   vulnerabilities            Vulnerability[]
+  assetVulnerabilityCorrelations AssetVulnerabilityCorrelation[]
   intelligenceReports        IntelligenceReport[]
   reportThreatActors         IntelligenceReportThreatActor[]
   reportCampaigns            IntelligenceReportCampaign[]
@@ -280,6 +302,13 @@ model Tenant {
   assets                     Asset[]
   assetRelationships         AssetRelationship[]
   assetPortServices          AssetPortService[]
+  assetFindings              AssetFinding[]
+  asmSchedules               AsmDiscoverySchedule[]
+  asmRuns                    AsmDiscoveryRun[]
+  asmChanges                 AsmExposureChange[]
+  asmRiskSnapshots           AsmRiskSnapshot[]
+  asmNotifications           AsmNotification[]
+  asmNotificationPreference  AsmNotificationPreference?
   moduleSettings             TenantModule[]
   subscription               TenantSubscription?
   userModuleAccess           UserModuleAccess[]
@@ -409,6 +438,7 @@ model User {
   casesAssigned      Case[]                  @relation("CaseAssignee")
   investigationNotes CaseInvestigationNote[] @relation("CaseNoteAuthor")
   evidenceCreated    CaseEvidence[]          @relation("CaseEvidenceCreator")
+  asmNotificationReads AsmNotificationRead[]
 }
 
 model UserModuleAccess {
@@ -750,6 +780,12 @@ model Vulnerability {
   severity            IndicatorSeverity                 @default(MEDIUM)
   cvssScore           Float?
   url                 String?
+  affectedProduct     String?
+  affectedVersionStart String?
+  affectedVersionEnd   String?
+  affectedVersionExact String?
+  source              String?
+  correlations        AssetVulnerabilityCorrelation[]
   threatActors        ThreatActorVulnerability[]
   campaigns           CampaignVulnerability[]
   malwareTools        MalwareToolVulnerability[]
@@ -1132,13 +1168,60 @@ model Alert {
   description String?
   status      AlertStatus       @default(OPEN)
   severity    IndicatorSeverity @default(MEDIUM)
+  source      String            @default("INTELLIGENCE")
+  sourceKey   String?
+  assetId     String?
+  asset       Asset?             @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  findingId   String?
+  finding     AssetFinding?      @relation(fields: [findingId], references: [id], onDelete: SetNull)
+  changeEventId String?
+  changeEvent AsmExposureChange? @relation(fields: [changeEventId], references: [id], onDelete: SetNull)
+  vulnerabilityCorrelationId String?
+  vulnerabilityCorrelation AssetVulnerabilityCorrelation? @relation(fields: [vulnerabilityCorrelationId], references: [id], onDelete: SetNull)
+  riskSnapshotId String?
+  riskSnapshot AsmRiskSnapshot? @relation(fields: [riskSnapshotId], references: [id], onDelete: SetNull)
+  firstSeenAt DateTime          @default(now())
+  lastSeenAt  DateTime          @default(now())
+  acknowledgedAt DateTime?
+  acknowledgedBy String?
+  resolvedAt DateTime?
   caseId      String?
   case        Case?             @relation(fields: [caseId], references: [id], onDelete: SetNull)
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
   entities    AlertEntity[]
+  asmNotification AsmNotification?
 
   @@index([tenantId, status, severity])
+  @@unique([tenantId, source, sourceKey])
+  @@index([tenantId, assetId, status])
+}
+
+model AsmNotificationPreference {
+  tenantId String @id
+  enabled Boolean @default(true)
+  minimumSeverity IndicatorSeverity @default(HIGH)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model AsmNotification {
+  id String @id @default(cuid())
+  tenantId String
+  alertId String @unique
+  createdAt DateTime @default(now())
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  alert Alert @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  reads AsmNotificationRead[]
+  @@index([tenantId, createdAt])
+}
+
+model AsmNotificationRead {
+  notificationId String
+  userId String
+  readAt DateTime @default(now())
+  notification AsmNotification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@id([notificationId, userId])
 }
 
 model AlertEntity {
@@ -1148,6 +1231,28 @@ model AlertEntity {
   entity   IntelligenceEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
 
   @@id([alertId, entityId])
+}
+
+
+enum AsmDiscoveryRunStatus {
+  RUNNING
+  COMPLETED
+  PARTIAL
+  FAILED
+}
+
+enum AsmChangeType {
+  ASSET_DISCOVERED
+  ASSET_NOT_OBSERVED
+  DNS_CHANGED
+  IP_DISCOVERED
+  IP_NOT_OBSERVED
+  PORT_OPENED
+  PORT_NOT_OBSERVED
+  SERVICE_DISCOVERED
+  SERVICE_CHANGED
+  VULNERABILITY_CONFIRMED
+  VULNERABILITY_STALE
 }
 
 model Asset {
@@ -1166,6 +1271,13 @@ model Asset {
   updatedAt     DateTime           @updatedAt
   tenant        Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   portServices  AssetPortService[]
+  findings      AssetFinding[]
+  alerts        Alert[]
+  riskSnapshots AsmRiskSnapshot[]
+  vulnerabilityCorrelations AssetVulnerabilityCorrelation[]
+  discoverySchedule AsmDiscoverySchedule?
+  discoveryRuns AsmDiscoveryRun[]
+  exposureChanges AsmExposureChange[]
   outgoingRelationships AssetRelationship[] @relation("RelationshipSource")
   incomingRelationships AssetRelationship[] @relation("RelationshipTarget")
   rootRelationships AssetRelationship[] @relation("RelationshipRoot")
@@ -1207,6 +1319,11 @@ model AssetPortService {
   port        Int
   protocol    NetworkProtocol
   service     String?
+  product     String?
+  version     String?
+  banner      String?
+  source      String?
+  correlations AssetVulnerabilityCorrelation[]
   status      PortDiscoveryStatus @default(UNKNOWN)
   firstSeenAt DateTime            @default(now())
   lastSeenAt  DateTime            @default(now())
@@ -1216,6 +1333,130 @@ model AssetPortService {
   asset       Asset               @relation(fields: [assetId, tenantId], references: [id, tenantId], onDelete: Cascade)
 
   @@unique([tenantId, assetId, protocol, port])
+  @@unique([id, tenantId])
   @@index([tenantId, assetId, status])
   @@index([tenantId, protocol, port])
+}
+
+model AssetVulnerabilityCorrelation {
+  id String @id @default(cuid())
+  tenantId String
+  assetId String
+  serviceId String
+  vulnerabilityId String
+  confidence String
+  status String @default("ACTIVE")
+  matchReason String
+  evidence Json
+  firstSeenAt DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  asset Asset @relation(fields: [assetId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  service AssetPortService @relation(fields: [serviceId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  vulnerability Vulnerability @relation(fields: [vulnerabilityId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  alerts Alert[]
+  @@unique([tenantId, serviceId, vulnerabilityId])
+  @@index([tenantId, assetId])
+}
+
+model AssetFinding {
+  id          String               @id @default(cuid())
+  tenantId    String
+  assetId     String
+  title       String
+  description String
+  type        String
+  severity    AssetFindingSeverity
+  status      AssetFindingStatus   @default(OPEN)
+  source      String
+  sourceKey   String
+  evidence    Json?
+  firstSeenAt DateTime             @default(now())
+  lastSeenAt  DateTime             @default(now())
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  tenant      Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  asset       Asset                @relation(fields: [assetId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  alerts      Alert[]
+
+  @@unique([tenantId, assetId, source, sourceKey])
+  @@index([tenantId, assetId, status])
+}
+
+model AsmDiscoverySchedule {
+  id String @id @default(cuid())
+  tenantId String
+  assetId String @unique
+  enabled Boolean @default(false)
+  intervalMinutes Int @default(1440)
+  lastRunAt DateTime?
+  nextRunAt DateTime?
+  lockedUntil DateTime?
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  asset Asset @relation(fields: [assetId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  @@unique([assetId, tenantId])
+  @@index([enabled, nextRunAt])
+}
+
+model AsmDiscoveryRun {
+  id String @id @default(cuid())
+  tenantId String
+  assetId String
+  status AsmDiscoveryRunStatus @default(RUNNING)
+  source String
+  startedAt DateTime @default(now())
+  completedAt DateTime?
+  discovered Int @default(0)
+  created Int @default(0)
+  updated Int @default(0)
+  failed Int @default(0)
+  error String?
+  providers String[] @default([])
+  snapshot Json?
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  asset Asset @relation(fields: [assetId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  changes AsmExposureChange[]
+  riskSnapshots AsmRiskSnapshot[]
+  @@index([tenantId, assetId, startedAt])
+}
+
+model AsmRiskSnapshot {
+  id String @id @default(cuid())
+  tenantId String
+  assetId String
+  runId String
+  critical Int
+  high Int
+  medium Int
+  low Int
+  total Int
+  score Int
+  previousScore Int?
+  trend AsmRiskTrend
+  highImpactFindingIds String[] @default([])
+  evaluatedAt DateTime @default(now())
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  asset Asset @relation(fields: [assetId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  run AsmDiscoveryRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  alerts Alert[]
+  @@unique([runId, assetId])
+  @@index([tenantId, assetId, evaluatedAt])
+}
+
+model AsmExposureChange {
+  id String @id @default(cuid())
+  tenantId String
+  assetId String
+  runId String
+  type AsmChangeType
+  entityKey String
+  previousValue String?
+  currentValue String?
+  detectedAt DateTime @default(now())
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  asset Asset @relation(fields: [assetId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  run AsmDiscoveryRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  alerts Alert[]
+  @@unique([runId, type, entityKey])
+  @@index([tenantId, assetId, detectedAt])
 }

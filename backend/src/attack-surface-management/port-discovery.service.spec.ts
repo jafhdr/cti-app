@@ -37,6 +37,7 @@ function storedPort(port: number): AssetPortService {
   return {
     id: `port-${port}`, tenantId: 'tenant-1', assetId: 'ip-1', port,
     protocol: NetworkProtocol.TCP, service: port === 443 ? 'https' : null,
+    product: null, version: null, banner: null, source: null,
     status: PortDiscoveryStatus.OPEN, firstSeenAt: observedAt, lastSeenAt: observedAt,
     createdAt: observedAt, updatedAt: observedAt,
   };
@@ -57,7 +58,9 @@ describe('PortDiscoveryService', () => {
 
   beforeEach(async () => {
     const transactionClient = {
-      assetPortService: { upsert: jest.fn() },
+      assetPortService: { upsert: jest.fn(), findUnique: jest.fn().mockResolvedValue(null) },
+      alert: { findUnique: jest.fn().mockResolvedValue(null), upsert: jest.fn().mockResolvedValue({ id: 'alert-1' }) },
+      assetFinding: { upsert: jest.fn() },
       auditLog: { create: jest.fn() },
     };
     const module: TestingModule = await Test.createTestingModule({
@@ -68,6 +71,7 @@ describe('PortDiscoveryService', () => {
           useValue: {
             asset: { findFirst: jest.fn() },
             assetPortService: transactionClient.assetPortService,
+            assetFinding: transactionClient.assetFinding,
             tenant: { findUnique: jest.fn() },
             auditLog: transactionClient.auditLog,
             $transaction: jest.fn((callback: (tx: typeof transactionClient) => Promise<unknown>) => callback(transactionClient)),
@@ -303,5 +307,55 @@ describe('PortServicesController discovery authorization', () => {
     expect(Reflect.getMetadata(GUARDS_METADATA, PortServicesController)).toEqual([
       AuthGuard, RolesGuard, ModuleAccessGuard,
     ]);
+  });
+});
+
+describe('automatic exposed-service finding', () => {
+  const admin: AuthUser = { sub: 'admin-1', role: 'ADMIN', tenantId: 'tenant-1' };
+  const observedAt = new Date('2026-09-24T12:00:00.000Z');
+  const prisma = {
+    asset: { findFirst: jest.fn() }, tenant: { findUnique: jest.fn() },
+    assetPortService: { upsert: jest.fn(), findUnique: jest.fn() }, assetFinding: { upsert: jest.fn() }, alert: { findUnique: jest.fn(), upsert: jest.fn() }, auditLog: { create: jest.fn() },
+    $transaction: jest.fn(),
+  };
+  const client = { probe: jest.fn() };
+  const service = new PortDiscoveryService(prisma as never as PrismaService, client as never as PortDiscoveryClient);
+  beforeEach(() => {
+    jest.clearAllMocks();
+    prisma.asset.findFirst.mockResolvedValue(asset());
+    prisma.$transaction.mockImplementation((callback: (tx: typeof prisma) => Promise<unknown>) => callback(prisma));
+    prisma.assetPortService.upsert.mockResolvedValue(storedPort(3389));
+    prisma.assetPortService.findUnique.mockResolvedValue(null);
+    prisma.alert.findUnique.mockResolvedValue(null);
+    prisma.alert.upsert.mockResolvedValue({ id: 'alert-3389' });
+    prisma.assetFinding.upsert.mockResolvedValue({});
+    prisma.auditLog.create.mockResolvedValue(audit('ASSET_PORT_DISCOVERY_STARTED'));
+    client.probe.mockResolvedValue(probe(3389, 'open'));
+  });
+
+  it('reuses a stable source key and preserves first seen on repeated discovery', async () => {
+    await service.discover(admin, 'ip-1', undefined, [3389]);
+    await service.discover(admin, 'ip-1', undefined, [3389]);
+    expect(prisma.assetFinding.upsert).toHaveBeenCalledTimes(2);
+    const first = prisma.assetFinding.upsert.mock.calls[0][0];
+    const second = prisma.assetFinding.upsert.mock.calls[1][0];
+    expect(first.where).toEqual(second.where);
+    expect(first.where.tenantId_assetId_source_sourceKey).toEqual({ tenantId: 'tenant-1', assetId: 'ip-1', source: 'PORT_DISCOVERY', sourceKey: 'TCP:3389' });
+    expect(second.update).toHaveProperty('lastSeenAt');
+    expect(second.update).not.toHaveProperty('firstSeenAt');
+  });
+
+  it('alerts only when a sensitive management port newly opens', async () => {
+    await service.discover(admin, 'ip-1', undefined, [3389]);
+    expect(prisma.alert.upsert).toHaveBeenCalledWith(expect.objectContaining({ where: { tenantId_source_sourceKey: { tenantId: 'tenant-1', source: 'ASM', sourceKey: 'port:ip-1:TCP:3389' } } }));
+    prisma.assetPortService.findUnique.mockResolvedValue(storedPort(3389));
+    await service.discover(admin, 'ip-1', undefined, [3389]);
+    expect(prisma.alert.upsert).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not create a finding for an ordinary HTTPS port', async () => {
+    client.probe.mockResolvedValue(probe(443, 'open'));
+    await service.discover(admin, 'ip-1', undefined, [443]);
+    expect(prisma.assetFinding.upsert).not.toHaveBeenCalled();
   });
 });

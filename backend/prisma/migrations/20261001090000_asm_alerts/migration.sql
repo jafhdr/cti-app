@@ -1,0 +1,3 @@
+ALTER TABLE "Alert" ADD COLUMN "source" TEXT NOT NULL DEFAULT 'INTELLIGENCE', ADD COLUMN "sourceKey" TEXT, ADD COLUMN "assetId" TEXT, ADD COLUMN "findingId" TEXT, ADD COLUMN "changeEventId" TEXT, ADD COLUMN "vulnerabilityCorrelationId" TEXT, ADD COLUMN "firstSeenAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, ADD COLUMN "lastSeenAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, ADD COLUMN "acknowledgedAt" TIMESTAMP(3), ADD COLUMN "acknowledgedBy" TEXT;
+CREATE UNIQUE INDEX "Alert_tenantId_source_sourceKey_key" ON "Alert"("tenantId", "source", "sourceKey");
+CREATE INDEX "Alert_tenantId_assetId_status_idx" ON "Alert"("tenantId", "assetId", "status");

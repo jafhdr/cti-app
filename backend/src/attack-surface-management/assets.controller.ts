@@ -7,7 +7,7 @@ import { RolesGuard } from '../auth/roles.guard';
 import type { AuthUser } from '../users/users.types';
 import { CreateAssetDto, ListAssetsQueryDto, UpdateAssetDto } from './assets.dto';
 import { AssetsService } from './assets.service';
-import { DiscoveryService } from './discovery.service';
+import { DiscoveryRunsService } from './discovery-runs.service';
 
 @Controller('attack-surface/assets')
 @UseGuards(AuthGuard, RolesGuard, ModuleAccessGuard)
@@ -16,7 +16,7 @@ import { DiscoveryService } from './discovery.service';
 export class AssetsController {
   constructor(
     private readonly assets: AssetsService,
-    private readonly discovery: DiscoveryService,
+    private readonly discovery: DiscoveryRunsService,
   ) {}
 
   @Get() @Roles('SUPER_ADMIN', 'ADMIN', 'USER')
@@ -58,6 +58,6 @@ export class AssetsController {
   @RequiresModuleFeature('asset-discovery')
   @Post(':id/discover') @Roles('SUPER_ADMIN', 'ADMIN', 'USER')
   discover(@Req() req: { user: AuthUser }, @Param('id') id: string, @Query('tenantId') tenantId?: string) {
-    return this.discovery.runDiscovery(req.user, id, tenantId);
+    return this.discovery.run(req.user, id, tenantId, 'MANUAL', req.user.role !== 'USER').then(result => ({ ...result.legacySummary, runId: result.id }));
   }
 }

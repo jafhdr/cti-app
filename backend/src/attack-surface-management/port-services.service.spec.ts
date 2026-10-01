@@ -31,7 +31,7 @@ function ipAsset(overrides: Partial<Asset> = {}): Asset {
 function portService(overrides: Partial<AssetPortService> = {}): AssetPortService {
   return {
     id: 'port-1', tenantId: 'tenant-1', assetId: 'ip-1', port: 443,
-    protocol: NetworkProtocol.TCP, service: 'https', status: PortDiscoveryStatus.OPEN,
+    protocol: NetworkProtocol.TCP, service: 'https', product: null, version: null, banner: null, source: null, status: PortDiscoveryStatus.OPEN,
     firstSeenAt: observedAt, lastSeenAt: observedAt, createdAt: observedAt,
     updatedAt: observedAt, ...overrides,
   };

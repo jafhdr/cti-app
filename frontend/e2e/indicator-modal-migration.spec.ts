@@ -31,12 +31,12 @@ test('indicator create, edit, and deactivate use shared overlays', async ({ page
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.screenshot({ path: '../.omo/evidence/threat-intelligence/modal-migration/dark.png' });
   await create.getByRole('button', { name: 'Close' }).click();
-  await page.getByLabel('Tema').selectOption('light');
+  await page.getByRole('button', { name: 'Terang' }).click();
   await createTrigger.click();
   await page.screenshot({ path: '../.omo/evidence/threat-intelligence/modal-migration/light.png' });
   await create.getByRole('button', { name: 'Close' }).click();
   await page.emulateMedia({ colorScheme: 'dark' });
-  await page.getByLabel('Tema').selectOption('system');
+  await page.getByRole('button', { name: 'Sistem' }).click();
   await createTrigger.click();
   await page.screenshot({ path: '../.omo/evidence/threat-intelligence/modal-migration/system-dark.png' });
   await page.emulateMedia({ colorScheme: 'light' });

@@ -19,6 +19,9 @@ import {
   KeyRound,
   LayoutDashboard,
   LogOut,
+  Moon,
+  Sun,
+  Monitor,
   Radar,
   ShieldAlert,
   Users,
@@ -61,6 +64,7 @@ const caseManagementItems: readonly NavigationItem[] = [
 
 const attackSurfaceItems: readonly NavigationItem[] = [
   { label: 'Assets', href: '/attack-surface/assets', icon: Radar, matchDescendants: true },
+  { label: 'Reports', href: '/attack-surface/reports', icon: ClipboardList },
 ];
 
 const threatIntelligenceItems: readonly NavigationItem[] = [
@@ -142,16 +146,18 @@ export default function Sidebar({
         <span>CTI Platform</span>
       </Link>
 
-      <nav id="sidebar-navigation" className={`sidebar-navigation${mobileOpen ? ' is-open' : ''}`} aria-label="Navigasi utama" onClick={() => setMobileOpen(false)}>
+      <nav id="sidebar-navigation" className={`sidebar-navigation${mobileOpen ? ' is-open' : ''}`} aria-label="Navigasi utama" onClick={event => { if (event.target instanceof Element && event.target.closest('a')) setMobileOpen(false); }}>
         <NavigationLink item={dashboardItem} pathname={pathname} />
         {modules.map(module => <ModuleSection expanded={expandedModules[module.id] ?? false} key={module.id} module={module} pathname={pathname} onToggle={toggleModule} />)}
       </nav>
 
       <div className="sidebar-footer">
-        <label className="theme-select-label" htmlFor="cti-theme">Tema</label>
-        <select id="cti-theme" className="theme-select" value={theme} onChange={event => changeTheme(event.target.value as ThemePreference)}>
-          <option value="dark">Gelap</option><option value="light">Terang</option><option value="system">Sistem</option>
-        </select>
+        <span className="theme-select-label" id="cti-theme-label">Tema</span>
+        <div className="theme-options" role="group" aria-labelledby="cti-theme-label">
+          <button type="button" className={theme === 'dark' ? 'is-active' : ''} aria-pressed={theme === 'dark'} onClick={() => changeTheme('dark')}><Moon size={16} aria-hidden="true" /> Gelap</button>
+          <button type="button" className={theme === 'light' ? 'is-active' : ''} aria-pressed={theme === 'light'} onClick={() => changeTheme('light')}><Sun size={16} aria-hidden="true" /> Terang</button>
+          <button type="button" className={theme === 'system' ? 'is-active' : ''} aria-pressed={theme === 'system'} onClick={() => changeTheme('system')}><Monitor size={16} aria-hidden="true" /> Sistem</button>
+        </div>
         {onLogout && (
           <button className="logout" onClick={onLogout}>
             <LogOut size={16} aria-hidden="true" />

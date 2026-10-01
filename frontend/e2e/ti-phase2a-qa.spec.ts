@@ -21,7 +21,7 @@ for (const surface of [
       await page.setViewportSize({ width: 1440, height: 900 });
       await page.goto(`${app}${surface.url}`);
       await expect(page.getByRole('button', { name: surface.item })).toBeVisible();
-      await page.getByRole('combobox', { name: 'Tema' }).selectOption(theme);
+      await page.getByRole('button', { name: theme === 'dark' ? 'Gelap' : 'Terang' }).click();
       await expect(page.locator('html')).toHaveClass(new RegExp(theme));
       await page.screenshot({ path: `${evidence}/${surface.key}-${theme}-1440.png`, fullPage: true });
       await page.getByRole('button', { name: surface.item }).click();
@@ -44,7 +44,7 @@ for (const surface of [
     }
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.emulateMedia({ colorScheme: "dark" });
-    await page.getByRole("combobox", { name: "Tema" }).selectOption("system");
+    await page.getByRole('button', { name: 'Sistem' }).click();
     await page.setViewportSize({ width: 375, height: 812 });
     await expect(page.locator("html")).toHaveClass(/dark/);
     await page.screenshot({ path: `${evidence}/${surface.key}-system-dark-375.png`, fullPage: true });

@@ -403,7 +403,7 @@ export default function AuditLogsPage() {
           <Card view="outlined" style={{ padding: '16px 20px', marginBottom: 20 }}>
             <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
               {isSuperAdmin && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <div className="audit-filter-field" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   <label htmlFor="tenant-filter" style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>
                     Filter Tenant
                   </label>
@@ -418,7 +418,6 @@ export default function AuditLogsPage() {
                       border: '1px solid #cbd5e1',
                       fontSize: 13,
                       background: '#fff',
-                      minWidth: 200,
                     }}
                   >
                     <option value="">Semua Tenant (Global)</option>
@@ -431,7 +430,7 @@ export default function AuditLogsPage() {
                 </div>
               )}
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div className="audit-filter-field" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <label htmlFor="action-filter" style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>
                   Filter Aktivitas
                 </label>
@@ -446,7 +445,6 @@ export default function AuditLogsPage() {
                     border: '1px solid #cbd5e1',
                     fontSize: 13,
                     background: '#fff',
-                    minWidth: 220,
                   }}
                 >
                   <option value="">Semua Aktivitas</option>

@@ -34,6 +34,7 @@ interface CaseDetail {
   createdAt: string;
   updatedAt: string;
   tenant: { id: string; name: string; slug: string };
+  alerts?: readonly { readonly id: string; readonly assetId: string | null; readonly asset: { readonly id: string; readonly value: string } | null; readonly findingId: string | null; readonly finding: { readonly id: string; readonly title: string } | null; readonly vulnerabilityCorrelationId: string | null; readonly vulnerabilityCorrelation: { readonly vulnerability: { readonly cveId: string; readonly name: string } } | null; readonly changeEventId: string | null; readonly changeEvent: { readonly type: string; readonly detectedAt: string } | null; readonly severity: string; readonly source: string; readonly firstSeenAt: string; readonly title: string }[];
 }
 
 export default function CaseDetailPage() {
@@ -124,6 +125,7 @@ export default function CaseDetailPage() {
 
         <div className="editorial-heading"><span className="source-eyebrow">CASE INTELLIGENCE WORKSPACE · {caseDetail.caseNumber}</span><h1>{caseDetail.title}</h1><p>{caseDetail.tenant.name} · Updated {new Date(caseDetail.updatedAt).toLocaleString('id-ID')}</p></div>
         <section className="editorial-metrics" aria-label="Case status"><div><span>Status</span><strong className="editorial-text-metric">{caseDetail.status.replaceAll("_", " ")}</strong></div><div><span>Priority</span><strong className="editorial-text-metric">{caseDetail.priority}</strong></div><div><span>Severity</span><strong className="editorial-text-metric">{caseDetail.severity}</strong></div><div><span>Assignee</span><strong className="editorial-text-metric">{caseDetail.assignee?.name ?? "Unassigned"}</strong></div></section>
+        {caseDetail.alerts?.length ? <section className="case-panel mb-4 p-8" aria-label="Attack Surface Context"><span className="source-eyebrow">ASM PROVENANCE</span><h2 className="case-detail-section-title">Attack Surface Context</h2>{caseDetail.alerts.map(alert => <dl className="asm-detail" key={alert.id}><div><dt>Asset</dt><dd>{alert.asset?.value ?? alert.assetId ?? '-'}</dd></div><div><dt>Alert</dt><dd>{alert.title} ({alert.id})</dd></div><div><dt>Finding</dt><dd>{alert.finding?.title ?? alert.findingId ?? '-'}</dd></div><div><dt>Vulnerability / CVE</dt><dd>{alert.vulnerabilityCorrelation?.vulnerability.cveId ?? alert.vulnerabilityCorrelationId ?? '-'}</dd></div><div><dt>Change event</dt><dd>{alert.changeEvent?.type ?? alert.changeEventId ?? '-'}</dd></div><div><dt>Severity / source</dt><dd>{alert.severity} / {alert.source}</dd></div><div><dt>Detected</dt><dd>{new Date(alert.firstSeenAt).toLocaleString('id-ID')}</dd></div></dl>)}</section> : null}
         {canMutateCases && <div className="case-operations"><span className="source-eyebrow">CASE OPERATIONS</span><div><button type="button" onClick={() => setShowEditModal(true)} className="soc-button-outline">Edit case</button></div></div>}
         <nav aria-label="Bagian detail case" className="case-panel mb-4 flex gap-2 overflow-x-auto p-2">
           <a href="#overview" className="case-detail-tab">Overview</a>

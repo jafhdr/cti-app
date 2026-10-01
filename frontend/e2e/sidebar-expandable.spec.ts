@@ -52,6 +52,7 @@ test('expandable sidebar remains usable on mobile', async ({ page }) => {
   await session(page);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`${app}/dashboard`);
+  await page.getByRole('button', { name: 'Menu navigasi' }).click();
   const threatIntelligence = page.getByRole('button', { name: 'Threat Intelligence' });
   await threatIntelligence.click();
   await expect(page.getByRole('link', { name: 'Intelligence Hub', exact: true })).toBeVisible();

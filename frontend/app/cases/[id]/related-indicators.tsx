@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link2, Loader2, Plus, Search, Trash2 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle, OverlayClose } from '@/components/ui/overlay';
+import { caseWorkspaceUrl, useCaseTenant } from '../case-access';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -26,6 +27,7 @@ async function responseMessage(response: Response, fallback: string): Promise<st
 }
 
 export function RelatedIndicators({ caseId, canMutate }: Props) {
+  const { role, tenantId } = useCaseTenant();
   const [items, setItems] = useState<readonly Indicator[]>([]);
   const [available, setAvailable] = useState<readonly Indicator[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,7 +40,7 @@ export function RelatedIndicators({ caseId, canMutate }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${API}/cases/${caseId}/indicators`, { credentials: 'include' });
+      const response = await fetch(caseWorkspaceUrl(`${API}/cases/${caseId}/indicators`, role, tenantId), { credentials: 'include' });
       if (!response.ok) throw new Error(await responseMessage(response, 'Indicator gagal dimuat'));
       setItems(await response.json());
     } catch (caught) {
@@ -46,18 +48,18 @@ export function RelatedIndicators({ caseId, canMutate }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [caseId]);
+  }, [caseId, role, tenantId]);
 
   const loadAvailable = useCallback(async (value: string) => {
     try {
       const query = new URLSearchParams(value.trim() ? { search: value.trim() } : {});
-      const response = await fetch(`${API}/cases/${caseId}/indicators/available?${query}`, { credentials: 'include' });
+      const response = await fetch(caseWorkspaceUrl(`${API}/cases/${caseId}/indicators/available?${query}`, role, tenantId), { credentials: 'include' });
       if (!response.ok) throw new Error(await responseMessage(response, 'Indicator tersedia gagal dimuat'));
       setAvailable(await response.json());
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Indicator tersedia gagal dimuat');
     }
-  }, [caseId]);
+  }, [caseId, role, tenantId]);
 
   useEffect(() => { void load(); }, [load]);
   useEffect(() => {
@@ -70,7 +72,7 @@ export function RelatedIndicators({ caseId, canMutate }: Props) {
     setBusyId(indicator.id);
     setError(null);
     try {
-      const response = await fetch(`${API}/cases/${caseId}/indicators`, {
+      const response = await fetch(caseWorkspaceUrl(`${API}/cases/${caseId}/indicators`, role, tenantId), {
         method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ indicatorId: indicator.id }),
       });
       if (!response.ok) throw new Error(await responseMessage(response, 'Indicator gagal dihubungkan'));
@@ -88,7 +90,7 @@ export function RelatedIndicators({ caseId, canMutate }: Props) {
     setBusyId(indicator.id);
     setError(null);
     try {
-      const response = await fetch(`${API}/cases/${caseId}/indicators/${indicator.id}`, { method: 'DELETE', credentials: 'include' });
+      const response = await fetch(caseWorkspaceUrl(`${API}/cases/${caseId}/indicators/${indicator.id}`, role, tenantId), { method: 'DELETE', credentials: 'include' });
       if (!response.ok) throw new Error(await responseMessage(response, 'Indicator gagal dilepas'));
       await load();
     } catch (caught) {

@@ -9,7 +9,7 @@ import { InvestigationPanel } from './investigation-panel';
 import { RelatedIndicators } from './related-indicators';
 import { RelatedThreatActors } from './related-threat-actors';
 import { RelatedCampaigns } from './related-campaigns';
-import { useCaseMutationAccess } from '../case-access';
+import { caseWorkspaceUrl, useCaseMutationAccess, useCaseTenant } from '../case-access';
 import { Button } from '@/components/ui/button';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -39,6 +39,7 @@ interface CaseDetail {
 
 export default function CaseDetailPage() {
   const canMutateCases = useCaseMutationAccess();
+  const { tenantId, ready, role } = useCaseTenant();
   const params = useParams();
   const caseId = params.id as string;
   
@@ -49,24 +50,27 @@ export default function CaseDetailPage() {
   const [showEditModal, setShowEditModal] = useState(false);
 
   useEffect(() => {
-    fetchCaseDetail();
-  }, [caseId]);
+    setCaseDetail(null);
+    const controller = new AbortController();
+    if (ready) void fetchCaseDetail(controller.signal);
+    return () => controller.abort();
+  }, [caseId, tenantId, ready]);
 
-  const fetchCaseDetail = async () => {
+  const fetchCaseDetail = async (signal?: AbortSignal) => {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch(`${API}/cases/${caseId}`, { credentials: 'include' });
+      const response = await fetch(caseWorkspaceUrl(`${API}/cases/${caseId}`, role, tenantId), { credentials: 'include', signal });
       if (!response.ok) {
         if (response.status === 404) throw new Error('Case tidak ditemukan');
         throw new Error('Failed to fetch case detail');
       }
       const data = await response.json();
-      setCaseDetail(data);
+      if (!signal?.aborted) setCaseDetail(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      if (!signal?.aborted) setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   };
 
@@ -210,6 +214,7 @@ export default function CaseDetailPage() {
       {showAssignModal && (
         <AssignModal
           caseId={caseDetail.id}
+          tenantId={caseDetail.tenant.id}
           currentAssigneeId={caseDetail.assignee?.id}
           onClose={() => setShowAssignModal(false)}
           onSuccess={handleAssignSuccess}

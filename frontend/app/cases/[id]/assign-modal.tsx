@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { Loader } from 'lucide-react';
 import { FormModal } from '@/components/ui/modal-patterns';
+import { caseWorkspaceUrl, useCaseTenant } from '../case-access';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -14,12 +15,14 @@ interface User {
 
 interface AssignModalProps {
   caseId: string;
+  tenantId: string;
   currentAssigneeId?: string;
   onClose: () => void;
   onSuccess: () => void;
 }
 
-export default function AssignModal({ caseId, currentAssigneeId, onClose, onSuccess }: AssignModalProps) {
+export default function AssignModal({ caseId, tenantId, currentAssigneeId, onClose, onSuccess }: AssignModalProps) {
+  const workspace = useCaseTenant();
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUserId, setSelectedUserId] = useState(currentAssigneeId || '');
   const [loading, setLoading] = useState(true);
@@ -27,13 +30,13 @@ export default function AssignModal({ caseId, currentAssigneeId, onClose, onSucc
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    void fetchUsers();
+  }, [tenantId]);
 
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API}/cases/assignable-users`, { credentials: 'include' });
+      const response = await fetch(`${API}/cases/assignable-users?tenantId=${encodeURIComponent(tenantId)}`, { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to fetch users');
       const data = await response.json();
       setUsers(data);
@@ -53,7 +56,7 @@ export default function AssignModal({ caseId, currentAssigneeId, onClose, onSucc
     try {
       setSubmitting(true);
       setError(null);
-      const response = await fetch(`${API}/cases/${caseId}/assign`, {
+      const response = await fetch(caseWorkspaceUrl(`${API}/cases/${caseId}/assign`, workspace.role, workspace.tenantId), {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },

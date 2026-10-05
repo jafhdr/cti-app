@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Sidebar from '../../components/dashboard/Sidebar';
 import type { ModuleAccess } from '../../lib/module-access';
-import { CaseMutationAccessContext } from './case-access';
+import { CaseMutationAccessContext, CaseTenantContext } from './case-access';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -17,11 +17,14 @@ type CurrentUser = {
   readonly role: Role;
   readonly moduleAccess: readonly ModuleAccess[];
 };
+type Tenant = { readonly id: string; readonly name: string };
 
 export default function CasesLayout({ children }: { readonly children: ReactNode }) {
   const router = useRouter();
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [tenants, setTenants] = useState<readonly Tenant[]>([]);
+  const [tenantId, setTenantId] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -36,6 +39,12 @@ export default function CasesLayout({ children }: { readonly children: ReactNode
 
         const currentUser: CurrentUser = await response.json();
         if (!cancelled) setUser(currentUser);
+        if (currentUser.role === 'SUPER_ADMIN') {
+          const tenantResponse = await fetch(`${API}/users/tenants`, { credentials: 'include', cache: 'no-store' });
+          if (!tenantResponse.ok) throw new Error('Gagal memuat tenant.');
+          const available: readonly Tenant[] = await tenantResponse.json();
+          if (!cancelled) setTenants(available);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -59,7 +68,7 @@ export default function CasesLayout({ children }: { readonly children: ReactNode
     );
   }
 
-  const canAccessCases = user.moduleAccess.some(module => module.accessible === true && module.moduleSlug === 'case-management');
+  const canAccessCases = user.moduleAccess.some(module => module.accessible === true && module.moduleSlug === 'case-management' && module.featureKeys.includes('case-workflow'));
 
   return (
     <div className="app">
@@ -67,12 +76,12 @@ export default function CasesLayout({ children }: { readonly children: ReactNode
       <section className="main">
         <header className="topbar">
           <strong>Case Management</strong>
-          <span>{user.email} · {user.role}</span>
+          <span>{user.role === 'SUPER_ADMIN' && <select aria-label="Tenant Case Management" value={tenantId} onChange={event => setTenantId(event.target.value)}><option value="">Pilih tenant</option>{tenants.map(tenant => <option key={tenant.id} value={tenant.id}>{tenant.name}</option>)}</select>}{user.email} · {user.role}</span>
         </header>
         {canAccessCases ? (
-          <CaseMutationAccessContext.Provider value={user.role === 'SUPER_ADMIN' || user.role === 'ADMIN'}>
-            {children}
-          </CaseMutationAccessContext.Provider>
+          <CaseTenantContext.Provider key={tenantId} value={{ tenantId, ready: user.role !== 'SUPER_ADMIN' || Boolean(tenantId), role: user.role }}>
+            <CaseMutationAccessContext.Provider value={user.role === 'SUPER_ADMIN' || user.role === 'ADMIN'}>{user.role === 'SUPER_ADMIN' && !tenantId ? <main className="content" role="status">Pilih tenant untuk membuka Case Management.</main> : children}</CaseMutationAccessContext.Provider>
+          </CaseTenantContext.Provider>
         ) : (
           <main className="content">
             <div className="error">Anda tidak memiliki akses ke modul Case Management.</div>

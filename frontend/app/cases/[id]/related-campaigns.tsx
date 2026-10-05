@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '../../../components/ui/button';
 import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle, OverlayClose } from '@/components/ui/overlay';
+import { caseWorkspaceUrl, useCaseTenant } from '../case-access';
 import { Card } from '../../../components/ui/card';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -30,6 +31,7 @@ async function responseMessage(response: Response, fallback: string): Promise<st
 }
 
 export function RelatedCampaigns({ caseId, canMutate }: Props) {
+  const { role, tenantId } = useCaseTenant();
   const [items, setItems] = useState<readonly Campaign[]>([]);
   const [available, setAvailable] = useState<readonly Campaign[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,23 +46,23 @@ export function RelatedCampaigns({ caseId, canMutate }: Props) {
   const load = useCallback(async () => {
     setLoading(true); setError(null);
     try {
-      const response = await fetch(`${API}/cases/${caseId}/campaigns`, { credentials: 'include' });
+      const response = await fetch(caseWorkspaceUrl(`${API}/cases/${caseId}/campaigns`, role, tenantId), { credentials: 'include' });
       if (!response.ok) throw new Error(await responseMessage(response, 'Campaign gagal dimuat'));
       setItems(await response.json());
     } catch (caught) { setError(caught instanceof Error ? caught.message : 'Campaign gagal dimuat'); }
     finally { setLoading(false); }
-  }, [caseId]);
+  }, [caseId, role, tenantId]);
 
   const loadAvailable = useCallback(async (value: string) => {
     setAvailableLoading(true); setDialogError(null);
     try {
       const query = new URLSearchParams(value.trim() ? { search: value.trim() } : {});
-      const response = await fetch(`${API}/cases/${caseId}/campaigns/available?${query}`, { credentials: 'include' });
+      const response = await fetch(caseWorkspaceUrl(`${API}/cases/${caseId}/campaigns/available?${query}`, role, tenantId), { credentials: 'include' });
       if (!response.ok) throw new Error(await responseMessage(response, 'Campaign tersedia gagal dimuat'));
       setAvailable(await response.json());
     } catch (caught) { setDialogError(caught instanceof Error ? caught.message : 'Campaign tersedia gagal dimuat'); }
     finally { setAvailableLoading(false); }
-  }, [caseId]);
+  }, [caseId, role, tenantId]);
 
   useEffect(() => { void load(); }, [load]);
   useEffect(() => { if (!dialogOpen) return; const timeoutId = window.setTimeout(() => { void loadAvailable(search); }, 250); return () => window.clearTimeout(timeoutId); }, [dialogOpen, loadAvailable, search]);
@@ -68,7 +70,7 @@ export function RelatedCampaigns({ caseId, canMutate }: Props) {
   async function link(campaign: Campaign): Promise<void> {
     setBusyId(campaign.id); setDialogError(null);
     try {
-      const response = await fetch(`${API}/cases/${caseId}/campaigns`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ campaignId: campaign.id }) });
+      const response = await fetch(caseWorkspaceUrl(`${API}/cases/${caseId}/campaigns`, role, tenantId), { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ campaignId: campaign.id }) });
       if (!response.ok) throw new Error(await responseMessage(response, 'Campaign gagal dihubungkan'));
       setDialogOpen(false); setSearch(''); await load();
     } catch (caught) { setDialogError(caught instanceof Error ? caught.message : 'Campaign gagal dihubungkan'); }
@@ -78,7 +80,7 @@ export function RelatedCampaigns({ caseId, canMutate }: Props) {
   async function unlink(campaign: Campaign): Promise<void> {
     setBusyId(campaign.id); setError(null);
     try {
-      const response = await fetch(`${API}/cases/${caseId}/campaigns/${campaign.id}`, { method: 'DELETE', credentials: 'include' });
+      const response = await fetch(caseWorkspaceUrl(`${API}/cases/${caseId}/campaigns/${campaign.id}`, role, tenantId), { method: 'DELETE', credentials: 'include' });
       if (!response.ok) throw new Error(await responseMessage(response, 'Campaign gagal dilepas'));
       await load();
     } catch (caught) { setError(caught instanceof Error ? caught.message : 'Campaign gagal dilepas'); }

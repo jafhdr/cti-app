@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from 'react';
 import { FormModal } from '@/components/ui/modal-patterns';
+import { caseWorkspaceUrl, useCaseTenant } from '../case-access';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -10,6 +11,7 @@ type EditableCase = { id: string; title: string; description?: string; status: s
 type Props = { caseDetail: EditableCase; onClose: () => void; onSuccess: () => void };
 
 export default function EditCaseModal({ caseDetail, onClose, onSuccess }: Props) {
+  const { role, tenantId } = useCaseTenant();
   const [title, setTitle] = useState(caseDetail.title);
   const [description, setDescription] = useState(caseDetail.description || '');
   const [status, setStatus] = useState(caseDetail.status);
@@ -21,7 +23,7 @@ export default function EditCaseModal({ caseDetail, onClose, onSuccess }: Props)
     event.preventDefault();
     setSaving(true); setError(null);
     try {
-      const response = await fetch(`${API}/cases/${caseDetail.id}`, {
+      const response = await fetch(caseWorkspaceUrl(`${API}/cases/${caseDetail.id}`, role, tenantId), {
         method: 'PATCH', credentials: 'include', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: title.trim(), description, status, priority }),
       });

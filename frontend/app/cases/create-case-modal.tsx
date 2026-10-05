@@ -5,7 +5,7 @@ import { FormModal } from '@/components/ui/modal-patterns';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-function CreateCaseModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+function CreateCaseModal({ onClose, onSuccess, tenantId }: { onClose: () => void; onSuccess: () => void; tenantId?: string }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<string>('MEDIUM');
@@ -22,7 +22,7 @@ function CreateCaseModal({ onClose, onSuccess }: { onClose: () => void; onSucces
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, description, priority }),
+        body: JSON.stringify({ title, description, priority, ...(tenantId ? { tenantId } : {}) }),
       });
 
       if (!response.ok) throw new Error('Failed to create case');

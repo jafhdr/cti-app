@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Plus } from 'lucide-react';
 import CreateCaseModal from './create-case-modal';
-import { useCaseMutationAccess } from './case-access';
+import { useCaseMutationAccess, useCaseTenant } from './case-access';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 const statuses = ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'];
@@ -20,6 +20,7 @@ const date = (value: string) => new Date(value).toLocaleDateString('id-ID', { da
 
 export default function CasesPage() {
   const canMutateCases = useCaseMutationAccess();
+  const { tenantId, ready, role } = useCaseTenant();
   const [cases, setCases] = useState<CaseItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -32,12 +33,14 @@ export default function CasesPage() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchCases = useCallback(async (signal?: AbortSignal) => {
+    if (!ready) { setCases([]); setTotal(0); setLoading(false); return; }
     setLoading(true); setError(null);
     try {
       const params = new URLSearchParams({ page: String(page), limit: '25' });
       if (query) params.set('search', query);
       if (status) params.set('status', status);
       if (priority) params.set('priority', priority);
+      if (role === 'SUPER_ADMIN') params.set('tenantId', tenantId);
       const response = await fetch(`${API}/cases?${params}`, { credentials: 'include', signal });
       if (!response.ok) throw new Error('Failed to fetch');
       const data: { items: CaseItem[]; total: number } = await response.json();
@@ -45,7 +48,7 @@ export default function CasesPage() {
     } catch (caught) {
       if (!signal?.aborted) setError(caught instanceof Error ? caught.message : 'Failed to fetch');
     } finally { if (!signal?.aborted) setLoading(false); }
-  }, [page, query, status, priority]);
+  }, [page, query, status, priority, tenantId, ready, role]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -67,6 +70,6 @@ export default function CasesPage() {
     <section aria-label="Case workspace"><div className="editorial-section-heading"><span className="source-eyebrow">CASE WORKSPACE</span><h2>Cases</h2><p>Investigate, assign, and track security incidents.</p></div><div className="case-panel case-inventory"><form className="case-filters" onSubmit={event => { event.preventDefault(); setPage(1); setQuery(search.trim()); }}><label>Search<input aria-label="Search cases" value={search} onChange={event => setSearch(event.target.value)} placeholder="Search title, description, or case number" /></label><label>Status<select value={status} onChange={event => { setStatus(event.target.value); setPage(1); }}><option value="">All statuses</option>{statuses.map(value => <option key={value} value={value}>{label(value)}</option>)}</select></label><label>Priority<select value={priority} onChange={event => { setPriority(event.target.value); setPage(1); }}><option value="">All priorities</option>{priorities.map(value => <option key={value} value={value}>{label(value)}</option>)}</select></label><button type="button" onClick={reset} className="soc-button-outline" disabled={!changed && !search}>Clear filters</button></form>
       {error ? <div role="alert" className="error rounded p-6"><p>{error}</p><button type="button" onClick={() => void fetchCases()} className="mt-3 font-semibold underline">Retry</button></div> : loading ? <p role="status" className="case-empty">Loading cases...</p> : cases.length === 0 ? <p className="case-empty">No cases found</p> : <><div className="case-table-wrap"><table className="case-table"><thead><tr><th>Case</th><th>Title</th><th>Priority</th><th>Status</th><th>Assignee</th><th>Updated</th><th>Actions</th></tr></thead><tbody>{cases.map(c => <tr key={c.id}><td><Link href={`/cases/${c.id}`}>{c.caseNumber}</Link></td><td className="case-table-title">{c.title}</td><td><span className={`case-badge case-priority-${c.priority.toLowerCase()}`}>{label(c.priority)}</span></td><td><span className={`case-badge case-status-${c.status.toLowerCase()}`}>{label(c.status)}</span></td><td>{c.assignee?.name || 'Unassigned'}</td><td>{date(c.updatedAt || c.createdAt)}</td><td><Link href={`/cases/${c.id}`} className="case-open">Open case</Link></td></tr>)}</tbody></table></div><div className="case-mobile-list">{cases.map(c => <article key={c.id} className="case-mobile-card"><span className="source-eyebrow">CASE · {c.caseNumber}</span><h3>{c.title}</h3><div><span className={`case-badge case-priority-${c.priority.toLowerCase()}`}>{label(c.priority)}</span><span className={`case-badge case-status-${c.status.toLowerCase()}`}>{label(c.status)}</span></div><dl><div><dt>Assignee</dt><dd>{c.assignee?.name || 'Unassigned'}</dd></div><div><dt>Updated</dt><dd>{date(c.updatedAt || c.createdAt)}</dd></div></dl><Link href={`/cases/${c.id}`} className="case-open">Open case →</Link></article>)}</div></>}
     </div><div className="case-pagination"><span>Showing {total === 0 ? 0 : (page - 1) * 25 + 1}–{Math.min(page * 25, total)} of {total}</span><div><button disabled={page === 1 || loading} onClick={() => setPage(page - 1)} className="soc-button-outline">Previous</button><button disabled={page * 25 >= total || loading} onClick={() => setPage(page + 1)} className="soc-button-outline">Next</button></div></div></section>
-    {showCreateModal && <CreateCaseModal onClose={() => setShowCreateModal(false)} onSuccess={() => void fetchCases()} />}
+    {showCreateModal && ready && <CreateCaseModal tenantId={role === 'SUPER_ADMIN' ? tenantId : undefined} onClose={() => setShowCreateModal(false)} onSuccess={() => void fetchCases()} />}
   </main>;
 }

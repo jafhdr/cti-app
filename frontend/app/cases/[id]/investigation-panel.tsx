@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { caseWorkspaceUrl, useCaseTenant } from '../case-access';
 import { Clock3, FileSearch, Loader2, MessageSquareText, Plus } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Drawer, DrawerBody, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle, OverlayClose } from '@/components/ui/overlay';
@@ -29,6 +30,7 @@ const actionLabel: Readonly<Record<string, string>> = {
 };
 
 export function InvestigationPanel({ caseId, section }: { readonly caseId: string; readonly section: 'investigation' | 'evidence' | 'activity' }) {
+  const { role, tenantId } = useCaseTenant();
   const [notes, setNotes] = useState<readonly Note[]>([]);
   const [evidence, setEvidence] = useState<readonly Evidence[]>([]);
   const [activity, setActivity] = useState<readonly Activity[]>([]);
@@ -46,7 +48,7 @@ export function InvestigationPanel({ caseId, section }: { readonly caseId: strin
     setError(null);
     try {
       const paths = section === 'investigation' ? ['notes'] : [section];
-      const responses = await Promise.all(paths.map((path) => fetch(`${API}/cases/${caseId}/${path}`, { credentials: 'include' })));
+      const responses = await Promise.all(paths.map((path) => fetch(caseWorkspaceUrl(`${API}/cases/${caseId}/${path}`, role, tenantId), { credentials: 'include' })));
       if (responses.some((response) => !response.ok)) throw new Error('Investigation data gagal dimuat');
       const [items] = await Promise.all(responses.map((response) => response.json()));
       if (section === 'investigation') setNotes(items);
@@ -57,7 +59,7 @@ export function InvestigationPanel({ caseId, section }: { readonly caseId: strin
     } finally {
       setLoading(false);
     }
-  }, [caseId, section]);
+  }, [caseId, section, role, tenantId]);
 
   useEffect(() => { void load(); }, [load]);
   useEffect(() => {
@@ -71,7 +73,7 @@ export function InvestigationPanel({ caseId, section }: { readonly caseId: strin
     setSubmitting(true);
     setError(null);
     try {
-      const response = await fetch(`${API}/cases/${caseId}/${path}`, {
+      const response = await fetch(caseWorkspaceUrl(`${API}/cases/${caseId}/${path}`, role, tenantId), {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Card } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
 import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle, OverlayClose } from '@/components/ui/overlay';
+import { caseWorkspaceUrl, useCaseTenant } from '../case-access';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -36,6 +37,7 @@ async function responseMessage(response: Response, fallback: string): Promise<st
 }
 
 export function RelatedThreatActors({ caseId, canMutate }: Props) {
+  const { role, tenantId } = useCaseTenant();
   const [items, setItems] = useState<readonly ThreatActor[]>([]);
   const [available, setAvailable] = useState<readonly ThreatActor[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,7 +53,7 @@ export function RelatedThreatActors({ caseId, canMutate }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${API}/cases/${caseId}/threat-actors`, { credentials: 'include' });
+      const response = await fetch(caseWorkspaceUrl(`${API}/cases/${caseId}/threat-actors`, role, tenantId), { credentials: 'include' });
       if (!response.ok) throw new Error(await responseMessage(response, 'Threat Actor gagal dimuat'));
       setItems(await response.json());
     } catch (caught) {
@@ -59,14 +61,14 @@ export function RelatedThreatActors({ caseId, canMutate }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [caseId]);
+  }, [caseId, role, tenantId]);
 
   const loadAvailable = useCallback(async (value: string) => {
     setAvailableLoading(true);
     setDialogError(null);
     try {
       const query = new URLSearchParams(value.trim() ? { search: value.trim() } : {});
-      const response = await fetch(`${API}/cases/${caseId}/threat-actors/available?${query}`, { credentials: 'include' });
+      const response = await fetch(caseWorkspaceUrl(`${API}/cases/${caseId}/threat-actors/available?${query}`, role, tenantId), { credentials: 'include' });
       if (!response.ok) throw new Error(await responseMessage(response, 'Threat Actor tersedia gagal dimuat'));
       setAvailable(await response.json());
     } catch (caught) {
@@ -74,7 +76,7 @@ export function RelatedThreatActors({ caseId, canMutate }: Props) {
     } finally {
       setAvailableLoading(false);
     }
-  }, [caseId]);
+  }, [caseId, role, tenantId]);
 
   useEffect(() => { void load(); }, [load]);
   useEffect(() => {
@@ -87,7 +89,7 @@ export function RelatedThreatActors({ caseId, canMutate }: Props) {
     setBusyId(threatActor.id);
     setDialogError(null);
     try {
-      const response = await fetch(`${API}/cases/${caseId}/threat-actors`, {
+      const response = await fetch(caseWorkspaceUrl(`${API}/cases/${caseId}/threat-actors`, role, tenantId), {
         method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ threatActorId: threatActor.id }),
       });
       if (!response.ok) throw new Error(await responseMessage(response, 'Threat Actor gagal dihubungkan'));
@@ -105,7 +107,7 @@ export function RelatedThreatActors({ caseId, canMutate }: Props) {
     setBusyId(threatActor.id);
     setError(null);
     try {
-      const response = await fetch(`${API}/cases/${caseId}/threat-actors/${threatActor.id}`, { method: 'DELETE', credentials: 'include' });
+      const response = await fetch(caseWorkspaceUrl(`${API}/cases/${caseId}/threat-actors/${threatActor.id}`, role, tenantId), { method: 'DELETE', credentials: 'include' });
       if (!response.ok) throw new Error(await responseMessage(response, 'Threat Actor gagal dilepas'));
       await load();
     } catch (caught) {

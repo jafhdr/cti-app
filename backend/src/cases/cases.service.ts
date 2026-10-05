@@ -36,7 +36,8 @@ export class CasesService {
   async list(user: AuthUser, query: ListCaseQuery) {
     const page = Math.max(query.page || 1, 1);
     const limit = Math.min(Math.max(query.limit || 25, 1), 100);
-    const tenantId = user.role === 'SUPER_ADMIN' ? undefined : this.tenantId(user);
+    const tenantId = user.role === 'SUPER_ADMIN' ? query.tenantId : this.tenantId(user);
+    if (!tenantId) throw new BadRequestException('Tenant wajib dipilih');
 
     const where: Prisma.CaseWhereInput = {
       ...(tenantId ? { tenantId } : {}),
@@ -95,8 +96,9 @@ export class CasesService {
     return users;
   }
 
-  async getDetail(user: AuthUser, caseId: string) {
+  async getDetail(user: AuthUser, caseId: string, selectedTenantId?: string) {
     const caseRecord = await this.scopedCase(user, caseId);
+    if (user.role === 'SUPER_ADMIN' && selectedTenantId !== caseRecord.tenantId) throw new NotFoundException('Case tidak ditemukan');
     const detail = await this.prisma.case.findUnique({
       where: { id: caseId },
       include: {

@@ -1,4 +1,5 @@
-import { IsString, IsOptional, IsEnum, MaxLength, MinLength } from 'class-validator';
+import { IsString, IsOptional, IsEnum, MaxLength, MinLength, IsInt, Min, Max } from 'class-validator';
+import { Type } from 'class-transformer';
 import { CaseStatus, CasePriority, IndicatorSeverity } from '@prisma/client';
 
 export class CreateCaseInput {
@@ -58,10 +59,21 @@ export class UpdateCaseInput {
 
 export class ListCaseQuery {
   @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
   page?: number;
 
   @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
   limit?: number;
+
+  @IsOptional()
+  @IsString()
+  tenantId?: string;
 
   @IsOptional()
   @IsString()
@@ -79,6 +91,20 @@ export class ListCaseQuery {
   @IsEnum(IndicatorSeverity)
   severity?: IndicatorSeverity;
 }
+
+export class AssignCaseInput {
+  @IsString()
+  @MinLength(1)
+  assigneeId: string = '';
+}
+
+export class CaseTenantQuery {
+  @IsOptional()
+  @IsString()
+  tenantId?: string;
+}
+
+export class LinkAsmAlertInput extends CaseTenantQuery {}
 
 export class CreateInvestigationNoteInput {
   @IsString()

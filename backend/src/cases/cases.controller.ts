@@ -8,10 +8,11 @@ import { ForbiddenException } from '@nestjs/common';
 import { RequiresModule, RequiresModuleFeature } from '../auth/module-access.decorator';
 import { AuthUser } from '../users/users.types';
 import { CasesService } from './cases.service';
-import { CreateCaseInput, CreateEvidenceInput, CreateInvestigationNoteInput, LinkCampaignInput, LinkIndicatorInput, LinkThreatActorInput, UpdateCaseInput, ListCaseQuery } from './cases.types';
+import { CaseTenantGuard } from './case-tenant.guard';
+import { AssignCaseInput, CaseTenantQuery, LinkAsmAlertInput, CreateCaseInput, CreateEvidenceInput, CreateInvestigationNoteInput, LinkCampaignInput, LinkIndicatorInput, LinkThreatActorInput, UpdateCaseInput, ListCaseQuery } from './cases.types';
 
 @Controller('cases')
-@UseGuards(AuthGuard, RolesGuard, ModuleAccessGuard)
+@UseGuards(AuthGuard, RolesGuard, ModuleAccessGuard, CaseTenantGuard)
 @RequiresModule('case-management')
 @RequiresModuleFeature('case-workflow')
 export class CasesController {
@@ -25,8 +26,8 @@ export class CasesController {
 
   @Get('assignable-users')
   @Roles('SUPER_ADMIN', 'ADMIN', 'USER')
-  getAssignableUsers(@Req() req: { user: AuthUser }, @Query('tenantId') tenantId?: string) {
-    return this.casesService.getAssignableUsers(req.user, tenantId);
+  getAssignableUsers(@Req() req: { user: AuthUser }, @Query() query: CaseTenantQuery) {
+    return this.casesService.getAssignableUsers(req.user, query.tenantId);
   }
 
   @Get(':id/notes')
@@ -133,8 +134,8 @@ export class CasesController {
 
   @Get(':id')
   @Roles('SUPER_ADMIN', 'ADMIN', 'USER')
-  getDetail(@Req() req: { user: AuthUser }, @Param('id') id: string) {
-    return this.casesService.getDetail(req.user, id);
+  getDetail(@Req() req: { user: AuthUser }, @Param('id') id: string, @Query() query: CaseTenantQuery) {
+    return this.casesService.getDetail(req.user, id, query.tenantId);
   }
 
   @Post()
@@ -171,7 +172,7 @@ export class CasesController {
 
   @Post(':id/asm-alerts/:alertId')
   @Roles('SUPER_ADMIN', 'ADMIN')
-  async linkAsmAlert(@Req() req: { user: AuthUser }, @Param('id') caseId: string, @Param('alertId') alertId: string, @Body() body: { tenantId?: string }) {
+  async linkAsmAlert(@Req() req: { user: AuthUser }, @Param('id') caseId: string, @Param('alertId') alertId: string, @Body() body: LinkAsmAlertInput) {
     const access = await this.moduleAccess.evaluate(req.user, 'attack-surface-management', ['asset-management']);
     if (!access.accessible) throw new ForbiddenException(access.reason);
     return this.casesService.linkAsmAlert(req.user, caseId, alertId, body.tenantId);
@@ -191,7 +192,7 @@ export class CasesController {
 
   @Post(':id/assign')
   @Roles('SUPER_ADMIN', 'ADMIN')
-  assign(@Req() req: { user: AuthUser }, @Param('id') id: string, @Body() body: { assigneeId: string }) {
+  assign(@Req() req: { user: AuthUser }, @Param('id') id: string, @Body() body: AssignCaseInput) {
     return this.casesService.assign(req.user, id, body.assigneeId);
   }
 

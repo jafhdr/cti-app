@@ -86,6 +86,6 @@ test('Given the create-from-Indicator route, then Create Case roles and case-man
   assert.equal(Reflect.getMetadata('requiredModule', CasesController), 'case-management');
   assert.deepEqual(
     Reflect.getMetadata('__guards__', CasesController).map(guard => guard.name),
-    ['AuthGuard', 'RolesGuard', 'ModuleAccessGuard'],
+    ['AuthGuard', 'RolesGuard', 'ModuleAccessGuard', 'CaseTenantGuard'],
   );
 });

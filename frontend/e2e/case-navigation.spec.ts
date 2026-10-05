@@ -6,7 +6,7 @@ test('Case Management menu opens list, detail, and assign modal', async ({ page 
   const pageErrors: string[] = [];
   page.on('pageerror', error => pageErrors.push(error.message));
   const moduleAccess = [
-    { moduleId: 'case', moduleSlug: 'case-management', moduleName: 'Case Management', assigned: true, accessible: true, featureKeys: [] },
+    { moduleId: 'case', moduleSlug: 'case-management', moduleName: 'Case Management', assigned: true, accessible: true, featureKeys: ['case-workflow'] },
   ];
   const caseDetail = {
     id: 'case-1', caseNumber: 'CASE-001', title: 'Suspicious login', description: 'Review login activity',
@@ -21,7 +21,7 @@ test('Case Management menu opens list, detail, and assign modal', async ({ page 
   await page.route('http://localhost:3001/cases/case-1/notes', route => route.fulfill({ json: [] }));
   await page.route('http://localhost:3001/cases/case-1/evidence', route => route.fulfill({ json: [] }));
   await page.route('http://localhost:3001/cases/case-1/activity', route => route.fulfill({ json: [] }));
-  await page.route('http://localhost:3001/cases/assignable-users', route => route.fulfill({ json: [{ id: 'assignee', name: 'Responder', email: 'responder@example.test' }] }));
+  await page.route('http://localhost:3001/cases/assignable-users?tenantId=tenant', route => route.fulfill({ json: [{ id: 'assignee', name: 'Responder', email: 'responder@example.test' }] }));
 
   await page.goto(`${app}/cases`);
   await expect(page).toHaveURL(`${app}/cases`);
@@ -42,7 +42,7 @@ test('Case Management menu opens list, detail, and assign modal', async ({ page 
 });
 
 test('Case List recovers from an API error through Retry', async ({ page }) => {
-  const moduleAccess = [{ moduleId: 'case', moduleSlug: 'case-management', moduleName: 'Case Management', assigned: true, accessible: true, featureKeys: [] }];
+  const moduleAccess = [{ moduleId: 'case', moduleSlug: 'case-management', moduleName: 'Case Management', assigned: true, accessible: true, featureKeys: ['case-workflow'] }];
   let attempts = 0;
   let recover = false;
   await page.route('**/auth/me', route => route.fulfill({ json: { id: 'user', email: 'qa@example.test', role: 'USER', moduleAccess } }));
@@ -62,7 +62,7 @@ test('Case List recovers from an API error through Retry', async ({ page }) => {
 });
 
 test('USER can investigate but cannot create or assign cases', async ({ page }) => {
-  const moduleAccess = [{ moduleId: 'case', moduleSlug: 'case-management', moduleName: 'Case Management', assigned: true, accessible: true, featureKeys: [] }];
+  const moduleAccess = [{ moduleId: 'case', moduleSlug: 'case-management', moduleName: 'Case Management', assigned: true, accessible: true, featureKeys: ['case-workflow'] }];
   const caseDetail = { id: 'case-1', caseNumber: 'CASE-001', title: 'Suspicious login', status: 'OPEN', priority: 'HIGH', severity: 'HIGH', createdAt: '2026-09-17T00:00:00.000Z', updatedAt: '2026-09-17T00:00:00.000Z', creator: { id: 'creator', name: 'Analyst', email: 'analyst@example.test' }, tenant: { id: 'tenant', name: 'QA', slug: 'qa' } };
   await page.route('**/auth/me', route => route.fulfill({ json: { id: 'user', email: 'qa@example.test', role: 'USER', moduleAccess } }));
   await page.route('http://localhost:3001/cases?page=*', route => route.fulfill({ json: { items: [caseDetail], total: 1 } }));

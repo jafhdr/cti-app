@@ -1,7 +1,48 @@
+import { randomUUID } from 'node:crypto';
 import { expect, test } from '@playwright/test';
+import { PrismaClient } from '../../backend/node_modules/@prisma/client';
+const bcrypt: { hash(value: string, rounds: number): Promise<string> } = require('../../backend/node_modules/bcrypt');
 
 const api = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 const app = 'http://localhost:3000';
+const db = new PrismaClient();
+const mark = randomUUID();
+const password = `Qa-${randomUUID()}!`;
+const adminEmail = `module-admin-${mark}@example.invalid`;
+const superEmail = `module-super-${mark}@example.invalid`;
+const memberEmail = `module-user-${mark}@example.invalid`;
+let ownTenantId: string;
+let foreignTenantId: string;
+let superId: string;
+
+test.describe.configure({ mode: 'serial' });
+test.beforeAll(async () => {
+  const module = await db.appModule.findFirstOrThrow({ where: { isActive: true } });
+  const hash = await bcrypt.hash(password, 10);
+  for (const suffix of ['own', 'foreign']) {
+    const tenant = await db.tenant.create({ data: { name: `Module QA ${suffix} ${mark}`, slug: `module-qa-${suffix}-${mark}` } });
+    if (suffix === 'own') ownTenantId = tenant.id;
+    else foreignTenantId = tenant.id;
+    const subscription = await db.tenantSubscription.create({ data: { tenantId: tenant.id, isCustom: true, billingCycle: 'MONTHLY', priceMonthly: 0, status: 'ACTIVE', renewalAt: new Date(Date.now() + 86400000) } });
+    await db.tenantCustomModule.create({ data: { subscriptionId: subscription.id, moduleId: module.id } });
+    const setting = await db.tenantModule.create({ data: { tenantId: tenant.id, moduleId: module.id, isEnabled: true } });
+    await db.moduleRoleAccess.createMany({ data: [{ tenantModuleId: setting.id, role: 'ADMIN', isAllowed: true }, { tenantModuleId: setting.id, role: 'USER', isAllowed: true }] });
+  }
+  const admin = await db.user.create({ data: { tenantId: ownTenantId, email: adminEmail, name: 'Module QA Admin', role: 'ADMIN', passwordHash: hash } });
+  const member = await db.user.create({ data: { tenantId: ownTenantId, email: memberEmail, name: 'Module QA Member', role: 'USER', passwordHash: hash } });
+  const superUser = await db.user.create({ data: { email: superEmail, name: 'Module QA Super', role: 'SUPER_ADMIN', passwordHash: hash } });
+  superId = superUser.id;
+  await db.userModuleAccess.createMany({ data: [admin.id, member.id].map(userId => ({ userId, tenantId: ownTenantId, moduleId: module.id, featureKeys: [] })) });
+});
+test.afterAll(async () => {
+  if (superId) await db.user.delete({ where: { id: superId } });
+  if (ownTenantId) {
+    await db.user.deleteMany({ where: { tenantId: ownTenantId } });
+    await db.tenant.delete({ where: { id: ownTenantId } });
+  }
+  if (foreignTenantId) await db.tenant.delete({ where: { id: foreignTenantId } });
+  await db.$disconnect();
+});
 
 async function login(page: import('@playwright/test').Page, email: string, password: string) {
   const response = await page.request.post(`${api}/auth/login`, { data: { email, password } });
@@ -26,15 +67,15 @@ function recordId(value: unknown, label: string) {
 }
 
 test('tenant admin sees only own tenant module access', async ({ page }) => {
-  await login(page, 'admin@cti.local', 'Admin123!');
+  await login(page, adminEmail, password);
   const me = await page.request.get(`${api}/auth/me`);
   const currentUser: unknown = await me.json();
-  expect(currentUser).toMatchObject({ role: 'ADMIN', tenant: { slug: 'demo-tenant' } });
+  expect(currentUser).toMatchObject({ role: 'ADMIN', tenant: { id: ownTenantId } });
   const tenantId = tenantIdFrom(currentUser);
   const response = await page.request.get(`${api}/users/tenant/${tenantId}/module-access`);
   expect(response.ok()).toBeTruthy();
   await page.goto(`${app}/module-access`);
-  await expect(page.getByRole('heading', { name: 'Akses Modul User' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Access at every layer.' })).toBeVisible();
   await expect(page.getByText('Memuat data akses…')).toBeHidden();
   await expect(page.getByText('Assignment per user')).toBeVisible();
   await page.screenshot({ path: '../.omo/evidence/module-access/admin-desktop.png', fullPage: true });
@@ -50,19 +91,11 @@ test('tenant admin sees only own tenant module access', async ({ page }) => {
 });
 
 test('tenant admin is denied access to another tenant', async ({ page }) => {
-  await login(page, 'admin@cti.local', 'Admin123!');
+  await login(page, adminEmail, password);
   const initialAdminMe = await page.request.get(`${api}/auth/me`);
   const ownTenantId = tenantIdFrom(await initialAdminMe.json());
-  await page.request.post(`${api}/auth/logout`);
-  await login(page, 'superadmin@cti.local', 'SuperAdmin123!');
-  const tenantsResponse = await page.request.get(`${api}/users/tenants`);
-  const tenants = arrayFrom(await tenantsResponse.json(), 'Tenant');
-  expect(tenants.length).toBeGreaterThan(1);
-  const foreignTenant = tenants.find((tenant) => recordId(tenant, 'Tenant') !== ownTenantId);
-  if (!foreignTenant) throw new Error('Tenant asing tidak tersedia');
-  const foreignTenantId = recordId(foreignTenant, 'Tenant asing');
-  await page.request.post(`${api}/auth/logout`);
-  await login(page, 'admin@cti.local', 'Admin123!');
+  await page.goto(`${app}/module-access`);
+  await expect(page.getByRole('heading', { name: 'Assignment per user' })).toBeVisible();
   const adminMe = await page.request.get(`${api}/auth/me`);
   expect(await adminMe.json()).toMatchObject({ role: 'ADMIN' });
   const response = await page.request.get(`${api}/users/tenant/${foreignTenantId}/module-access`);
@@ -70,14 +103,14 @@ test('tenant admin is denied access to another tenant', async ({ page }) => {
 });
 
 test('super admin can switch tenants and inspect module users', async ({ page }) => {
-  await login(page, 'superadmin@cti.local', 'SuperAdmin123!');
+  await login(page, superEmail, password);
   await page.goto(`${app}/module-access`);
   const tenantSelect = page.getByLabel('Pilih tenant');
   await expect(tenantSelect).toBeVisible();
   await expect(page.getByText('Memuat data akses…')).toBeHidden();
   const tenantOptions = tenantSelect.locator('option');
   expect(await tenantOptions.count()).toBeGreaterThan(1);
-  await tenantSelect.selectOption({ index: 1 });
+  await tenantSelect.selectOption(ownTenantId);
   await expect(page.getByText('Memuat data akses…')).toBeHidden();
   await expect(page.getByText('Assignment per user')).toBeVisible();
   const moduleSelect = page.getByLabel('Lihat akses modul');
@@ -91,20 +124,20 @@ test('super admin can switch tenants and inspect module users', async ({ page })
 
 test('module access page remains usable on mobile', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await login(page, 'admin@cti.local', 'Admin123!');
+  await login(page, adminEmail, password);
   await page.goto(`${app}/module-access`);
-  await expect(page.getByRole('heading', { name: 'Akses Modul User' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Access at every layer.' })).toBeVisible();
   await expect(page.getByText('Memuat data akses…')).toBeHidden();
   await expect(page.getByText('Assignment per user')).toBeVisible();
   await page.screenshot({ path: '../.omo/evidence/module-access/admin-mobile.png', fullPage: true });
   await page.locator('input[type="checkbox"]:not([disabled])').first().check();
-  await page.locator('tbody tr').filter({ hasText: 'jawa@gmail.com' }).screenshot({ path: '../.omo/evidence/module-access/admin-mobile-checked-row.png' });
+  await page.locator('tbody tr').filter({ hasText: memberEmail }).screenshot({ path: '../.omo/evidence/module-access/admin-mobile-checked-row.png' });
   await page.getByText('Lihat dari sisi modul').scrollIntoViewIfNeeded();
   await page.locator('.module-view').screenshot({ path: '../.omo/evidence/module-access/admin-mobile-lower.png' });
 });
 
 test('bulk endpoint preserves a user assignment payload', async ({ page }) => {
-  await login(page, 'admin@cti.local', 'Admin123!');
+  await login(page, adminEmail, password);
   const meResponse = await page.request.get(`${api}/auth/me`);
   const tenantId = tenantIdFrom(await meResponse.json());
   const overviewResponse = await page.request.get(`${api}/users/tenant/${tenantId}/module-access`);

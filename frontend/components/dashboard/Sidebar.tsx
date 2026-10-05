@@ -116,17 +116,18 @@ export default function Sidebar({
     setTheme(value);
   }
 
-  const canAccessThreatIntelligence = moduleAccess.some(module => module.accessible === true && module.moduleSlug === 'threat-intelligence');
+  const intelligenceAccess = moduleAccess.find(module => module.accessible === true && module.moduleSlug === 'threat-intelligence');
+  const canAccessThreatIntelligence = Boolean(intelligenceAccess?.featureKeys.some(key => key === 'indicator-management' || key === 'intelligence-hub'));
   const catalogModules: readonly NavigationModule[] = moduleAccess
-    .filter(module => module.moduleSlug !== 'threat-intelligence' && module.accessible === true)
+    .filter(module => module.moduleSlug !== 'threat-intelligence' && module.accessible === true && (module.moduleSlug === 'case-management' ? module.featureKeys.includes('case-workflow') : module.moduleSlug === 'attack-surface-management' ? module.featureKeys.some(key => key === 'asset-management' || key === 'asset-discovery') : true))
     .map(module => ({
       id: module.moduleSlug,
       label: module.moduleName,
-      items: module.moduleSlug === 'case-management' ? caseManagementItems : module.moduleSlug === 'attack-surface-management' ? attackSurfaceItems : [],
+      items: module.moduleSlug === 'case-management' ? caseManagementItems : module.moduleSlug === 'attack-surface-management' ? attackSurfaceItems.filter(() => module.featureKeys.includes('asset-management')) : [],
     }));
   const modules: readonly NavigationModule[] = [
     ...catalogModules,
-    ...(canAccessThreatIntelligence ? [{ id: 'threat-intelligence', label: 'Threat Intelligence', items: threatIntelligenceItems }] : []),
+    ...(canAccessThreatIntelligence ? [{ id: 'threat-intelligence', label: 'Threat Intelligence', items: threatIntelligenceItems.filter(item => ['Overview', 'Indicators', 'Feeds'].includes(item.label) ? intelligenceAccess?.featureKeys.includes('indicator-management') : intelligenceAccess?.featureKeys.includes('intelligence-hub')) }] : []),
     ...(administrationItemsForRole(role).length > 0 ? [{ id: 'administration', label: 'Administration', items: administrationItemsForRole(role) }] : []),
   ].sort((left, right) => moduleOrder(left.id) - moduleOrder(right.id));
 

@@ -68,9 +68,9 @@ function StatCard({ title, value, accent }: { title: string; value: number | str
 
 function CommandOverview({ summary, user }: { summary: Summary; user: Me }) {
   const actions = [
-    { label: 'Cari indicator', href: '/indicators', enabled: user.moduleAccess.some(module => module.moduleSlug === 'threat-intelligence' && module.accessible) },
-    { label: 'Lihat asset', href: '/attack-surface/assets', enabled: user.moduleAccess.some(module => module.moduleSlug === 'attack-surface-management' && module.accessible) },
-    { label: 'Buka cases', href: '/cases', enabled: user.moduleAccess.some(module => module.moduleSlug === 'case-management' && module.accessible) },
+    { label: 'Cari indicator', href: '/indicators', enabled: user.moduleAccess.some(module => module.moduleSlug === 'threat-intelligence' && module.accessible && module.featureKeys.includes('indicator-management')) },
+    { label: 'Lihat asset', href: '/attack-surface/assets', enabled: user.moduleAccess.some(module => module.moduleSlug === 'attack-surface-management' && module.accessible && module.featureKeys.includes('asset-management')) },
+    { label: 'Buka cases', href: '/cases', enabled: user.moduleAccess.some(module => module.moduleSlug === 'case-management' && module.accessible && module.featureKeys.includes('case-workflow')) },
   ];
   const metrics = [
     { label: 'Indicators monitored', value: summary.indicators },

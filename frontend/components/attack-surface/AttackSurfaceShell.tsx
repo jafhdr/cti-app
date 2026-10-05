@@ -57,7 +57,7 @@ export function AttackSurfaceShell({ children }: { readonly children: ReactNode 
     router.replace('/login');
   }
 
-  const hasAccess = user?.moduleAccess.some(module => module.accessible === true && module.moduleSlug === 'attack-surface-management');
+  const hasAccess = user?.moduleAccess.some(module => module.accessible === true && module.moduleSlug === 'attack-surface-management' && module.featureKeys.includes('asset-management'));
   const canCreateCase = user?.role === 'SUPER_ADMIN' || (user?.role === 'ADMIN' && user.moduleAccess.some(module => module.accessible && module.moduleSlug === 'case-management' && module.featureKeys.includes('case-workflow')));
   return <div className="app"><Sidebar role={user?.role} moduleAccess={user?.moduleAccess ?? []} onLogout={user ? logout : undefined} /><section className="main"><header className="topbar"><strong>Attack Surface Management / {pathname.startsWith('/attack-surface/reports') ? 'Reports' : 'Assets'}</strong><span>{user?.role === 'SUPER_ADMIN' && <select aria-label="Tenant Attack Surface" value={tenantId} onChange={event => setTenantId(event.target.value)}>{tenants.map(tenant => <option key={tenant.id} value={tenant.id}>{tenant.name}</option>)}</select>}{user?.email}</span></header>
     {loading ? <main className="content"><div className="asm-state" aria-live="polite">Loading Attack Surface Management...</div></main>

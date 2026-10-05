@@ -16,7 +16,8 @@ import { AuthGuard } from '../auth/auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { UsersService } from './users.service';
-import { AuthUser, BulkModuleAccessInput, UserRole } from './users.types';
+import { AuthUser, BulkModuleAccessInput } from './users.types';
+import { CreateUserDto, ResetUserPasswordDto, UpdateProfileDto, UpdateRoleDto, UpdateUserModuleAccessDto, UpdateUserStatusDto } from './users-boundary.dto';
 
 @ApiTags('users')
 @Controller('users')
@@ -44,13 +45,7 @@ export class UsersController {
   create(
     @Req() req: { user: AuthUser },
     @Body()
-    body: {
-      name: string;
-      email: string;
-      password: string;
-      role: UserRole;
-      tenantId?: string;
-    },
+    body: CreateUserDto,
   ) {
     return this.usersService.create(req.user, body);
   }
@@ -61,7 +56,7 @@ export class UsersController {
   updateRole(
     @Req() req: { user: AuthUser },
     @Param('id') userId: string,
-    @Body() body: { role: UserRole },
+    @Body() body: UpdateRoleDto,
   ) {
     return this.usersService.updateRole(
       req.user,
@@ -75,7 +70,7 @@ export class UsersController {
   updateProfile(
     @Req() req: { user: AuthUser },
     @Param('id') userId: string,
-    @Body() body: { name: string; email: string },
+    @Body() body: UpdateProfileDto,
   ) {
     return this.usersService.updateProfile(req.user, userId, body);
   }
@@ -85,7 +80,7 @@ export class UsersController {
   resetPassword(
     @Req() req: { user: AuthUser },
     @Param('id') userId: string,
-    @Body() body: { password: string },
+    @Body() body: ResetUserPasswordDto,
   ) {
     return this.usersService.resetPassword(req.user, userId, body.password);
   }
@@ -95,7 +90,7 @@ export class UsersController {
   updateStatus(
     @Req() req: { user: AuthUser },
     @Param('id') userId: string,
-    @Body() body: { isActive: boolean },
+    @Body() body: UpdateUserStatusDto,
   ) {
     return this.usersService.updateStatus(req.user, userId, body.isActive);
   }
@@ -113,7 +108,7 @@ export class UsersController {
   updateModuleAccess(
     @Req() req: { user: AuthUser },
     @Param('id') userId: string,
-    @Body() body: { access: Array<{ moduleId: string; featureKeys?: string[] }> },
+    @Body() body: UpdateUserModuleAccessDto,
   ) {
     return this.usersService.updateModuleAccess(req.user, userId, body.access);
   }

@@ -3,6 +3,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Request, Response } from 'express';
+import type { CookieOptions } from 'express';
 import { AuthService } from './auth.service';
 import { AuthGuard } from './auth.guard';
 import { LoginDto } from './dto/login.dto';
@@ -15,12 +16,16 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 export class AuthController {
   constructor(private auth: AuthService) {}
 
+  private cookieOptions(): CookieOptions {
+    return { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/' };
+  }
+
   private setSessionCookies(res: Response, result: any) {
     res.cookie('access_token', result.accessToken, {
-      httpOnly: true, sameSite: 'lax', secure: false, maxAge: 15 * 60 * 1000,
+      ...this.cookieOptions(), maxAge: 15 * 60 * 1000,
     });
     res.cookie('refresh_token', result.refreshToken, {
-      httpOnly: true, sameSite: 'lax', secure: false, maxAge: 7 * 24 * 60 * 60 * 1000,
+      ...this.cookieOptions(), maxAge: 7 * 24 * 60 * 60 * 1000,
     });
   }
 
@@ -49,7 +54,7 @@ export class AuthController {
     const token = req.cookies?.refresh_token;
     const accessToken = await this.auth.refresh(token);
     res.cookie('access_token', accessToken, {
-      httpOnly: true, sameSite: 'lax', secure: false, maxAge: 15 * 60 * 1000,
+      ...this.cookieOptions(), maxAge: 15 * 60 * 1000,
     });
     return { ok: true };
   }
@@ -66,8 +71,8 @@ export class AuthController {
 
   @Post('logout')
   logout(@Res({ passthrough: true }) res: Response) {
-    res.clearCookie('access_token');
-    res.clearCookie('refresh_token');
+    res.clearCookie('access_token', this.cookieOptions());
+    res.clearCookie('refresh_token', this.cookieOptions());
     return { ok: true };
   }
 }

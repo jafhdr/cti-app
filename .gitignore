@@ -51,6 +51,7 @@ temp/
 # Build/agent artifacts
 .omo/
 frontend/.omo/
+.codegraph/
 *.tsbuildinfo
 
 # Playwright test output
@@ -65,3 +66,12 @@ frontend/playwright-report/
 # Secrets/redacted files
 *.secret
 secrets/
+*.dump
+*.sql.backup
+*.db
+
+# Local task prompts and one-off audit harnesses
+/*.md
+!/README.md
+/backend/src/attack-surface-management/final-live-audit.cjs
+/backend/src/attack-surface-management/verify-qa-cleanup.cjs

@@ -15,7 +15,7 @@ async function bootstrap() {
 
   const config = new DocumentBuilder()
     .setTitle('CTI App API')
-    .setDescription('Authentication and CTI dashboard MVP')
+    .setDescription('CTI App API for authentication, tenant and module access, threat intelligence, cases, and attack surface management')
     .setVersion('0.1.0')
     .addBearerAuth()
     .build();

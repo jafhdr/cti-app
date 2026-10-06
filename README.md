@@ -1,135 +1,73 @@
-# CTI App — Login & Dashboard MVP (Native Windows)
+﻿# CTI App
 
-Versi ini **tidak menggunakan Docker, Docker Desktop, Redis, atau WSL** untuk menjalankan aplikasi.
+CTI App uses a Next.js frontend, NestJS API, PostgreSQL, and Prisma. It includes Authentication/RBAC, Tenant and Subscription management, Module Management and Feature Access, Threat Intelligence v1, Case Management, Attack Surface Management v1, Administration, and a dashboard. **AppSec Posture is planned and not implemented.**
 
-## Arsitektur MVP
+## Development setup
 
-```text
-Browser
-  |
-  v
-Next.js Frontend :3000
-  |
-  | HTTP + HttpOnly Cookie
-  v
-Node.js / NestJS Backend :3001
-  |
-  | Prisma
-  v
-PostgreSQL Native :5432
-```
+Install Node.js, npm, and PostgreSQL. Create a development database (see [database setup](database/README.md)). The repository already contains Prisma migrations; do not create a new `init` migration.
 
-## Scope hari ini
+From `backend`:
 
-1. Login
-2. Logout
-3. Refresh session
-4. Protected dashboard
-5. Dashboard CTI awal
-6. Tenant context dasar
-7. Role dasar
-8. Swagger API
-
-Redis dan Docker sengaja tidak digunakan pada MVP Login + Dashboard agar development lebih ringan dan sesuai environment Windows saat ini.
-
-## Prasyarat
-
-- Windows 10/11
-- Node.js 20 LTS atau lebih baru
-- npm
-- PostgreSQL 16 atau versi kompatibel Prisma
-- Tidak perlu Docker Desktop
-- Tidak perlu WSL
-
-## 1. Setup PostgreSQL
-
-Lihat `database/README.md`.
-
-Buat database:
-
-```sql
-CREATE DATABASE cti;
-```
-
-## 2. Setup Backend
-
-Buka PowerShell:
-
-```powershell
-cd "C:\Users\AN515 57\Downloads\cti app\backend"
+```bash
 npm install
-copy .env.example .env
-```
-
-Edit `.env` dan masukkan password PostgreSQL Anda:
-
-```env
-DATABASE_URL="postgresql://postgres:POSTGRES_PASSWORD@localhost:5432/cti?schema=public"
-```
-
-Kemudian:
-
-```powershell
+cp .env.example .env
+# Set DATABASE_URL and replace the example JWT secrets in .env.
 npx prisma generate
-npx prisma migrate dev --name init
-npm run seed
+npx prisma migrate status
+npx prisma migrate dev
 npm run start:dev
 ```
 
-Backend: http://localhost:3001
+For a deployment that only applies checked-in migrations, use `npx prisma migrate deploy` in place of `migrate dev`. The API defaults to `http://localhost:3001`; Swagger is at `/docs`. Seeding is optional: set `SEED_ADMIN_PASSWORD` privately before `npm run seed`.
 
-Swagger: http://localhost:3001/docs
+In another terminal, from `frontend`:
 
-Akun demo:
-
-- Email: `admin@cti.local`
-- Password: `Admin123!`
-
-## 3. Setup Frontend
-
-Buka PowerShell baru:
-
-```powershell
-cd "C:\Users\AN515 57\Downloads\cti app\frontend"
+```bash
 npm install
-copy .env.example .env.local
+cp .env.example .env.local
 npm run dev
 ```
 
-Frontend: http://localhost:3000
+The frontend defaults to `http://localhost:3000`. On Windows PowerShell, `Copy-Item .env.example .env` (or `.env.local`) also works.
 
-## 4. Test
+## Environment
 
-1. Buka http://localhost:3000
-2. Login dengan akun demo.
-3. Pastikan diarahkan ke `/dashboard`.
-4. Pastikan tenant dan role tampil.
-5. Logout.
-6. Coba buka `/dashboard` lagi; harus diarahkan kembali ke Login.
-7. Buka http://localhost:3001/docs untuk test API.
+`backend/.env.example` and `frontend/.env.example` define development variable names and defaults. Never commit local `.env` files or real credentials.
 
-## Troubleshooting
+| Variables | Purpose |
+| --- | --- |
+| `DATABASE_URL`, `PORT`, `FRONTEND_URL` | PostgreSQL and API/frontend addresses |
+| `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` | Authentication signing secrets; replace example values |
+| `SEED_ADMIN_PASSWORD` | Private initial password for optional seed |
+| `NEXT_PUBLIC_API_URL` (frontend) | Browser-facing API URL |
+| `URLHAUS_AUTH_KEY`, `MALWAREBAZAAR_AUTH_KEY`, `ABUSEIPDB_API_KEY` | Optional feed credentials |
+| `VIRUSTOTAL_API_KEY`, `VIRUSTOTAL_*` | Optional enrichment key and worker settings |
+| `THREAT_FEED_*`, `MITRE_ATTACK_SYNC_INTERVAL_MINUTES` | Feed limits and sync intervals |
+| `TELEGRAM_*` | Optional Telegram ingestion and polling |
+| `ASM_DISCOVERY_TIMEOUT_MS` | Discovery provider request deadline |
 
-### `P1001 Can't reach database`
+## Validation and tests
 
-Pastikan PostgreSQL service sedang running dan port `5432` tersedia. Periksa `DATABASE_URL` di `backend/.env`.
+From `backend`:
 
-### `password authentication failed`
-
-Password di `DATABASE_URL` tidak sama dengan password user PostgreSQL.
-
-### Port 5432 sudah digunakan
-
-Cari proses yang menggunakan port 5432 atau gunakan port PostgreSQL yang sesuai dan ubah `DATABASE_URL`.
-
-### Frontend tidak bisa memanggil backend
-
-Pastikan backend berjalan di `http://localhost:3001` dan `frontend/.env.local` berisi:
-
-```env
-NEXT_PUBLIC_API_URL=http://localhost:3001
+```bash
+npx prisma validate
+npx prisma migrate status
+npm run build
+npm test -- --runInBand --no-cache
+npm run test:integration
 ```
 
-## Catatan produksi
+The integration script runs selected database-backed TI tests serially. It needs `backend/.env`, a reachable PostgreSQL database with applied migrations, and the backend build. The fixtures create and clean up QA rows; use a development database.
 
-JWT secret, password database, cookie settings, dan CORS harus diperketat sebelum deployment production.
+From `frontend`:
+
+```bash
+npm run build
+npm run typecheck
+npm run test:e2e
+```
+
+`test:e2e` runs the targeted Case/Indicator Playwright test. Start the frontend at `http://localhost:3000` first, and install Chromium with `npx playwright install chromium` if needed. The test mocks API calls but still needs the frontend server. Set `E2E_BASE_URL` for another frontend address. Other files under `frontend/e2e` can be run with `npx playwright test <file>` and may require live services or test data.
+
+Final closure evidence: [ASM v1](docs/audits/auditasm2b-report.md), [Platform Hardening](docs/audits/cti2-report.md), and [Threat Intelligence v1](docs/audits/ti1-report.md).

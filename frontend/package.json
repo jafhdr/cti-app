@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "typecheck": "tsc --noEmit",
+    "test:e2e": "playwright test e2e/case-indicators.spec.ts",
     "start": "next start"
   },
   "dependencies": {

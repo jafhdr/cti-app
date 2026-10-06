@@ -1,6 +1,6 @@
 # PostgreSQL Native Setup (Windows)
 
-CTI App MVP tidak menggunakan Docker. PostgreSQL dijalankan langsung di Windows.
+Panduan ini memakai PostgreSQL lokal di Windows untuk development CTI App.
 
 ## 1. Install PostgreSQL
 
@@ -34,7 +34,8 @@ Dari folder `backend`:
 
 ```powershell
 npx prisma generate
-npx prisma migrate dev --name init
+npx prisma migrate status
+npx prisma migrate dev
 npm run seed
 ```
 

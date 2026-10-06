@@ -1,5 +1,13 @@
 # CTI administration design contract
 
+## UI consistency (ui.md)
+
+Paired landing actions place secondary Explore Platform before primary Get Started. Sidebar theme preference uses three labeled icon buttons for Dark, Light, and System while retaining `cti-theme`. Single-choice selects reserve 36px for text and render a themed chevron 15px from the right edge; multiple selects keep their native list behavior. Secondary operational labels use a readable 12–13px scale, with compact landing preview labels at 9–11px on mobile. Existing heading sizes and responsive layout remain the baseline.
+
+## Typography scale (font.md)
+
+The existing Webtrix display face, colors, and layout remain in use. Authenticated page headings use a responsive 28–48px scale, dashboard hero text caps at 64px, section headings use 24–36px, and the visual dashboard and module figures cap at 84px. Operational KPI, body, label, table, navigation, and button text keep their compact existing scale when already proportionate. The public landing headline caps at 64px and its section headings at 48px. Keep tight display tracking and a readable line height as the type scales down.
+
 ## 11. Editorial transformation (lpdb3.md)
 The authenticated experience moves toward a premium editorial cybersecurity product. The shell uses a floating 268px navigation surface, a framed main canvas, generous content gutters, and large display headings. The dashboard uses a two-part hero with a live summary visualization, a typographic metric strip, and unequal editorial story panels. The visualization uses the dashboard API summary; no unavailable time series or asset counts are invented.
 
@@ -65,3 +73,16 @@ Accepted debt: the backend has no standalone detail endpoints, last-activity met
 
 ## 16. Modal and drawer foundation (pop.md)
 Shared overlays use the existing `--soc-*` palette and `--cti-radius` editorial surface. Dialogs are centered, bounded by the safe viewport, and keep header and footer visible while the body scrolls. Drawers enter as right-side context panels on desktop and bottom sheets at mobile width. Both use an accessible title, optional description, focus containment and return, Escape, and background scroll lock. Buttons use the existing shared Button treatment. The foundation does not change feature forms or routes; feature migration follows separate review.
+
+## ASM Phase 5 discovery history
+Asset Detail reuses the existing intelligence section, metric strip, outlined buttons, and `--soc-*` surfaces for discovery scheduling and change history. The schedule control wraps at desktop and stacks at 640px. Status and change categories use explicit text labels; time, prior/current values, provider/run source, and failed counts remain visible without hover. Loading, empty, and error states use the existing status and alert patterns. No new color or typography token is introduced.
+
+## ASM Phase 6 alerts
+Asset Detail uses the existing intelligence section, metric strip, severity badge, outlined button and `--soc-*` surface for alerts. Alert metrics count loaded records for the selected asset. Status and severity remain text labels, actions wrap on narrow screens, and loading, empty, and error states use existing accessible patterns.
+
+### ASM Phase 6b risk posture
+
+The Asset Intelligence workspace uses its existing intelligence section, heading, metric grid, and context text for a compact risk history summary. A missing baseline names the discovery action that creates one. The score uses active findings only (critical 8, high 4, medium 2, low 1); the UI displays the persisted current and previous snapshots and their trend.
+
+## ASM Phase 7B notification preferences
+The Posture Report uses the existing `asm-intelligence-section`, `asm-section-heading`, and `asm-schedule-controls` primitives for notification settings. Channel is shown as disabled In-App because no external destination is configured. ADMIN and SUPER_ADMIN can change Enabled and HIGH/CRITICAL threshold; USER sees read-only values and a permission explanation. Loading, saved, and error feedback use existing status and alert treatments. At mobile width, controls stack using the ASM schedule breakpoint; no new design tokens are required.

@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 const app = process.env.SOURCES_APP_URL || 'http://localhost:3000';
 const source = { id: 'source-1', name: 'CISA KEV', description: 'Known exploited vulnerabilities', sourceType: 'GOVERNMENT', provider: 'CISA', url: 'https://www.cisa.gov', reliability: 'A', confidence: 95, tlp: 'CLEAR', status: 'ACTIVE', lastSyncAt: '2026-09-08T03:00:00.000Z', createdAt: '2026-09-01T00:00:00.000Z', updatedAt: '2026-09-08T03:00:00.000Z' };
-async function session(page: Page): Promise<void> { await page.route('**/auth/me', route => route.fulfill({ json: { id: 'admin', email: 'admin@example.test', role: 'ADMIN', tenantId: 'tenant-a', moduleAccess: [{ moduleId: 'intel', moduleSlug: 'threat-intelligence', moduleName: 'Threat Intelligence', assigned: true, accessible: true, featureKeys: [] }] } })); }
+async function session(page: Page): Promise<void> { await page.route('**/auth/me', route => route.fulfill({ json: { id: 'admin', email: 'admin@example.test', role: 'ADMIN', tenantId: 'tenant-a', moduleAccess: [{ moduleId: 'intel', moduleSlug: 'threat-intelligence', moduleName: 'Threat Intelligence', assigned: true, accessible: true, featureKeys: ['intelligence-hub'] }] } })); }
 test('sources supports loading, list, detail, search, filters, and pagination', async ({ page }) => {
   await session(page); let requestUrl = ''; let release = (): void => {}; const gate = new Promise<void>(resolve => { release = resolve; });
   await page.route('http://localhost:3001/intelligence/sources?*', async route => { requestUrl = route.request().url(); await gate; await route.fulfill({ json: { items: [source], page: 1, limit: 10, total: 12, totalPages: 2 } }); });

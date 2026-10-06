@@ -8,7 +8,7 @@ import { RelatedCases } from './RelatedCases';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-type IndicatorSummary = { readonly id: string; readonly value: string; readonly type: string; readonly severity?: string; readonly confidence?: number; readonly source?: string | null; readonly status?: string; readonly description?: string | null; readonly tags?: readonly string[]; readonly expiresAt?: string | null };
+type IndicatorSummary = { readonly id: string; readonly value: string; readonly type: string; readonly severity?: string; readonly confidence?: number; readonly source?: string | null; readonly sourceObservations?: readonly { readonly id: string; readonly sourceName: string; readonly provider: string | null; readonly firstSeenAt: string; readonly lastSeenAt: string }[]; readonly status?: string; readonly description?: string | null; readonly tags?: readonly string[]; readonly expiresAt?: string | null };
 type Enrichment = {
   readonly id: string;
   readonly provider: string;
@@ -79,6 +79,7 @@ export function IndicatorEnrichmentPanel({ indicator, canManage, canAccessCases,
     {error && <div className="error" role="alert">{error}</div>}
     {notice && <div className="success" role="status">{notice}</div>}
     <section className="ti-detail-section"><span className="source-eyebrow">OVERVIEW</span><h3>Indicator metadata</h3><dl className="ti-indicator-meta"><div><dt>Source</dt><dd>{indicator.source || 'Not provided'}</dd></div><div><dt>Description</dt><dd>{indicator.description || 'No description'}</dd></div><div><dt>Tags</dt><dd>{indicator.tags?.join(', ') || 'None'}</dd></div><div><dt>Expires</dt><dd>{indicator.expiresAt ? new Date(indicator.expiresAt).toLocaleDateString('id-ID') : 'Not set'}</dd></div></dl></section>
+    {!!indicator.sourceObservations?.length && <section className="ti-detail-section"><span className="source-eyebrow">PROVENANCE</span><h3>Observed sources</h3><ul className="space-y-2">{indicator.sourceObservations.map(observation => <li key={observation.id} className="rounded-md border border-input p-3 text-sm"><strong>{observation.sourceName}</strong><span className="ml-2 text-muted-foreground">{observation.provider ?? 'Unknown provider'}</span><div className="text-xs text-muted-foreground">First seen <time dateTime={observation.firstSeenAt}>{new Date(observation.firstSeenAt).toLocaleString('id-ID')}</time> · Last seen <time dateTime={observation.lastSeenAt}>{new Date(observation.lastSeenAt).toLocaleString('id-ID')}</time></div></li>)}</ul></section>}
     <section className="ti-detail-section"><span className="source-eyebrow">ENRICHMENT</span><h3>Provider results</h3>
     {!virusTotalAvailable && <div className="source-state"><strong>VirusTotal not available</strong><span>This provider does not support email indicators.</span></div>}
     {loading ? <div className="source-state" aria-live="polite">Loading enrichment history...</div> : items.length === 0 ? <div className="source-state"><strong>No enrichment yet</strong><span>{canManage && virusTotalAvailable ? 'Run enrichment to collect provider context.' : 'No provider result is available for this indicator.'}</span></div> : <div className="indicator-enrichment-history">{items.map(item => <article key={item.id} className={`indicator-enrichment-entry is-${item.status.toLowerCase()}`}>

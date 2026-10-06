@@ -16,6 +16,7 @@ type Indicator = {
   readonly status: string;
   readonly tags: readonly string[];
   readonly source: string | null;
+  readonly sourceObservations?: readonly { readonly id: string; readonly sourceName: string; readonly provider: string | null; readonly firstSeenAt: string; readonly lastSeenAt: string }[];
 };
 
 type Props = { readonly caseId: string; readonly canMutate: boolean };
@@ -117,6 +118,7 @@ export function RelatedIndicators({ caseId, canMutate }: Props) {
               <div key={indicator.id} className="min-w-0 rounded-md border border-input p-4">
                 <div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="truncate font-mono text-sm font-semibold text-card-foreground">{indicator.value}</p><p className="mt-1 text-xs text-muted-foreground">{indicator.type} / {indicator.severity} / {indicator.status}</p></div>{canMutate && <button type="button" aria-label={`Lepas ${indicator.value}`} disabled={busyId === indicator.id} onClick={() => void unlink(indicator)} className="rounded-md p-3 text-destructive hover:bg-muted disabled:opacity-50">{busyId === indicator.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}</button>}</div>
                 {(indicator.source || indicator.tags.length > 0) && <p className="mt-3 truncate text-xs text-muted-foreground">{indicator.source ?? 'Tanpa sumber'}{indicator.tags.length > 0 ? ` / ${indicator.tags.join(', ')}` : ''}</p>}
+                {!!indicator.sourceObservations?.length && <ul className="mt-3 space-y-2 border-t border-input pt-3 text-xs text-muted-foreground">{indicator.sourceObservations.map(observation => <li key={observation.id}><strong className="text-card-foreground">{observation.sourceName}</strong><span> · {observation.provider ?? 'Unknown provider'}</span><div>First seen <time dateTime={observation.firstSeenAt}>{new Date(observation.firstSeenAt).toLocaleString('id-ID')}</time> · Last seen <time dateTime={observation.lastSeenAt}>{new Date(observation.lastSeenAt).toLocaleString('id-ID')}</time></div></li>)}</ul>}
               </div>
             ))}
           </div>

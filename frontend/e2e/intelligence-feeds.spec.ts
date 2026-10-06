@@ -9,7 +9,7 @@ const providers = [
 ] as const;
 
 async function session(page: Page, role: 'ADMIN' | 'USER' = 'ADMIN'): Promise<void> {
-  await page.route('**/auth/me', route => route.fulfill({ json: { id: role.toLowerCase(), email: `${role.toLowerCase()}@example.test`, role, tenantId: 'tenant-a', moduleAccess: [{ moduleId: 'intel', moduleSlug: 'threat-intelligence', moduleName: 'Threat Intelligence', assigned: true, accessible: true, featureKeys: [] }] } }));
+  await page.route('**/auth/me', route => route.fulfill({ json: { id: role.toLowerCase(), email: `${role.toLowerCase()}@example.test`, role, tenantId: 'tenant-a', moduleAccess: [{ moduleId: 'intel', moduleSlug: 'threat-intelligence', moduleName: 'Threat Intelligence', assigned: true, accessible: true, featureKeys: ['indicator-management'] }] } }));
 }
 
 test('shows three providers and reports partial sync without hiding a failed provider', async ({ page }) => {

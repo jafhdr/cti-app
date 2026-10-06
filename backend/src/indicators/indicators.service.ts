@@ -25,7 +25,7 @@ export class IndicatorsService {
       } : {}),
     };
     const [items, total] = await this.prisma.$transaction([
-      this.prisma.indicator.findMany({ where, include: { tenant: { select: { id: true, name: true, slug: true } }, intelligenceEntity: { select: { id: true, name: true, type: true } }, intelligenceSource: { select: { id: true, name: true, provider: true } } }, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit }),
+      this.prisma.indicator.findMany({ where, include: { tenant: { select: { id: true, name: true, slug: true } }, intelligenceEntity: { select: { id: true, name: true, type: true } }, intelligenceSource: { select: { id: true, name: true, provider: true } }, sourceObservations: { orderBy: { firstSeenAt: 'asc' } } }, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit }),
       this.prisma.indicator.count({ where }),
     ]);
     return { items, page, limit, total };

@@ -262,6 +262,7 @@ model Tenant {
   users                      User[]
   auditLogs                  AuditLog[]
   indicators                 Indicator[]
+  indicatorSourceObservations IndicatorSourceObservation[]
   indicatorEnrichments       IndicatorEnrichment[]
   indicatorEnrichmentJobs    IndicatorEnrichmentJob[]
   intelligenceSources        IntelligenceSource[]
@@ -497,6 +498,7 @@ model Indicator {
   campaigns            CampaignIndicator[]
   intelligenceReports  IntelligenceReportIndicator[]
   enrichments          IndicatorEnrichment[]
+  sourceObservations   IndicatorSourceObservation[]
   enrichmentJobs       IndicatorEnrichmentJob[]
   cases                CaseIndicator[]
   iocCandidates        IocCandidate[]
@@ -508,6 +510,26 @@ model Indicator {
   @@index([tenantId, status, severity])
   @@index([tenantId, createdAt])
   @@index([tenantId, intelligenceEntityId])
+  @@index([tenantId, intelligenceSourceId])
+}
+
+model IndicatorSourceObservation {
+  id                   String              @id @default(cuid())
+  tenantId             String
+  indicatorId          String
+  intelligenceSourceId String?
+  sourceKey            String
+  sourceName           String
+  provider             String?
+  origin               String
+  firstSeenAt          DateTime            @default(now())
+  lastSeenAt           DateTime            @default(now())
+  tenant               Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  indicator            Indicator           @relation(fields: [indicatorId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  intelligenceSource   IntelligenceSource? @relation(fields: [intelligenceSourceId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, indicatorId, sourceKey])
+  @@index([tenantId, indicatorId])
   @@index([tenantId, intelligenceSourceId])
 }
 
@@ -567,6 +589,7 @@ model IntelligenceSource {
   createdAt            DateTime                      @default(now())
   updatedAt            DateTime                      @updatedAt
   indicators           Indicator[]
+  indicatorObservations IndicatorSourceObservation[]
   intelligenceReports  IntelligenceReportSource[]
   telegramMessages     TelegramStagingMessage[]
   iocCandidates        IocCandidate[]

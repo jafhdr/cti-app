@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 const app = 'http://localhost:3000';
 const evidence = '../.omo/evidence/threat-intelligence/phase1';
-const indicator = { id: 'ioc-a', value: 'malicious.example', type: 'DOMAIN', severity: 'HIGH', confidence: 87, status: 'ACTIVE', tags: ['phishing'], source: 'Analyst feed', description: 'Observed phishing infrastructure', expiresAt: '2026-12-31T00:00:00.000Z', tenant: { id: 'tenant-a', name: 'Tenant A' }, intelligenceEntity: null };
+const indicator = { id: 'ioc-a', value: 'malicious.example', type: 'DOMAIN', severity: 'HIGH', confidence: 87, status: 'ACTIVE', tags: ['phishing'], source: 'Analyst feed', sourceObservations: [{ id: 'source-a', sourceName: 'Feed A', provider: 'URLhaus', firstSeenAt: '2026-09-28T08:00:00.000Z', lastSeenAt: '2026-09-28T09:00:00.000Z' }, { id: 'source-b', sourceName: 'Feed B', provider: 'AbuseIPDB', firstSeenAt: '2026-09-28T08:30:00.000Z', lastSeenAt: '2026-09-28T09:30:00.000Z' }], description: 'Observed phishing infrastructure', expiresAt: '2026-12-31T00:00:00.000Z', tenant: { id: 'tenant-a', name: 'Tenant A' }, intelligenceEntity: null };
 const other = { ...indicator, id: 'ioc-b', value: '203.0.113.8', type: 'IP_ADDRESS', severity: 'CRITICAL', source: 'Sensor', tags: ['scanner'] };
 const enrichment = { id: 'enrichment-a', provider: 'VIRUSTOTAL', status: 'SUCCESS', error: null, createdAt: '2026-09-28T09:00:00.000Z', data: { reputation: -8, detections: { malicious: 4, suspicious: 1, total: 80 }, analysisAt: '2026-09-28T08:00:00.000Z' } };
 
@@ -46,6 +46,8 @@ for (const theme of ['dark', 'light', 'system-dark', 'system-light'] as const) {
       await page.getByRole('button', { name: 'Detail' }).first().click();
       await expect(page.getByRole('heading', { name: 'malicious.example' })).toBeVisible();
       await expect(page.getByText('Analyst feed')).toBeVisible();
+      await expect(page.getByText('Feed A')).toBeVisible();
+      await expect(page.getByText('Feed B')).toBeVisible();
       await expect(page.getByText('87% confidence')).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
       await page.screenshot({ path: `${evidence}/detail-${theme}-${width}.png`, fullPage: true });

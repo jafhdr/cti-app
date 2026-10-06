@@ -4,7 +4,7 @@ const app = process.env.SOURCES_APP_URL || 'http://localhost:3000';
 
 test('Intelligence Hub creates entities and relationships in shared form modals', async ({ page }) => {
   const requests: { path: string; payload: unknown }[] = [];
-  await page.route('**/auth/me', route => route.fulfill({ json: { id: 'admin', email: 'admin@example.test', role: 'ADMIN', tenantId: 'tenant-a', moduleAccess: [{ moduleSlug: 'threat-intelligence', assigned: true, accessible: true }] } }));
+  await page.route('**/auth/me', route => route.fulfill({ json: { id: 'admin', email: 'admin@example.test', role: 'ADMIN', tenantId: 'tenant-a', moduleAccess: [{ moduleSlug: 'threat-intelligence', assigned: true, accessible: true, featureKeys: ['intelligence-hub'] }] } }));
   await page.route(/\/intelligence\/overview(?:\?.*)?$/, route => route.fulfill({ json: { entities: [{ id: 'entity-1', name: 'Actor', type: 'THREAT_ACTOR', severity: 'HIGH', confidence: 90 }], relationships: [] } }));
   await page.route(/\/intelligence\/(entities|relationships)$/, route => {
     requests.push({ path: new URL(route.request().url()).pathname, payload: route.request().postDataJSON() });

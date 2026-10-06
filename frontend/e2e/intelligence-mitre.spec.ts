@@ -4,7 +4,7 @@ const app = process.env.SOURCES_APP_URL || 'http://localhost:3000';
 const technique = { id: 'technique-1', externalId: 'T1059', name: 'Command and Scripting Interpreter', description: 'Executes commands and scripts.', tactic: 'Execution', platform: 'Windows', url: 'https://attack.mitre.org/techniques/T1059/', createdAt: '2026-09-09T00:00:00.000Z', updatedAt: '2026-09-09T00:00:00.000Z', campaigns: [{ campaign: { id: 'campaign-1', name: 'Operation Phantom', status: 'ACTIVE' } }], _count: { campaigns: 1 } } as const;
 
 async function session(page: Page, role: 'ADMIN' | 'USER' = 'ADMIN'): Promise<void> {
-  await page.route('**/auth/me', route => route.fulfill({ json: { id: 'user', email: 'user@example.test', role, tenantId: 'tenant-a', moduleAccess: [{ moduleId: 'intel', moduleSlug: 'threat-intelligence', moduleName: 'Threat Intelligence', assigned: true, accessible: true, featureKeys: [] }] } }));
+  await page.route('**/auth/me', route => route.fulfill({ json: { id: 'user', email: 'user@example.test', role, tenantId: 'tenant-a', moduleAccess: [{ moduleId: 'intel', moduleSlug: 'threat-intelligence', moduleName: 'Threat Intelligence', assigned: true, accessible: true, featureKeys: ['intelligence-hub'] }] } }));
 }
 
 async function mitrePage(page: Page): Promise<void> {

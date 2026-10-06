@@ -57,7 +57,7 @@ export class IndicatorFeedsService {
     const tenantId = this.resolveTenant(user, requestedTenantId);
     const sources = await this.prisma.intelligenceSource.findMany({
       where: { tenantId, provider: { in: Object.values(providerDetails).map(details => details.provider) } },
-      select: { provider: true, status: true, lastSyncAt: true, _count: { select: { indicators: true } } },
+      select: { provider: true, status: true, lastSyncAt: true, _count: { select: { indicatorObservations: true } } },
     });
     const sourceByProvider = new Map(sources.map(source => [source.provider, source]));
     const providers = feedProviders.map(provider => {
@@ -71,7 +71,7 @@ export class IndicatorFeedsService {
         name: details.provider,
         status: configured ? (failed ? 'FAILED' : 'ACTIVE') : 'NOT_CONFIGURED',
         lastSyncAt: latest?.completedAt ?? source?.lastSyncAt ?? null,
-        received: latest?.received ?? source?._count.indicators ?? 0,
+        received: latest?.received ?? source?._count.indicatorObservations ?? 0,
         created: latest?.created ?? null,
         updated: latest?.updated ?? null,
         error: latest?.status === 'FAILED' ? latest.message ?? 'Feed sync gagal' : source?.status === IntelligenceSourceStatus.INACTIVE ? 'Intelligence source tidak aktif' : null,
@@ -157,31 +157,57 @@ export class IndicatorFeedsService {
     const existing = await this.prisma.indicator.findMany({ where: { OR: keys }, select: { type: true, value: true } });
     const existingKeys = new Set(existing.map(indicator => `${indicator.type}:${indicator.value}`));
 
-    await this.prisma.$transaction(indicators.map(indicator => this.prisma.indicator.upsert({
-      where: { tenantId_type_value: { tenantId, type: indicator.type, value: indicator.value } },
-      create: {
-        tenantId,
-        createdById: user.sub,
-        intelligenceSourceId: sourceId,
-        source: sourceName,
-        value: indicator.value,
-        type: indicator.type,
-        severity: indicator.severity,
-        confidence: indicator.confidence,
-        status: IndicatorStatus.ACTIVE,
-        tags: [...new Set(indicator.tags.map(tag => tag.trim().toLowerCase()).filter(Boolean))],
-        description: indicator.description,
-      },
-      update: {
-        intelligenceSourceId: sourceId,
-        source: sourceName,
-        severity: indicator.severity,
-        confidence: indicator.confidence,
-        status: IndicatorStatus.ACTIVE,
-        tags: [...new Set(indicator.tags.map(tag => tag.trim().toLowerCase()).filter(Boolean))],
-        description: indicator.description,
-      },
-    })));
+    const indicatorIds = await this.prisma.$transaction(async transaction => {
+      const ids: string[] = [];
+      for (const indicator of indicators) {
+        const record = await transaction.indicator.upsert({
+          where: { tenantId_type_value: { tenantId, type: indicator.type, value: indicator.value } },
+          create: {
+            tenantId,
+            createdById: user.sub,
+            intelligenceSourceId: sourceId,
+            source: sourceName,
+            value: indicator.value,
+            type: indicator.type,
+            severity: indicator.severity,
+            confidence: indicator.confidence,
+            status: IndicatorStatus.ACTIVE,
+            tags: [...new Set(indicator.tags.map(tag => tag.trim().toLowerCase()).filter(Boolean))],
+            description: indicator.description,
+          },
+          update: {
+            severity: indicator.severity,
+            confidence: indicator.confidence,
+            status: IndicatorStatus.ACTIVE,
+            tags: [...new Set(indicator.tags.map(tag => tag.trim().toLowerCase()).filter(Boolean))],
+            description: indicator.description,
+          },
+          select: { id: true },
+        });
+        ids.push(record.id);
+        await transaction.indicatorSourceObservation.upsert({
+          where: { tenantId_indicatorId_sourceKey: { tenantId, indicatorId: record.id, sourceKey: sourceId } },
+          create: { tenantId, indicatorId: record.id, intelligenceSourceId: sourceId, sourceKey: sourceId, sourceName, provider: sourceName, origin: 'FEED' },
+          update: { sourceName, provider: sourceName, lastSeenAt: new Date() },
+        });
+      }
+      return ids;
+    }, { maxWait: 10_000, timeout: 60_000 });
+
+    if (this.config.get<string>('VIRUSTOTAL_API_KEY')?.trim()) {
+      for (const indicatorId of new Set(indicatorIds)) {
+        try {
+          await this.prisma.indicatorEnrichmentJob.createMany({
+            data: { tenantId, indicatorId, provider: 'VIRUSTOTAL', trigger: 'FEED_SYNC', requestedById: user.sub },
+            skipDuplicates: true,
+          });
+        } catch (error) {
+          this.logger.error('indicator.feed.enrichment_enqueue.failed', {
+            tenantId, indicatorId, error: error instanceof Error ? error.message : 'Unknown enqueue error',
+          });
+        }
+      }
+    }
 
     const updated = indicators.filter(indicator => existingKeys.has(`${indicator.type}:${indicator.value}`)).length;
     return { created: indicators.length - updated, updated, skipped: 0, received: indicators.length };

@@ -240,7 +240,7 @@ export class CasesService {
     const caseRecord = await this.scopedCase(user, caseId);
     const links = await this.prisma.caseIndicator.findMany({
       where: { caseId, tenantId: caseRecord.tenantId },
-      include: { indicator: true },
+      include: { indicator: { include: { sourceObservations: { orderBy: { firstSeenAt: 'asc' } } } } },
       orderBy: { createdAt: 'desc' },
     });
     return links.map((link) => link.indicator);

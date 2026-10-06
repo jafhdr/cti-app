@@ -13,7 +13,7 @@ const campaign = {
 } as const;
 
 async function session(page: Page, role: 'SUPER_ADMIN' | 'ADMIN' | 'USER' = 'ADMIN'): Promise<void> {
-  await page.route('**/auth/me', route => route.fulfill({ json: { id: 'user', email: 'user@example.test', role, tenantId: role === 'SUPER_ADMIN' ? null : 'tenant-a', moduleAccess: [{ moduleId: 'intel', moduleSlug: 'threat-intelligence', moduleName: 'Threat Intelligence', assigned: true, accessible: true, featureKeys: [] }] } }));
+  await page.route('**/auth/me', route => route.fulfill({ json: { id: 'user', email: 'user@example.test', role, tenantId: role === 'SUPER_ADMIN' ? null : 'tenant-a', moduleAccess: [{ moduleId: 'intel', moduleSlug: 'threat-intelligence', moduleName: 'Threat Intelligence', assigned: true, accessible: true, featureKeys: ['intelligence-hub'] }] } }));
   if (role === 'SUPER_ADMIN') await page.route('**/users/tenants', route => route.fulfill({ json: [{ id: 'tenant-a', name: 'Tenant A' }] }));
 }
 

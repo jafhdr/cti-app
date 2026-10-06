@@ -68,6 +68,7 @@ frontend/playwright-report/
 secrets/
 *.dump
 *.sql.backup
+backend/prisma/schema copy.prisma.txt
 *.db
 
 # Local task prompts and one-off audit harnesses

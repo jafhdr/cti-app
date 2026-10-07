@@ -70,4 +70,4 @@ npm run test:e2e
 
 `test:e2e` runs the targeted Case/Indicator Playwright test. Start the frontend at `http://localhost:3000` first, and install Chromium with `npx playwright install chromium` if needed. The test mocks API calls but still needs the frontend server. Set `E2E_BASE_URL` for another frontend address. Other files under `frontend/e2e` can be run with `npx playwright test <file>` and may require live services or test data.
 
-Final closure evidence: [ASM v1](docs/audits/auditasm2b-report.md), [Platform Hardening](docs/audits/cti2-report.md), and [Threat Intelligence v1](docs/audits/ti1-report.md).
+Final closure evidence: [ASM v1](docs/audits/auditasm2b-report.md), [Platform Hardening](docs/audits/cti2-report.md), [Threat Intelligence v1](docs/audits/ti1-report.md), and [Case Management v1](docs/audits/case-v1-report.md).

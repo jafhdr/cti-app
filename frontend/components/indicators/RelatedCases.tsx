@@ -21,6 +21,7 @@ type CaseSummary = {
 type Props = {
   readonly indicatorId: string;
   readonly canMutate: boolean;
+  readonly role: 'SUPER_ADMIN' | 'ADMIN' | 'USER';
 };
 
 type CreateCaseForm = {
@@ -47,7 +48,7 @@ async function responseMessage(response: Response, fallback: string): Promise<st
   return fallback;
 }
 
-export function RelatedCases({ indicatorId, canMutate }: Props) {
+export function RelatedCases({ indicatorId, canMutate, role }: Props) {
   const [items, setItems] = useState<readonly CaseSummary[]>([]);
   const [available, setAvailable] = useState<readonly CaseSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -134,6 +135,11 @@ export function RelatedCases({ indicatorId, canMutate }: Props) {
 
   async function createCase(event: React.FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
+    const tenantId = role === 'SUPER_ADMIN' ? sessionStorage.getItem('case-workspace-tenant') : null;
+    if (role === 'SUPER_ADMIN' && !tenantId) {
+      setCreateError('Pilih tenant di Case Management sebelum membuat Case dari Indicator.');
+      return;
+    }
     setCreating(true);
     setCreateError(null);
     setSuccess(null);
@@ -142,7 +148,7 @@ export function RelatedCases({ indicatorId, canMutate }: Props) {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(createForm),
+        body: JSON.stringify(tenantId ? { ...createForm, tenantId } : createForm),
       });
       if (!response.ok) throw new Error(await responseMessage(response, 'Case failed to create.'));
       const created: CaseSummary = await response.json();

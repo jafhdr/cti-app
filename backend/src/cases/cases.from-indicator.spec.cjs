@@ -33,6 +33,7 @@ function fakePrisma({ failLink = false, foreignIndicator = false } = {}) {
 
   return {
     state,
+    user: { findUnique: async () => ({ id: 'inactive-user', tenantId: indicator.tenantId, isActive: false }) },
     indicator: { findFirst: async ({ where }) => !foreignIndicator && where.id === indicator.id && where.tenantId === indicator.tenantId ? indicator : null },
     $transaction: async operation => {
       const snapshot = structuredClone(state);
@@ -60,6 +61,30 @@ test('Given a same-tenant Indicator, when a Case is created from it, then the Ca
 test('Given a foreign-tenant Indicator, when a Case is requested, then no Case is created', async () => {
   const prisma = fakePrisma({ foreignIndicator: true });
   await assert.rejects(() => new CasesService(prisma).createFromIndicator(actor, indicator.id, { title: 'Hidden IOC' }), /Indicator tidak ditemukan/);
+  assert.equal(prisma.state.cases.length, 0);
+});
+
+test('Given a SUPER_ADMIN tenant workspace, when Indicator tenant matches, then Case is created in that tenant', async () => {
+  const prisma = fakePrisma();
+  const created = await new CasesService(prisma).createFromIndicator({ sub: 'root', role: 'SUPER_ADMIN' }, indicator.id, { title: 'Selected tenant', tenantId: indicator.tenantId });
+  assert.equal(created.tenantId, indicator.tenantId);
+  assert.equal(created.status, 'OPEN');
+});
+
+test('Given a SUPER_ADMIN tenant workspace, when Indicator belongs elsewhere, then the request is hidden', async () => {
+  const prisma = fakePrisma();
+  await assert.rejects(() => new CasesService(prisma).createFromIndicator({ sub: 'root', role: 'SUPER_ADMIN' }, indicator.id, { title: 'Wrong tenant', tenantId: 'tenant-2' }), { status: 404 });
+  assert.equal(prisma.state.cases.length, 0);
+});
+
+test('Given a SUPER_ADMIN without tenant selection, when creating from Indicator, then the request is rejected', async () => {
+  const prisma = fakePrisma();
+  await assert.rejects(() => new CasesService(prisma).createFromIndicator({ sub: 'root', role: 'SUPER_ADMIN' }, indicator.id, { title: 'No tenant' }), { status: 400 });
+});
+
+test('Given an inactive assignee, when creating from Indicator, then no Case is created', async () => {
+  const prisma = fakePrisma();
+  await assert.rejects(() => new CasesService(prisma).createFromIndicator(actor, indicator.id, { title: 'Incident', assigneeId: 'inactive-user' }), { status: 404 });
   assert.equal(prisma.state.cases.length, 0);
 });
 

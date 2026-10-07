@@ -195,6 +195,7 @@ test('Given an authorized tenant admin, when a case is created, updated, and del
     auditLog: { create: async ({ data }) => { audits.push(data); return data; } },
     caseActivity: { create: async ({ data }) => { activities.push(data); return data; } },
   };
+  prisma.$transaction = async operation => operation(prisma);
   const service = new CasesService(prisma);
   await service.create({ ...actor, role: 'ADMIN' }, { title: 'Initial', priority: 'MEDIUM' });
   await service.update({ ...actor, role: 'ADMIN' }, baseCase.id, { title: 'Updated' });

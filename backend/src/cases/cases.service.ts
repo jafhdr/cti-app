@@ -8,6 +8,12 @@ import { CreateCaseInput, CreateEvidenceInput, CreateInvestigationNoteInput, Upd
 export class CasesService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private validTransition(from: CaseStatus, to: CaseStatus): boolean {
+    return (from === CaseStatus.OPEN && to === CaseStatus.IN_PROGRESS)
+      || (from === CaseStatus.IN_PROGRESS && to === CaseStatus.RESOLVED)
+      || (from === CaseStatus.RESOLVED && (to === CaseStatus.IN_PROGRESS || to === CaseStatus.CLOSED));
+  }
+
   private tenantId(user: AuthUser): string {
     if (user.role !== 'SUPER_ADMIN' && !user.tenantId) {
       throw new ForbiddenException('Tenant context wajib tersedia');
@@ -482,7 +488,7 @@ export class CasesService {
 
     if (input.assigneeId) {
       const assignee = await this.prisma.user.findUnique({ where: { id: input.assigneeId } });
-      if (!assignee || assignee.tenantId !== tenantId) {
+      if (!assignee || assignee.tenantId !== tenantId || !assignee.isActive) {
         throw new NotFoundException('Assignee tidak ditemukan di tenant ini');
       }
     }
@@ -496,7 +502,7 @@ export class CasesService {
           caseNumber,
           title: input.title,
           description: input.description,
-          status: input.status || CaseStatus.OPEN,
+          status: CaseStatus.OPEN,
           priority: input.priority || CasePriority.MEDIUM,
           severity: input.severity,
           assigneeId: input.assigneeId,
@@ -525,15 +531,26 @@ export class CasesService {
   async update(user: AuthUser, caseId: string, input: UpdateCaseInput) {
     const caseRecord = await this.scopedCase(user, caseId);
 
+    if (input.status && input.status !== caseRecord.status && !this.validTransition(caseRecord.status, input.status)) {
+      throw new BadRequestException('Transisi status Case tidak valid');
+    }
+
     if (input.assigneeId) {
       const assignee = await this.prisma.user.findUnique({ where: { id: input.assigneeId } });
-      if (!assignee || assignee.tenantId !== caseRecord.tenantId) {
+      if (!assignee || assignee.tenantId !== caseRecord.tenantId || !assignee.isActive) {
         throw new NotFoundException('Assignee tidak ditemukan di tenant ini');
       }
     }
 
-    const updated = await this.prisma.case.update({
-      where: { id: caseId },
+    const otherFieldsChanged = (input.title !== undefined && input.title !== caseRecord.title)
+      || (input.description !== undefined && input.description !== caseRecord.description)
+      || (input.priority !== undefined && input.priority !== caseRecord.priority)
+      || (input.severity !== undefined && input.severity !== caseRecord.severity)
+      || (input.assigneeId !== undefined && input.assigneeId !== caseRecord.assigneeId);
+    const statusChanged = Boolean(input.status && input.status !== caseRecord.status);
+    return this.prisma.$transaction(async tx => {
+    const updated = await tx.case.update({
+      where: { id: caseId, status: caseRecord.status },
       data: {
         title: input.title,
         description: input.description,
@@ -549,14 +566,26 @@ export class CasesService {
       },
     });
 
-    await this.audit(user, caseRecord.tenantId, 'CASE_UPDATED', {
-      caseId: caseId,
-      caseNumber: updated.caseNumber,
-      title: updated.title,
-    });
-    await this.activity(user, caseRecord.tenantId, caseId, 'CASE_UPDATED', { caseNumber: updated.caseNumber });
+    await tx.auditLog.create({ data: { userId: user.sub, tenantId: caseRecord.tenantId, action: 'CASE_UPDATED', metadata: {
+      caseId, caseNumber: updated.caseNumber, title: updated.title,
+    } } });
+    if (otherFieldsChanged) {
+      await tx.caseActivity.create({ data: { actorId: user.sub, tenantId: caseRecord.tenantId, caseId, action: 'CASE_UPDATED', metadata: { caseNumber: updated.caseNumber } } });
+    }
+    if (statusChanged) {
+      await tx.caseActivity.create({ data: { actorId: user.sub, tenantId: caseRecord.tenantId, caseId, action: 'CASE_STATUS_CHANGED', metadata: {
+        fromStatus: caseRecord.status,
+        toStatus: updated.status,
+      } } });
+    }
 
     return updated;
+    }).catch(error => {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+        throw new ConflictException('Status Case berubah; muat ulang sebelum mengubahnya');
+      }
+      throw error;
+    });
   }
 
   async delete(user: AuthUser, caseId: string) {
@@ -587,6 +616,9 @@ export class CasesService {
 
     if (assignee.tenantId !== caseRecord.tenantId) {
       throw new ForbiddenException('Assignee harus dari tenant yang sama');
+    }
+    if (!assignee.isActive) {
+      throw new ForbiddenException('Assignee harus aktif');
     }
 
     // Check if this is a reassignment
@@ -636,11 +668,10 @@ export class CasesService {
   }
 
   async createFromIndicator(user: AuthUser, indicatorId: string, input: CreateCaseInput) {
+    const tenantId = user.role === 'SUPER_ADMIN' ? input.tenantId : this.tenantId(user);
+    if (!tenantId) throw new BadRequestException('Tenant wajib dipilih');
     const indicator = await this.prisma.indicator.findFirst({
-      where: {
-        id: indicatorId,
-        ...(user.role === 'SUPER_ADMIN' ? {} : { tenantId: this.tenantId(user) }),
-      },
+      where: { id: indicatorId, tenantId },
     });
     if (!indicator) throw new NotFoundException('Indicator tidak ditemukan');
 
@@ -649,7 +680,7 @@ export class CasesService {
 
     if (input.assigneeId) {
       const assignee = await this.prisma.user.findUnique({ where: { id: input.assigneeId } });
-      if (!assignee || assignee.tenantId !== indicator.tenantId) {
+      if (!assignee || assignee.tenantId !== indicator.tenantId || !assignee.isActive) {
         throw new NotFoundException('Assignee tidak ditemukan di tenant ini');
       }
     }
@@ -662,7 +693,7 @@ export class CasesService {
           caseNumber,
           title,
           description: input.description?.trim() || null,
-          status: input.status || CaseStatus.OPEN,
+          status: CaseStatus.OPEN,
           priority: input.priority || CasePriority.MEDIUM,
           severity: input.severity,
           assigneeId: input.assigneeId,

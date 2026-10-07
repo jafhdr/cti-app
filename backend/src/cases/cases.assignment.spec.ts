@@ -135,6 +135,14 @@ describe('CasesService - Assignment', () => {
       ).rejects.toThrow(ForbiddenException);
     });
 
+    it('should reject assignment to inactive user', async () => {
+      jest.spyOn(prisma.case, 'findFirst').mockResolvedValue(mockCase);
+      jest.spyOn(prisma.user, 'findUnique').mockResolvedValue({ ...mockUser1, isActive: false });
+
+      await expect(service.assign(mockUser, 'case-1', 'user-2')).rejects.toThrow('Assignee harus aktif');
+      expect(prisma.case.update).not.toHaveBeenCalled();
+    });
+
     it('should reject assignment to non-existent user', async () => {
       jest.spyOn(prisma.case, 'findFirst').mockResolvedValue(mockCase);
       jest.spyOn(prisma.user, 'findUnique').mockResolvedValue(null);

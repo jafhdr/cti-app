@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Case Detail and Assignment', () => {
   test.beforeEach(async ({ page }) => {
-    const moduleAccess = [{ moduleId: 'case', moduleSlug: 'case-management', moduleName: 'Case Management', assigned: true, featureKeys: [] }];
+    const moduleAccess = [{ moduleId: 'case', moduleSlug: 'case-management', moduleName: 'Case Management', assigned: true, accessible: true, featureKeys: ['case-workflow'] }];
     const caseDetail = { id: 'case-1', caseNumber: 'CASE-001', title: 'Suspicious login', description: 'Investigate access', status: 'OPEN', priority: 'HIGH', severity: 'HIGH', creator: { id: 'creator', name: 'Analyst', email: 'analyst@example.test' }, tenant: { id: 'tenant', name: 'QA', slug: 'qa' }, createdAt: '2026-09-17T00:00:00.000Z', updatedAt: '2026-09-17T00:00:00.000Z' };
     await page.route('**/auth/me', route => route.fulfill({ json: { id: 'user', email: 'qa@example.test', role: 'ADMIN', moduleAccess } }));
     await page.route('http://localhost:3001/cases?page=*', route => route.fulfill({ json: { items: [caseDetail], total: 1 } }));
@@ -29,8 +29,8 @@ test.describe('Case Detail and Assignment', () => {
     await expect(page.locator('h1')).toBeVisible(); // Case title
     
     // Verify badges are present
-    await expect(page.getByText('OPEN', { exact: true })).toBeVisible();
-    await expect(page.getByText('HIGH', { exact: true })).toHaveCount(2);
+    await expect(page.getByLabel('Case overview').getByText('OPEN', { exact: true })).toBeVisible();
+    await expect(page.getByLabel('Case status').getByText('HIGH', { exact: true })).toHaveCount(2);
 
     // Verify assignment section
     await expect(page.getByText('Assigned To')).toBeVisible();
@@ -102,7 +102,7 @@ test.describe('Case Detail and Assignment', () => {
 
     // Should return to case list
     await page.waitForURL('http://localhost:3000/cases');
-    await expect(page.getByRole('heading', { name: 'Investigate with clarity.' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Case Management' })).toBeVisible();
   });
 
   test('should display responsive layout on mobile', async ({ page }) => {

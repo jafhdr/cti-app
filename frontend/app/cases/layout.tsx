@@ -27,6 +27,10 @@ export default function CasesLayout({ children }: { readonly children: ReactNode
   const [tenantId, setTenantId] = useState('');
 
   useEffect(() => {
+    setTenantId(sessionStorage.getItem('case-workspace-tenant') || '');
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
 
     async function loadUser(): Promise<void> {
@@ -76,7 +80,7 @@ export default function CasesLayout({ children }: { readonly children: ReactNode
       <section className="main">
         <header className="topbar">
           <strong>Case Management</strong>
-          <span>{user.role === 'SUPER_ADMIN' && <select aria-label="Tenant Case Management" value={tenantId} onChange={event => setTenantId(event.target.value)}><option value="">Pilih tenant</option>{tenants.map(tenant => <option key={tenant.id} value={tenant.id}>{tenant.name}</option>)}</select>}{user.email} · {user.role}</span>
+          <span>{user.role === 'SUPER_ADMIN' && <select aria-label="Tenant Case Management" value={tenantId} onChange={event => { const selected = event.target.value; setTenantId(selected); sessionStorage.setItem('case-workspace-tenant', selected); }}><option value="">Pilih tenant</option>{tenants.map(tenant => <option key={tenant.id} value={tenant.id}>{tenant.name}</option>)}</select>}{user.email} · {user.role}</span>
         </header>
         {canAccessCases ? (
           <CaseTenantContext.Provider key={tenantId} value={{ tenantId, ready: user.role !== 'SUPER_ADMIN' || Boolean(tenantId), role: user.role }}>

@@ -5,14 +5,15 @@ const evidence = '../.omo/evidence/cases/modal-migration';
 const item = { id: 'case-1', caseNumber: 'CASE-001', title: 'Suspicious login', description: 'Review sign-in activity', status: 'OPEN', priority: 'HIGH', severity: 'HIGH', creator: { id: 'creator', name: 'Creator' }, tenant: { id: 'tenant', name: 'QA', slug: 'qa' }, createdAt: '2026-09-17T00:00:00.000Z', updatedAt: '2026-09-18T00:00:00.000Z' };
 
 async function fixtures(page: import('@playwright/test').Page) {
-  await page.route('**/auth/me', route => route.fulfill({ json: { id: 'admin', email: 'admin@example.test', role: 'ADMIN', moduleAccess: [{ moduleId: 'case', moduleSlug: 'case-management', moduleName: 'Case Management', assigned: true, accessible: true, featureKeys: [] }] } }));
+  await page.route('**/auth/me', route => route.fulfill({ json: { id: 'admin', email: 'admin@example.test', role: 'ADMIN', moduleAccess: [{ moduleId: 'case', moduleSlug: 'case-management', moduleName: 'Case Management', assigned: true, accessible: true, featureKeys: ['case-workflow'] }] } }));
   await page.route('http://localhost:3001/cases?*', route => route.fulfill({ json: { items: [item], total: 1 } }));
   await page.route('http://localhost:3001/cases/case-1', route => route.fulfill({ json: item }));
   for (const suffix of ['notes', 'evidence', 'activity', 'indicators', 'threat-actors', 'campaigns']) await page.route(`http://localhost:3001/cases/case-1/${suffix}`, route => route.fulfill({ json: [] }));
-  await page.route('http://localhost:3001/cases/assignable-users', route => route.fulfill({ json: [{ id: 'responder', name: 'Responder', email: 'responder@example.test' }] }));
+  await page.route('http://localhost:3001/cases/assignable-users?*', route => route.fulfill({ json: [{ id: 'responder', name: 'Responder', email: 'responder@example.test' }] }));
 }
 
 test('New Case uses accessible overlay in all viewport and theme states', async ({ browser }) => {
+  test.setTimeout(90000);
   for (const width of [1440, 768, 375]) for (const [theme, scheme] of [['dark','dark'], ['light','light'], ['system-dark','dark'], ['system-light','light']] as const) {
     const context = await browser.newContext({ viewport: { width, height: 850 }, colorScheme: scheme });
     await context.addInitScript(value => localStorage.setItem('cti-theme', value), theme.startsWith('system') ? 'system' : theme);

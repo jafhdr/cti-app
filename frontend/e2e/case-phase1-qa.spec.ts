@@ -5,7 +5,7 @@ const evidence = '../.omo/evidence/cases/phase1';
 const app = process.env.SIDEBAR_APP_URL ?? 'http://localhost:3000';
 
 test('case workspace responsive and functional QA', async ({ page }) => {
-  const moduleAccess = [{ moduleId: 'case', moduleSlug: 'case-management', moduleName: 'Case Management', assigned: true, accessible: true, featureKeys: [] }];
+  const moduleAccess = [{ moduleId: 'case', moduleSlug: 'case-management', moduleName: 'Case Management', assigned: true, accessible: true, featureKeys: ['case-workflow'] }];
   await page.route('**/auth/me', route => route.fulfill({ json: { email: 'qa@example.test', role: 'ADMIN', moduleAccess } }));
   await page.route('http://localhost:3001/cases?*', route => {
     const params = new URL(route.request().url()).searchParams;
@@ -14,7 +14,7 @@ test('case workspace responsive and functional QA', async ({ page }) => {
   });
   await page.route('http://localhost:3001/cases/case-1', route => route.fulfill({ json: item }));
   for (const suffix of ['notes', 'evidence', 'activity', 'indicators', 'threat-actors', 'campaigns']) await page.route(`http://localhost:3001/cases/case-1/${suffix}`, route => route.fulfill({ json: [] }));
-  await page.route('http://localhost:3001/cases/assignable-users', route => route.fulfill({ json: [{ id: 'analyst', name: 'Analyst', email: 'analyst@example.test' }] }));
+  await page.route('http://localhost:3001/cases/assignable-users?*', route => route.fulfill({ json: [{ id: 'analyst', name: 'Analyst', email: 'analyst@example.test' }] }));
   for (const theme of ['dark', 'light'] as const) {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.addInitScript(value => localStorage.setItem('cti-theme', value), theme);
@@ -55,7 +55,7 @@ test('case workspace responsive and functional QA', async ({ page }) => {
 });
 
 test('case create, edit, and assignment use supported API operations', async ({ page }) => {
-  const moduleAccess = [{ moduleId: 'case', moduleSlug: 'case-management', moduleName: 'Case Management', assigned: true, accessible: true, featureKeys: [] }];
+  const moduleAccess = [{ moduleId: 'case', moduleSlug: 'case-management', moduleName: 'Case Management', assigned: true, accessible: true, featureKeys: ['case-workflow'] }];
   let created = false;
   let edited = false;
   let assigned = false;
@@ -74,7 +74,7 @@ test('case create, edit, and assignment use supported API operations', async ({ 
     return route.fulfill({ json: item });
   });
   for (const suffix of ['notes', 'evidence', 'activity', 'indicators', 'threat-actors', 'campaigns']) await page.route(`http://localhost:3001/cases/case-1/${suffix}`, route => route.fulfill({ json: [] }));
-  await page.route('http://localhost:3001/cases/assignable-users', route => route.fulfill({ json: [{ id: 'responder', name: 'Responder', email: 'responder@example.test' }] }));
+  await page.route('http://localhost:3001/cases/assignable-users?*', route => route.fulfill({ json: [{ id: 'responder', name: 'Responder', email: 'responder@example.test' }] }));
   await page.route('http://localhost:3001/cases/case-1/assign', route => {
     const body: { assigneeId: string } = route.request().postDataJSON();
     assigned = body.assigneeId === 'responder';
@@ -105,7 +105,7 @@ test('case create, edit, and assignment use supported API operations', async ({ 
 });
 
 test('system theme follows dark and light preference on Case Management', async ({ page }) => {
-  const moduleAccess = [{ moduleId: 'case', moduleSlug: 'case-management', moduleName: 'Case Management', assigned: true, accessible: true, featureKeys: [] }];
+  const moduleAccess = [{ moduleId: 'case', moduleSlug: 'case-management', moduleName: 'Case Management', assigned: true, accessible: true, featureKeys: ['case-workflow'] }];
   await page.route('**/auth/me', route => route.fulfill({ json: { email: 'qa@example.test', role: 'USER', moduleAccess } }));
   await page.route('http://localhost:3001/cases?*', route => route.fulfill({ json: { items: [item], total: 1 } }));
   await page.emulateMedia({ colorScheme: 'dark' });

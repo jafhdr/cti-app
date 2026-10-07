@@ -156,6 +156,36 @@ test('creates a Case from an Indicator, shows it in Related Cases, and opens it'
   await expect(page).toHaveURL(`${app}/cases/${createdCase.id}`);
 });
 
+for (const indicatorTenant of ['tenant-a', 'tenant-b']) {
+  test(`SUPER_ADMIN selected tenant A creates from Indicator ${indicatorTenant} only when tenant matches`, async ({ page }) => {
+    let submittedTenant = '';
+    await page.addInitScript(() => sessionStorage.setItem('case-workspace-tenant', 'tenant-a'));
+    await page.route(/\/auth\/me$/, route => route.fulfill({ json: {
+      id: 'root', name: 'Root', email: 'root@example.test', role: 'SUPER_ADMIN',
+      moduleAccess: [
+        { moduleId: 'intel', moduleSlug: 'threat-intelligence', moduleName: 'Threat Intelligence', assigned: true, accessible: true, featureKeys: ['indicator-management'] },
+        { moduleId: 'case', moduleSlug: 'case-management', moduleName: 'Case Management', assigned: true, accessible: true, featureKeys: ['case-workflow'] },
+      ],
+    } }));
+    await page.route('**/users/tenants', route => route.fulfill({ json: [{ id: 'tenant-a', name: 'Tenant A' }, { id: 'tenant-b', name: 'Tenant B' }] }));
+    await page.route(/\/indicators\?.+$/, route => route.fulfill({ json: { items: [{ ...indicator, tenant: { id: indicatorTenant, name: indicatorTenant } }], total: 1 } }));
+    await page.route(/\/indicators\/indicator-1\/enrichments$/, route => route.fulfill({ json: [] }));
+    await page.route(/\/indicators\/indicator-1\/cases$/, route => route.fulfill({ json: [] }));
+    await page.route(/\/cases\/from-indicator\/indicator-1$/, route => {
+      submittedTenant = route.request().postDataJSON().tenantId;
+      return route.fulfill(indicatorTenant === submittedTenant ? { status: 201, json: caseRecord } : { status: 404, json: { message: 'Indicator tidak ditemukan' } });
+    });
+    await page.goto(`${app}/indicators`);
+    await page.getByRole('button', { name: 'Detail' }).click();
+    await page.getByRole('button', { name: 'Create Case' }).click();
+    await page.getByLabel('Title').fill('Investigate IOC');
+    await page.getByRole('dialog').getByRole('button', { name: 'Create Case', exact: true }).click();
+    expect(submittedTenant).toBe('tenant-a');
+    if (indicatorTenant === 'tenant-a') await expect(page.getByText(/created and linked/)).toBeVisible();
+    else await expect(page.getByRole('dialog').getByRole('alert')).toContainText('Indicator tidak ditemukan');
+  });
+}
+
 test('does not expose Create Case to a USER', async ({ page }) => {
   await page.route(/\/auth\/me$/, route => route.fulfill({ json: {
     id: 'user', name: 'QA User', email: 'user@example.test', role: 'USER', tenantId: 'tenant-a',

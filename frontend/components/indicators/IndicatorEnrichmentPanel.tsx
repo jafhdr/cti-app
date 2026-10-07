@@ -18,10 +18,11 @@ type Enrichment = {
   readonly createdAt: string;
 };
 
-export function IndicatorEnrichmentPanel({ indicator, canManage, canAccessCases, onClose }: {
+export function IndicatorEnrichmentPanel({ indicator, canManage, canAccessCases, role, onClose }: {
   readonly indicator: IndicatorSummary;
   readonly canManage: boolean;
   readonly canAccessCases: boolean;
+  readonly role: 'SUPER_ADMIN' | 'ADMIN' | 'USER';
   readonly onClose: () => void;
 }) {
   const [items, setItems] = useState<readonly Enrichment[]>([]);
@@ -86,7 +87,7 @@ export function IndicatorEnrichmentPanel({ indicator, canManage, canAccessCases,
       <header><strong>{item.provider}</strong><span className={`cti-status ${item.status === 'SUCCESS' ? 'is-active' : 'is-inactive'}`}>{item.status}</span><time dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleString('id-ID')}</time></header>
       {item.error ? <p className="indicator-enrichment-error">{item.error}</p> : item.provider === 'VIRUSTOTAL' ? <VirusTotalSummary data={item.data} /> : <pre>{JSON.stringify(item.data, null, 2)}</pre>}
     </article>)}</div>}</section>
-    <section className="ti-detail-section"><span className="source-eyebrow">THREAT CONTEXT</span><h3>Related intelligence</h3>{canManage && <ThreatActorDiscoveryPanel indicatorId={indicator.id} />}{canAccessCases && <RelatedCases indicatorId={indicator.id} canMutate={canManage} />}{!canManage && !canAccessCases && <p>No related intelligence available.</p>}</section>
+    <section className="ti-detail-section"><span className="source-eyebrow">THREAT CONTEXT</span><h3>Related intelligence</h3>{canManage && <ThreatActorDiscoveryPanel indicatorId={indicator.id} />}{canAccessCases && <RelatedCases indicatorId={indicator.id} canMutate={canManage} role={role} />}{!canManage && !canAccessCases && <p>No related intelligence available.</p>}</section>
   </Card>;
 }
 

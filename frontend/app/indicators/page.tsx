@@ -159,7 +159,7 @@ export default function IndicatorsPage() {
           {error && <div className="error" style={{ marginBottom: 16 }}>{error}</div>}
           {success && <div className="success" style={{ marginBottom: 16 }}>{success}</div>}
 
-          {selected && <IndicatorEnrichmentPanel indicator={selected} canManage={canManage} canAccessCases={canAccessCases} onClose={() => setSelected(null)} />}
+          {selected && <IndicatorEnrichmentPanel indicator={selected} canManage={canManage} canAccessCases={canAccessCases} role={currentUser?.role || 'USER'} onClose={() => setSelected(null)} />}
 
           <FormModal open={showForm} onOpenChange={setShowForm} title={editing ? 'Edit Indicator' : 'Add Indicator'} onSubmit={submit} loading={saving} error={showForm ? error : undefined} submitLabel="Save">
               <div className="ioc-form">

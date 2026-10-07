@@ -11,10 +11,6 @@ export class CreateCaseInput {
   description?: string;
 
   @IsOptional()
-  @IsEnum(CaseStatus)
-  status?: CaseStatus;
-
-  @IsOptional()
   @IsEnum(CasePriority)
   priority?: CasePriority;
 

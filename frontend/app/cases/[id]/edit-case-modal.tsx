@@ -18,6 +18,12 @@ export default function EditCaseModal({ caseDetail, onClose, onSuccess }: Props)
   const [priority, setPriority] = useState(caseDetail.priority);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const nextStatuses: Record<string, readonly string[]> = {
+    OPEN: ['IN_PROGRESS'],
+    IN_PROGRESS: ['RESOLVED'],
+    RESOLVED: ['IN_PROGRESS', 'CLOSED'],
+    CLOSED: [],
+  };
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -36,7 +42,7 @@ export default function EditCaseModal({ caseDetail, onClose, onSuccess }: Props)
   return <FormModal open onOpenChange={open => { if (!open) onClose(); }} title="Edit case" onSubmit={save} loading={saving} error={error} submitLabel="Save changes">
     <label>Title<input required value={title} onChange={event => setTitle(event.target.value)} /></label>
     <label>Description<textarea rows={4} value={description} onChange={event => setDescription(event.target.value)} /></label>
-    <label>Status<select value={status} onChange={event => setStatus(event.target.value)}>{['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'].map(value => <option key={value} value={value}>{value.replaceAll('_', ' ')}</option>)}</select></label>
+    <label>Status<select value={status} onChange={event => setStatus(event.target.value)}>{[caseDetail.status, ...(nextStatuses[caseDetail.status] || [])].map(value => <option key={value} value={value}>{value.replaceAll('_', ' ')}</option>)}</select></label>
     <label>Priority<select value={priority} onChange={event => setPriority(event.target.value)}>{['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].map(value => <option key={value} value={value}>{value}</option>)}</select></label>
   </FormModal>;
 }

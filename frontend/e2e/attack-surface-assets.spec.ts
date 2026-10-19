@@ -15,7 +15,7 @@ async function json(route: Route, body: unknown, status = 200): Promise<void> {
 }
 
 async function mockSession(page: Page, assigned = true): Promise<void> {
-  await page.route('**/auth/me', route => json(route, { email: 'analyst@cti.local', role: 'USER', moduleAccess: [{ moduleId: 'asm', moduleName: 'Attack Surface Management', moduleSlug: 'attack-surface-management', assigned, accessible: assigned, featureKeys: ['asset-inventory', 'asset-discovery'] }] }));
+  await page.route('**/auth/me', route => json(route, { email: 'analyst@cti.local', role: 'USER', moduleAccess: [{ moduleId: 'asm', moduleName: 'Attack Surface Management', moduleSlug: 'attack-surface-management', assigned, accessible: assigned, featureKeys: ['asset-management', 'asset-discovery'] }] }));
 }
 
 test('lists, searches, filters, paginates, opens detail, and gates discovery by type', async ({ page }) => {
@@ -48,7 +48,7 @@ test('lists, searches, filters, paginates, opens detail, and gates discovery by 
 });
 
 test('creates, edits, and deletes an asset', async ({ page }) => {
-  await page.route('**/auth/me', route => json(route, { email: 'admin@cti.local', role: 'ADMIN', moduleAccess: [{ moduleId: 'asm', moduleName: 'Attack Surface Management', moduleSlug: 'attack-surface-management', assigned: true, accessible: true, featureKeys: ['asset-inventory', 'asset-discovery'] }] }));
+  await page.route('**/auth/me', route => json(route, { email: 'admin@cti.local', role: 'ADMIN', moduleAccess: [{ moduleId: 'asm', moduleName: 'Attack Surface Management', moduleSlug: 'attack-surface-management', assigned: true, accessible: true, featureKeys: ['asset-management', 'asset-discovery'] }] }));
   let listCalls = 0; let created = false; let edited = false; let deleted = false;
   let editPayload: Record<string, string> | null = null;
   await page.route(assetsApi, route => {
@@ -101,7 +101,7 @@ test('renders loading, empty, API error, API 403, and module denial states', asy
 
 
 test('discovers DNS/IP on subdomain and scans services on an IP asset', async ({ page }) => {
-  await page.route('**/auth/me', route => json(route, { email: 'admin@cti.local', role: 'ADMIN', moduleAccess: [{ moduleId: 'asm', moduleName: 'Attack Surface Management', moduleSlug: 'attack-surface-management', assigned: true, accessible: true, featureKeys: [] }] }));
+  await page.route('**/auth/me', route => json(route, { email: 'admin@cti.local', role: 'ADMIN', moduleAccess: [{ moduleId: 'asm', moduleName: 'Attack Surface Management', moduleSlug: 'attack-surface-management', assigned: true, accessible: true, featureKeys: ['asset-management', 'asset-discovery'] }] }));
   const subdomain = { ...domain, id: 'sub-1', name: 'www.example.com', value: 'www.example.com', type: 'SUBDOMAIN' };
   const ip = { ...domain, id: 'ip-1', name: '203.0.113.10', value: '203.0.113.10', type: 'IP_ADDRESS' };
   await page.route(assetsApi, route => json(route, { items: [subdomain, ip], total: 2, totalPages: 1 }));
@@ -146,7 +146,7 @@ test('USER empty state does not suggest creating an asset', async ({ page }) => 
 
 test('SUPER_ADMIN selects tenant and can discover IP ports', async ({ page }) => {
   const ip = { ...domain, id: 'ip-1', name: '203.0.113.10', value: '203.0.113.10', type: 'IP_ADDRESS' };
-  await page.route('**/auth/me', route => json(route, { email: 'root@cti.local', role: 'SUPER_ADMIN', moduleAccess: [{ moduleId: 'asm', moduleName: 'Attack Surface Management', moduleSlug: 'attack-surface-management', assigned: true, accessible: true, featureKeys: [] }] }));
+  await page.route('**/auth/me', route => json(route, { email: 'root@cti.local', role: 'SUPER_ADMIN', moduleAccess: [{ moduleId: 'asm', moduleName: 'Attack Surface Management', moduleSlug: 'attack-surface-management', assigned: true, accessible: true, featureKeys: ['asset-management', 'asset-discovery'] }] }));
   await page.route('**/users/tenants', route => json(route, [{ id: 'tenant-1', name: 'Tenant One' }]));
   await page.route(assetsApi, route => json(route, { items: [ip], total: 1, totalPages: 1 }));
   await page.route('**/attack-surface/assets/ip-1/port-services?tenantId=tenant-1', route => json(route, []));

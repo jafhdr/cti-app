@@ -145,7 +145,6 @@ export default function IndicatorsPage() {
         </header>
 
         <main className="content editorial-module">
-          <nav className="ti-section-tabs" aria-label="Threat Intelligence"><Link href="/threat-intelligence">Overview</Link><Link href="/threat-intelligence/indicators">Indicators</Link><Link href="/threat-intelligence/hub">Intelligence Hub</Link></nav>
           <div className="ti-indicators-heading">
             <div>
               <span className="source-eyebrow">INDICATORS</span><h1>Track known malicious infrastructure.</h1>

@@ -6,9 +6,12 @@ import { Card } from '@/components/ui/card';
 import { Table } from '@/components/ui/table';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { LogOut, Search } from 'lucide-react';
 import SharedSidebar from '../../components/dashboard/Sidebar';
 import ModuleAccessPanel from '../../components/users/ModuleAccessPanel';
 import { ConfirmationModal, FormModal } from '@/components/ui/modal-patterns';
+import type { ModuleAccess } from '../../lib/module-access';
+import './user-management.css';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -34,11 +37,16 @@ type Tenant = {
 
 type CurrentUser = {
   id: string;
+  name: string;
   role: Role;
   tenant: Tenant | null;
+  moduleAccess: ModuleAccess[];
 };
 
-/* ── Sidebar ── */
+function initials(name: string): string {
+  return name.trim().split(/\s+/).slice(0, 2).map(part => part.charAt(0).toUpperCase()).join('') || 'U';
+}
+
 /* ── Main Page ── */
 function UsersPageContent() {
   const router = useRouter();
@@ -249,33 +257,34 @@ function UsersPageContent() {
 
   if (loading) {
     return (
-      <div className="app">
+      <div className="app user-management-page">
         <aside className="sidebar"><div className="brand">CTI Platform</div></aside>
         <section className="main"><div className="content" style={{ paddingTop: 60, textAlign: 'center', color: 'var(--soc-muted)' }}>Memuat user…</div></section>
       </div>
     );
   }
 
-  if (forbidden || currentUser?.role === 'USER') return <div className="app"><SharedSidebar role={currentUser?.role ?? 'USER'} onLogout={logout} /><section className="main"><main className="content admin-workspace"><p className="admin-state" role="alert">You don’t have permission to access this area.</p></main></section></div>;
+  if (forbidden || currentUser?.role === 'USER') return <div className="app user-management-page"><SharedSidebar role={currentUser?.role ?? 'USER'} moduleAccess={currentUser?.moduleAccess} dashboardPresentation onLogout={logout} /><section className="main"><main className="content admin-workspace"><p className="admin-state" role="alert">You don’t have permission to access this area.</p></main></section></div>;
 
   return (
-    <div className="app">
-      <SharedSidebar role={currentUser?.role ?? 'USER'} onLogout={logout} />
+    <div className="app user-management-page">
+      <SharedSidebar role={currentUser?.role ?? 'USER'} moduleAccess={currentUser?.moduleAccess} dashboardPresentation onLogout={logout} />
 
       <section className="main">
-        <header className="topbar">
-          <div style={{ fontWeight: 600 }}>User Management</div>
-          <span style={{ fontSize: 13, color: 'var(--soc-muted)' }}>{currentUser?.role}</span>
+        <header className="topbar user-topbar">
+          <div className="user-profile">
+            <span className="user-profile-avatar" aria-hidden="true">{initials(currentUser?.name ?? '')}</span>
+            <span><strong>{currentUser?.name}</strong><small>{currentUser?.role.replaceAll('_', ' ')}</small></span>
+            <button type="button" className="user-header-logout" onClick={logout} aria-label="Keluar dari User Management"><LogOut size={20} aria-hidden="true" /></button>
+          </div>
         </header>
 
-        <main className="content editorial-module admin-workspace">
+        <main className="content editorial-module admin-workspace user-content">
           <Link className="admin-back-link" href="/administration">← Administration overview</Link>
           {/* Context banner */}
-          <div className="admin-heading-row" style={{
-            display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28,
-          }}>
+          <div className="admin-heading-row user-heading-row">
             <div>
-              <span className="source-eyebrow">USER MANAGEMENT</span><h1>People and permissions.</h1>
+              <span className="source-eyebrow">USER MANAGEMENT</span><h1>People and permissions</h1>
               <p style={{ margin: 0, color: 'var(--soc-muted)', fontSize: 15 }}>Manage users and their organizational access.{' '}
                 {currentUser?.role === 'SUPER_ADMIN'
                   ? `Scope: ${scopeLabel} — Mengelola semua pengguna platform`
@@ -287,15 +296,16 @@ function UsersPageContent() {
                 <Link href="/users" style={{ fontSize: 13, color: 'var(--soc-blue)' }}>← Semua Tenant</Link>
               )}
               {currentUser && (
-                <Button view="action" size="l" onClick={openAddForm}>+ Add User</Button>
+                <Button view="action" size="l" onClick={openAddForm}>Add user</Button>
               )}
             </div>
           </div>
 
           <section className="editorial-metrics" aria-label="User summary"><div><span>Users shown</span><strong>{users.length}</strong></div><div><span>Active</span><strong>{users.filter(user => user.isActive).length}</strong></div><div><span>Administrators</span><strong>{users.filter(user => user.role === "ADMIN").length}</strong></div><div><span>Standard users</span><strong>{users.filter(user => user.role === "USER").length}</strong></div></section>
-          <div className="editorial-section-heading"><span className="source-eyebrow">SEARCH & FILTER</span><h2>Find a user</h2></div>
-          <div className="admin-filters"><label className="admin-filter">Search<input type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Name or email" /></label>{currentUser?.role === 'SUPER_ADMIN' && <label className="admin-filter">Organization<select value={organizationFilter} onChange={event => setOrganizationFilter(event.target.value)}><option value="">All organizations</option>{tenants.map(tenant => <option key={tenant.id} value={tenant.id}>{tenant.name}</option>)}</select></label>}<label className="admin-filter">Role<select value={roleFilter} onChange={event => setRoleFilter(event.target.value)}><option value="">All roles</option><option value="SUPER_ADMIN">Super Admin</option><option value="ADMIN">Admin</option><option value="USER">User</option></select></label><label className="admin-filter">Status<select value={statusFilter} onChange={event => setStatusFilter(event.target.value)}><option value="">All statuses</option><option value="active">Active</option><option value="inactive">Inactive</option></select></label><button type="button" onClick={() => { setSearch(''); setRoleFilter(''); setStatusFilter(''); setOrganizationFilter(''); }}>Reset</button></div>
-          <div className="editorial-section-heading"><span className="source-eyebrow">USER DIRECTORY</span><h2>Manage access</h2></div>
+          <section className="user-filter-card" aria-label="Search and filter users">
+            <div className="editorial-section-heading"><span className="source-eyebrow">SEARCH & FILTER</span><h2>Find a user</h2></div>
+            <div className="admin-filters"><label className="admin-filter">Search<span className="user-search-field"><Search size={16} aria-hidden="true" /><input type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Name or email" /></span></label>{currentUser?.role === 'SUPER_ADMIN' && <label className="admin-filter">Organization<select value={organizationFilter} onChange={event => setOrganizationFilter(event.target.value)}><option value="">All organizations</option>{tenants.map(tenant => <option key={tenant.id} value={tenant.id}>{tenant.name}</option>)}</select></label>}<label className="admin-filter">Role<select value={roleFilter} onChange={event => setRoleFilter(event.target.value)}><option value="">All roles</option><option value="SUPER_ADMIN">Super Admin</option><option value="ADMIN">Admin</option><option value="USER">User</option></select></label><label className="admin-filter">Status<select value={statusFilter} onChange={event => setStatusFilter(event.target.value)}><option value="">All statuses</option><option value="active">Active</option><option value="inactive">Inactive</option></select></label><button type="button" onClick={() => { setSearch(''); setRoleFilter(''); setStatusFilter(''); setOrganizationFilter(''); }}>Reset</button></div>
+          </section>
           {/* Role badge */}
           {currentUser?.role === 'ADMIN' && currentUser.tenant && (
             <div className="context-note" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'var(--soc-blue-tint)', borderRadius: 6, padding: '8px 14px', marginBottom: 20, fontSize: 13 }}>
@@ -364,43 +374,43 @@ function UsersPageContent() {
           <ConfirmationModal open={Boolean(statusTarget)} onOpenChange={open => { if (!open) setStatusTarget(null); }} title={statusTarget?.isActive ? 'Nonaktifkan user' : 'Aktifkan user'} target={statusTarget?.email} consequence="Status akses user akan diperbarui." confirmLabel={statusTarget?.isActive ? 'Nonaktifkan' : 'Aktifkan'} destructive={statusTarget?.isActive} loading={saving} error={statusTarget ? error : ''} onConfirm={confirmUserStatus} />
 
           {/* User table */}
-          <Card view="outlined" className="admin-directory" style={{ padding: 24 }}>
-            <h2 style={{ margin: '0 0 20px' }}>Users ({filteredUsers.length})</h2>
+          <Card view="outlined" className="admin-directory user-directory">
+            <div className="user-directory-heading"><span className="source-eyebrow">USER DIRECTORY</span><h2>Manage access</h2><small>{filteredUsers.length} users shown</small></div>
             {filteredUsers.length === 0 ? (
               <p style={{ color: 'var(--soc-muted)' }}>{users.length ? 'No users match these filters.' : 'Belum ada user.'}</p>
             ) : (
               <Table
                 data={filteredUsers}
                 columns={[
-                  { id: 'name', name: 'Nama', template: (u: User) => <div><div style={{ fontWeight: 600 }}>{u.name}</div><div style={{ fontSize: 12, color: 'var(--soc-muted)' }}>{u.email}</div></div> },
+                  { id: 'name', name: 'User', template: (u: User) => <div className="user-name-cell"><strong>{u.name}</strong><span>{u.email}</span></div> },
+                  ...(currentUser?.role === 'SUPER_ADMIN' ? [{ id: 'tenant', name: 'Organization', template: (u: User) => u.tenant?.name ?? <span className="user-muted">—</span> }] : []),
                   { id: 'role', name: 'Role', template: (u: User) => {
-                    if (u.role === 'SUPER_ADMIN') return <span style={{ fontWeight: 700, color: 'var(--soc-blue)' }}>SUPER_ADMIN</span>;
+                    if (u.role === 'SUPER_ADMIN') return <span className="user-role-badge is-super-admin">Super admin</span>;
                     if (canChangeRole() && u.id !== currentUser?.id && !(currentUser?.role === 'ADMIN' && u.role === 'ADMIN')) {
                       const opts: Array<'ADMIN' | 'USER'> = currentUser?.role === 'SUPER_ADMIN' ? ['USER', 'ADMIN'] : ['USER'];
                       return (
-                        <select value={u.role} onChange={e => changeRole(u, e.target.value as 'ADMIN' | 'USER')} style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid var(--soc-border)' }}>
+                        <select className={`user-role-select is-${u.role.toLowerCase()}`} aria-label={`Role ${u.name}`} value={u.role} onChange={e => changeRole(u, e.target.value as 'ADMIN' | 'USER')}>
                           {opts.map(r => <option key={r} value={r}>{r}</option>)}
                         </select>
                       );
                     }
-                    return <span>{u.role}</span>;
+                    return <span className={`user-role-badge is-${u.role.toLowerCase()}`}>{u.role === 'ADMIN' ? 'Administrator' : 'Standard user'}</span>;
                   }},
                   { id: 'status', name: 'Status', template: (u: User) => (
                     <span className={`status-pill ${u.isActive ? 'is-active' : 'is-inactive'}`}>
-                      {u.isActive ? 'Aktif' : 'Nonaktif'}
+                      {u.isActive ? 'Active' : 'Inactive'}
                     </span>
                   )},
-                  ...(currentUser?.role === 'SUPER_ADMIN' ? [{ id: 'tenant', name: 'Tenant', template: (u: User) => u.tenant?.name ?? <span style={{ color: 'var(--soc-muted)' }}>-</span> }] : []),
-                  { id: 'createdAt', name: 'Dibuat', template: (u: User) => u.createdAt ? new Date(u.createdAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-' },
-                  { id: 'actions', name: 'Aksi', template: (u: User) => {
+                  { id: 'createdAt', name: 'Created', template: (u: User) => u.createdAt ? new Date(u.createdAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '—' },
+                  { id: 'actions', name: 'Actions', template: (u: User) => {
                     const cannotManage = u.id === currentUser?.id || u.role === 'SUPER_ADMIN' || (currentUser?.role === 'ADMIN' && u.role === 'ADMIN');
                     return (
-                      <div style={{ display: 'flex', gap: 8 }}>
+                      <div className="user-row-actions">
                         <Button view="flat" size="s" onClick={() => setDetailUser(u)}>View</Button>
                         <Button view="flat" size="s" disabled={cannotManage} onClick={() => editUser(u)}>Edit</Button>
                         <Button view="flat" size="s" disabled={cannotManage} onClick={() => resetUserPassword(u)}>Reset PW</Button>
                         <Button view="flat" size="s" disabled={cannotManage || u.role !== 'USER'} onClick={() => openModuleAccess(u)}>Akses Modul</Button>
-                        <Button view={u.isActive ? 'flat-danger' : 'flat'} size="s" disabled={cannotManage} onClick={() => toggleUserStatus(u)}>
+                        <Button className={u.isActive ? 'user-destructive-action' : 'user-reactivate-action'} view={u.isActive ? 'flat-danger' : 'flat'} size="s" disabled={cannotManage} onClick={() => toggleUserStatus(u)}>
                           {u.isActive ? 'Nonaktifkan' : 'Aktifkan'}
                         </Button>
                       </div>

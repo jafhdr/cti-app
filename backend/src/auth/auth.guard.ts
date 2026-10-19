@@ -19,9 +19,9 @@ export class AuthGuard implements CanActivate {
 
     if (!token) throw new UnauthorizedException('Unauthorized');
 
-    let payload: { sub: string };
+    let payload: { sub: string; sid: string };
     try {
-      payload = await this.jwt.verifyAsync<{ sub: string }>(token, {
+      payload = await this.jwt.verifyAsync<{ sub: string; sid: string }>(token, {
         secret: process.env.JWT_ACCESS_SECRET,
       });
     } catch {
@@ -31,12 +31,14 @@ export class AuthGuard implements CanActivate {
     // Role and tenant membership are read from the database for every request.
     // This makes a role change or deleted account effective immediately, even
     // when an older access token still has time before expiry.
-    const user = await this.prisma.user.findUnique({
+    if (!payload.sub || !payload.sid) throw new UnauthorizedException('Token tidak valid');
+    const [user, session] = await Promise.all([this.prisma.user.findUnique({
       where: { id: payload.sub },
-      select: { id: true, role: true, tenantId: true, isActive: true, tenant: { select: { isActive: true } } },
-    });
+      select: { id: true, role: true, tenantId: true, isActive: true, sessionVersion: true, tenant: { select: { isActive: true } } },
+    }), this.prisma.authSession.findUnique({ where: { id: payload.sid } })]);
 
     if (!user) throw new UnauthorizedException('Akun tidak ditemukan');
+    if (!session || session.userId !== user.id || session.revokedAt || session.expiresAt <= new Date() || session.version !== user.sessionVersion) throw new UnauthorizedException('Sesi tidak valid');
     if (!user.isActive) throw new UnauthorizedException('Akun ini sudah dinonaktifkan');
     if (user.tenant && !user.tenant.isActive) throw new UnauthorizedException('Tenant akun ini sudah dinonaktifkan');
 

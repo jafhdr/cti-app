@@ -12,7 +12,8 @@ const moduleState = {
 
 describe('UsersService assignment policy', () => {
   const prisma = {
-    user: { findUnique: jest.fn(), findMany: jest.fn() },
+    user: { findUnique: jest.fn(), findMany: jest.fn(), update: jest.fn() },
+    authSession: { updateMany: jest.fn() },
     tenant: { findUnique: jest.fn(), findUniqueOrThrow: jest.fn() },
     appModule: { findMany: jest.fn(), findUnique: jest.fn() },
     userModuleAccess: { findMany: jest.fn(), deleteMany: jest.fn(), createMany: jest.fn() },
@@ -67,6 +68,27 @@ describe('UsersService assignment policy', () => {
     }) }));
   });
 
+  it('keeps existing advanced-chart grants but rejects new legacy grants', async () => {
+    const legacy = { ...moduleState, id: 'appsec', slug: 'appsec-posture', features: [{ key: 'advanced-chart' }, { key: 'finding-management' }], assigned: true, featureKeys: ['advanced-chart'] };
+    policy.listForUser.mockResolvedValue([legacy]);
+    await service.updateModuleAccess(actor, 'user', [{ moduleId: 'appsec', featureKeys: ['advanced-chart'] }]);
+    policy.listForUser.mockResolvedValue([{ ...legacy, featureKeys: [] }]);
+    await expect(service.updateModuleAccess(actor, 'user', [{ moduleId: 'appsec', featureKeys: ['advanced-chart'] }])).rejects.toThrow('legacy');
+    await service.updateModuleAccess(actor, 'user', [{ moduleId: 'appsec', featureKeys: ['finding-management'] }]);
+  });
+
+  it.each([
+    ['threat-intelligence', 'export'],
+    ['case-management', 'alert-triage'],
+  ])('keeps an existing %s catalog-only grant but rejects a new %s grant', async (slug, key) => {
+    const catalogOnly = { ...moduleState, id: slug, slug, features: [{ key }, { key: 'implemented' }], assigned: true, featureKeys: [key] };
+    policy.listForUser.mockResolvedValue([catalogOnly]);
+    await service.updateModuleAccess(actor, 'user', [{ moduleId: slug, featureKeys: [key] }]);
+    policy.listForUser.mockResolvedValue([{ ...catalogOnly, featureKeys: [] }]);
+    await expect(service.updateModuleAccess(actor, 'user', [{ moduleId: slug, featureKeys: [key] }])).rejects.toThrow('catalog');
+    await service.updateModuleAccess(actor, 'user', [{ moduleId: slug, featureKeys: ['implemented'] }]);
+  });
+
   it('rejects invalid feature keys', async () => {
     await expect(service.updateModuleAccess(actor, 'user', [{ moduleId: 'asm', featureKeys: ['foreign'] }])).rejects.toThrow('Fitur assignment tidak valid');
   });
@@ -75,6 +97,17 @@ describe('UsersService assignment policy', () => {
     prisma.user.findUnique.mockResolvedValue({ ...target, tenantId: 'tenant-b' });
     await expect(service.updateModuleAccess(actor, 'user', [])).rejects.toThrow('tenant sendiri');
     expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('revokes every existing session in the admin password reset transaction', async () => {
+    await service.resetPassword(actor, 'user', 'New-Password-123');
+    expect(prisma.user.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'user' }, data: expect.objectContaining({ sessionVersion: { increment: 1 } }),
+    }));
+    expect(prisma.authSession.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { userId: 'user', revokedAt: null }, data: { revokedAt: expect.any(Date) },
+    }));
+    expect(prisma.$transaction).toHaveBeenCalled();
   });
 
   it('rejects cross-tenant bulk writes before mutation', async () => {

@@ -13,6 +13,41 @@ enum Role {
   USER
 }
 
+enum ApplicationCriticality {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ApplicationStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum AppSecFindingSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AppSecFindingStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  ACCEPTED_RISK
+  FALSE_POSITIVE
+}
+
+enum AppSecFindingSource {
+  MANUAL
+  SAST
+  SCA
+  DAST
+  SECRET_SCAN
+}
+
 enum ModuleCategory {
   CTI
   APPSEC
@@ -254,6 +289,8 @@ enum SubscriptionStatus {
 
 model Tenant {
   id                         String                            @id @default(cuid())
+  applications               Application[]
+  appSecFindings             AppSecFinding[]
   name                       String
   slug                       String                            @unique
   isActive                   Boolean                           @default(true)
@@ -427,6 +464,7 @@ model User {
   email              String                  @unique
   name               String
   passwordHash       String
+  sessionVersion     Int                     @default(0)
   role               Role                    @default(USER)
   isActive           Boolean                 @default(true)
   deactivatedAt      DateTime?
@@ -435,11 +473,25 @@ model User {
   createdAt          DateTime                @default(now())
   updatedAt          DateTime                @updatedAt
   moduleAccess       UserModuleAccess[]
+  authSessions       AuthSession[]
   casesCreated       Case[]                  @relation("CaseCreator")
   casesAssigned      Case[]                  @relation("CaseAssignee")
   investigationNotes CaseInvestigationNote[] @relation("CaseNoteAuthor")
   evidenceCreated    CaseEvidence[]          @relation("CaseEvidenceCreator")
   asmNotificationReads AsmNotificationRead[]
+}
+
+model AuthSession {
+  id               String   @id @default(cuid())
+  userId           String
+  version          Int
+  refreshTokenHash String
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  createdAt        DateTime @default(now())
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
 }
 
 model UserModuleAccess {
@@ -813,6 +865,7 @@ model Vulnerability {
   campaigns           CampaignVulnerability[]
   malwareTools        MalwareToolVulnerability[]
   intelligenceReports IntelligenceReportVulnerability[]
+  appSecFindingLinks AppSecFindingVulnerability[]
   createdAt           DateTime                          @default(now())
   updatedAt           DateTime                          @updatedAt
 
@@ -1077,6 +1130,7 @@ model Case {
   indicators         CaseIndicator[]
   threatActors       CaseThreatActor[]
   campaigns          CaseCampaign[]
+  appSecFindingLink  AppSecFindingCase?
 
   @@unique([tenantId, caseNumber])
   @@unique([id, tenantId])
@@ -1295,6 +1349,7 @@ model Asset {
   tenant        Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   portServices  AssetPortService[]
   findings      AssetFinding[]
+  applications  ApplicationAsset[]
   alerts        Alert[]
   riskSnapshots AsmRiskSnapshot[]
   vulnerabilityCorrelations AssetVulnerabilityCorrelation[]
@@ -1312,6 +1367,96 @@ model Asset {
   @@index([tenantId, value])
   @@index([tenantId, status])
   @@index([tenantId, criticality])
+}
+
+model Application {
+  id            String                 @id @default(cuid())
+  tenantId      String
+  name          String
+  description   String?
+  criticality   ApplicationCriticality @default(MEDIUM)
+  status        ApplicationStatus      @default(ACTIVE)
+  owner         String?
+  repositoryUrl String?
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+  tenant        Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  findings      AppSecFinding[]
+  assets        ApplicationAsset[]
+
+  @@unique([tenantId, name])
+  @@unique([id, tenantId])
+  @@index([tenantId, status, criticality])
+}
+
+model ApplicationAsset {
+  tenantId      String
+  applicationId String
+  assetId       String
+  createdAt     DateTime    @default(now())
+  application   Application @relation(fields: [applicationId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  asset         Asset       @relation(fields: [assetId, tenantId], references: [id, tenantId], onDelete: Cascade)
+
+  @@id([applicationId, assetId])
+  @@index([tenantId, applicationId])
+  @@index([tenantId, assetId])
+}
+
+model AppSecFinding {
+  id              String                @id @default(cuid())
+  tenantId        String
+  applicationId   String
+  title           String
+  description     String?
+  severity        AppSecFindingSeverity
+  status          AppSecFindingStatus   @default(OPEN)
+  source          AppSecFindingSource   @default(MANUAL)
+  sourceKey       String?
+  category        String?
+  cweId           String?
+  location        String?
+  remediationNote String?
+  dueDate         DateTime?
+  resolvedAt      DateTime?
+  resolution      String?
+  firstSeenAt     DateTime              @default(now())
+  lastSeenAt      DateTime              @default(now())
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  tenant          Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  application     Application           @relation(fields: [applicationId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  vulnerabilityLink AppSecFindingVulnerability?
+  caseLink          AppSecFindingCase?
+
+  @@unique([id, tenantId])
+  @@unique([tenantId, applicationId, source, sourceKey])
+  @@index([tenantId, applicationId, status])
+  @@index([tenantId, status, severity])
+}
+
+model AppSecFindingVulnerability {
+  findingId       String @id
+  tenantId        String
+  vulnerabilityId String
+  createdAt       DateTime @default(now())
+  finding         AppSecFinding @relation(fields: [findingId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  vulnerability   Vulnerability @relation(fields: [vulnerabilityId, tenantId], references: [id, tenantId], onDelete: Cascade)
+
+  @@unique([findingId, tenantId])
+  @@index([tenantId, vulnerabilityId])
+}
+
+model AppSecFindingCase {
+  findingId String @id
+  tenantId  String
+  caseId    String @unique
+  createdAt DateTime @default(now())
+  finding   AppSecFinding @relation(fields: [findingId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  case      Case @relation(fields: [caseId, tenantId], references: [id, tenantId], onDelete: Cascade)
+
+  @@unique([findingId, tenantId])
+  @@unique([caseId, tenantId])
+  @@index([tenantId, caseId])
 }
 
 model AssetRelationship {

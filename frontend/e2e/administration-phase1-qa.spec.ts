@@ -20,9 +20,9 @@ async function fixture(page: Page) {
 
 for (const target of [
   { path: '/administration', file: 'admin', heading: 'Platform administration.' },
-  { path: '/users', file: 'users', heading: 'People and permissions.' },
-  { path: '/tenants', file: 'organizations', heading: 'Organizations in your platform.' },
-  { path: '/modules', file: 'modules', heading: 'Control your security platform.' },
+  { path: '/users', file: 'users', heading: 'People and permissions' },
+  { path: '/tenants', file: 'organizations', heading: 'Organizations in your platform' },
+  { path: '/modules', file: 'modules', heading: 'Module Management' },
 ]) test(`${target.file} themes and responsive`, async ({ page }) => {
   await fixture(page);
   for (const state of [
@@ -118,7 +118,7 @@ test('create controls submit existing user, organization, and module API shapes'
     return route.fulfill({ json: [user] });
   });
   await page.goto(`${app}/users`);
-  await page.getByRole('button', { name: '+ Add User' }).click();
+  await page.getByRole('button', { name: 'Add user' }).click();
   await page.getByLabel('Nama *').fill('Mira Ananda');
   await page.getByLabel('Email *').fill('mira@example.test');
   await page.getByLabel('Password * (min. 8 karakter)').fill('fixture-password-only');
@@ -138,7 +138,7 @@ test('create controls submit existing user, organization, and module API shapes'
     return route.fulfill({ json: [tenant] });
   });
   await page.goto(`${app}/tenants`);
-  await page.getByRole('button', { name: '+ Buat Tenant Baru' }).click();
+  await page.getByRole('button', { name: 'Create New Tenant' }).click();
   await page.getByPlaceholder('Contoh: PT Maju Jaya').fill('Fixture Labs');
   await page.getByPlaceholder('Nama lengkap admin').fill('Fixture Admin');
   await page.getByPlaceholder('admin@tenant.com').fill('admin@fixture.test');
@@ -177,8 +177,8 @@ test('switching organizations never shows a prior organization policy', async ({
     await route.fulfill({ json: [{ ...module, id: requested === tenant.id ? 'old-policy' : 'new-policy', name: requested === tenant.id ? 'Old Tenant Module' : 'New Tenant Module' }] });
   });
   await page.goto(`${app}/tenants`);
-  await page.getByRole('row', { name: /Northstar Security/ }).getByRole('button', { name: 'View' }).click();
-  await page.getByRole('row', { name: /Southline Labs/ }).getByRole('button', { name: 'View' }).click();
+  await page.getByRole('row', { name: /Northstar Security/ }).getByRole('button', { name: 'View', exact: true }).click();
+  await page.getByRole('row', { name: /Southline Labs/ }).getByRole('button', { name: 'View', exact: true }).click();
   await expect(page.getByRole('region', { name: 'Organization detail Southline Labs' })).toContainText('New Tenant Module');
   await page.waitForTimeout(400);
   await expect(page.getByRole('region', { name: 'Organization detail Southline Labs' })).not.toContainText('Old Tenant Module');

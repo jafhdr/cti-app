@@ -687,10 +687,6 @@ html.dark .topbar, html.dark .card, html.dark .module-card, html.dark .module-te
 .sidebar-submenu { display: grid; gap: 3px; padding-left: 12px; }
 .sidebar-submenu .sidebar-link { font-size: 12px; }
 .sidebar-empty-submenu { padding: 7px 9px; color: var(--soc-muted); font: 500 10px/1.2 "SFMono-Regular", Consolas, monospace; }
-.ti-section-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
-.ti-section-tabs a { color: var(--soc-body); text-decoration: none; border: 1px solid var(--soc-border); border-radius: 4px; padding: 6px 10px; font-size: 12px; }
-.ti-section-tabs a:hover, .ti-section-tabs a:focus-visible { color: var(--soc-blue); border-color: currentColor; }
-.ti-section-tabs a[aria-current="page"] { color: var(--soc-blue); border-color: currentColor; background: var(--soc-blue-tint); }
 .ti-entity-list { display: grid; gap: 12px; }
 .ti-entity-card { padding: 16px; }
 .ti-entity-card header { display: flex; justify-content: space-between; gap: 12px; }
@@ -961,6 +957,10 @@ html.dark .module-card:hover, html.dark .module-card:focus-within { box-shadow: 
 .access-policy-details > div { display:flex; justify-content:space-between; gap:16px; }
 .access-policy-details dt { color:var(--soc-muted); }
 .access-policy-details dd { margin:0; text-align:right; overflow-wrap:anywhere; }
+@media (max-width: 640px) {
+  .access-policy-details > div { display:block; }
+  .access-policy-details dd { margin-top:2px; text-align:left; overflow-wrap:normal; }
+}
 .access-features { border:0; padding:0; min-width:0; }
 .access-features legend { margin-bottom:8px; font-weight:600; }
 .entitlement-list { display:grid; gap:8px; list-style:none; padding:0; }
@@ -971,4 +971,14 @@ html.dark .module-card:hover, html.dark .module-card:focus-within { box-shadow: 
   .module-app .sidebar-navigation, .app:has(.subscription-page) .sidebar-navigation, .app:has(.module-access-page) .sidebar-navigation { flex-flow: row wrap !important; width: 100%; min-width: 0; max-width: 100%; overflow-x: visible; }
   .module-app .sidebar-module, .app:has(.subscription-page) .sidebar-module, .app:has(.module-access-page) .sidebar-module { flex: 1 1 176px; min-width: 0; max-width: 100%; }
   .module-app .sidebar-submenu, .app:has(.subscription-page) .sidebar-submenu, .app:has(.module-access-page) .sidebar-submenu { display: flex; flex-wrap: wrap; min-width: 0; }
+}
+@media (max-width: 600px) {
+  .audit-pagination {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .audit-pagination-controls {
+    flex-wrap: wrap;
+  }
 }

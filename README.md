@@ -1,6 +1,6 @@
 ﻿# CTI App
 
-CTI App uses a Next.js frontend, NestJS API, PostgreSQL, and Prisma. It includes Authentication/RBAC, Tenant and Subscription management, Module Management and Feature Access, Threat Intelligence v1, Case Management, Attack Surface Management v1, Administration, and a dashboard. **AppSec Posture is planned and not implemented.**
+CTI App uses a Next.js frontend, NestJS API, PostgreSQL, and Prisma. It includes Authentication/RBAC, Tenant and Subscription management, Module Management and Feature Access, Threat Intelligence v1, Case Management, Attack Surface Management v1, Administration, and a dashboard. **AppSec Posture v1 is implemented; final closure audit is pending.**
 
 ## Development setup
 

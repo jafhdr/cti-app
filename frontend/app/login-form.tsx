@@ -3,6 +3,8 @@
 import { FormEvent, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail } from 'lucide-react';
+import './login.css';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -52,102 +54,18 @@ export default function LoginForm() {
     }
   }
 
-  return (
-    <main className="auth-page">
-      <form className="auth-card" onSubmit={submit}>
-        <div className="logo">CTI Platform</div>
-
-        <div className="muted">
-          Cyber Threat Intelligence
-        </div>
-
-        <h1 className="auth-title">
-          Masuk ke akun Anda
-        </h1>
-
-        {registered === 'success' && (
-          <div className="success">
-            Akun berhasil dibuat. Silakan login menggunakan
-            akun Anda.
-          </div>
-        )}
-
-        <div className="field">
-          <label htmlFor="email">
-            Email
-          </label>
-
-          <input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoComplete="email"
-            required
-          />
-        </div>
-
-        <div className="field">
-          <div className="label-row">
-            <label htmlFor="password">
-              Password
-            </label>
-
-            <Link href="/forgot-password">
-              Lupa password?
-            </Link>
-          </div>
-
-          <div className="password-wrap">
-            <input
-              id="password"
-              type={showPassword ? 'text' : 'password'}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-              minLength={8}
-              required
-            />
-
-            <button
-              type="button"
-              className="password-toggle"
-              onClick={() =>
-                setShowPassword((v) => !v)
-              }
-            >
-              {showPassword
-                ? 'Sembunyikan'
-                : 'Lihat'}
-            </button>
-          </div>
-        </div>
-
-        {error && (
-          <div className="error">
-            {error}
-          </div>
-        )}
-
-        <button
-          className="primary"
-          disabled={loading}
-        >
-          {loading ? 'Memproses...' : 'Login'}
-        </button>
-
-        <div className="auth-footer">
-          Belum punya akun?{' '}
-          <Link href="/signup">
-            Sign up
-          </Link>
-        </div>
-
-        <div className="security-note">
-          Dengan login, sesi Anda dilindungi menggunakan
-          HttpOnly cookie.
-        </div>
-      </form>
-    </main>
-  );
+  return <main className="sicti-login">
+    <header className="sicti-login-header"><Link href="/" className="sicti-login-brand"><img src="/sicti-mark.png" alt="" width={27} height={27} /> SICTI</Link><p>Need help? <a href="mailto:ntsisi@sisi.sig.id">Contact support</a></p></header>
+    <form className="sicti-login-card" onSubmit={submit}>
+      <img className="sicti-login-mark" src="/sicti-mark.png" alt="" width={27} height={27} /><h1>Welcome to SICTI</h1><p className="sicti-login-subtitle">Kelola kebutuhan Anda bersama kami!</p>
+      <div className="sicti-login-tabs"><span aria-current="page">Sign In</span><Link href="/signup">Sign Up</Link></div>
+      {registered === 'success' && <div className="success">Akun berhasil dibuat. Silakan login menggunakan akun Anda.</div>}
+      <label htmlFor="email">Email address</label><div className="sicti-login-input"><Mail size={17} /><input id="email" type="email" placeholder="you@gmail.com" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required /></div>
+      <label htmlFor="password">Password</label><div className="sicti-login-input"><LockKeyhole size={17} /><input id="password" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" minLength={8} required /><button type="button" aria-label={showPassword ? 'Hide password' : 'Show password'} onClick={() => setShowPassword((v) => !v)}>{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></div>
+      <div className="sicti-login-options"><label><input type="checkbox" defaultChecked /> Remember me</label><Link href="/forgot-password">Forgot password?</Link></div>
+      {error && <div className="error" role="alert">{error}</div>}
+      <button className="sicti-login-submit" disabled={loading}>{loading ? 'Memproses...' : 'Sign In'} <ArrowRight size={18} /></button>
+      <div className="sicti-login-divider">Or continue with</div><div className="sicti-login-google" aria-label="Google Sign In unavailable">G</div>
+    </form><footer className="sicti-login-footer"><span>&copy; 2026 SICTI</span><nav><a href="mailto:ntsisi@sisi.sig.id?subject=Privacy">Privacy</a><a href="mailto:ntsisi@sisi.sig.id?subject=Terms">Terms</a><a href="mailto:ntsisi@sisi.sig.id?subject=Security">Security</a></nav></footer>
+  </main>;
 }

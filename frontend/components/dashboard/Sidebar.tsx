@@ -3,6 +3,7 @@
 import {
   Activity,
   Building2,
+  BriefcaseBusiness,
   ClipboardList,
   ChevronDown,
   ChevronRight,
@@ -13,6 +14,8 @@ import {
   Bug,
   FileText,
   Network,
+  Eye,
+  Layers3,
   Crosshair,
   Radio,
   Shield,
@@ -24,7 +27,9 @@ import {
   Monitor,
   Radar,
   ShieldAlert,
+  ShieldCheck,
   Users,
+  UsersRound,
   type LucideIcon,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -32,6 +37,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { applyTheme, type ThemePreference } from '../ThemeProvider';
 import type { ModuleAccess } from '../../lib/module-access';
+import { isCatalogOnlyModule } from '../../lib/feature-catalog';
 
 type Role = 'SUPER_ADMIN' | 'ADMIN' | 'USER';
 
@@ -53,6 +59,7 @@ type SidebarProps = {
   readonly role?: Role;
   readonly onLogout?: () => void;
   readonly moduleAccess?: readonly ModuleAccess[];
+  readonly dashboardPresentation?: boolean;
 };
 
 // Items yang selalu tampil untuk semua role
@@ -67,17 +74,24 @@ const attackSurfaceItems: readonly NavigationItem[] = [
   { label: 'Reports', href: '/attack-surface/reports', icon: ClipboardList },
 ];
 
+const appSecItems: readonly NavigationItem[] = [
+  { label: 'Overview', href: '/appsec', icon: Shield },
+  { label: 'Applications', href: '/appsec/applications', icon: Shield, matchDescendants: true },
+  { label: 'Findings', href: '/appsec/findings', icon: ShieldAlert, matchDescendants: true },
+];
+
 const threatIntelligenceItems: readonly NavigationItem[] = [
   { label: 'Overview', href: '/threat-intelligence', icon: Shield },
   { label: 'Indicators', href: '/threat-intelligence/indicators', icon: Radar, aliases: ['/indicators'] },
+  { label: 'IOC Candidates', href: '/threat-intelligence/ioc-candidates', icon: Crosshair },
   { label: 'Threat Actors', href: '/intelligence/threat-actors', icon: Bot, aliases: ['/threat-intelligence/threat-actors'] },
   { label: 'Campaigns', href: '/threat-intelligence/campaigns', icon: Network },
-  { label: 'MITRE ATT&CK', href: '/threat-intelligence/mitre-attack', icon: Crosshair },
   { label: 'Malware & Tools', href: '/threat-intelligence/malware-tools', icon: Bug },
   { label: 'Vulnerabilities', href: '/threat-intelligence/vulnerabilities', icon: ShieldAlert },
   { label: 'Intelligence Reports', href: '/threat-intelligence/reports', icon: FileText },
   { label: 'Sources', href: '/intelligence/sources', icon: BookOpen, aliases: ['/threat-intelligence/sources'] },
-  { label: 'Feeds', href: '/threat-intelligence/feeds', icon: Radio },
+  { label: 'Threat Feeds', href: '/threat-intelligence/feeds', icon: Radio },
+  { label: 'MITRE ATT&CK', href: '/threat-intelligence/mitre-attack', icon: Crosshair },
   { label: 'Intelligence Hub', href: '/threat-intelligence/hub', icon: GitFork, aliases: ['/intelligence'] },
 ];
 
@@ -85,9 +99,11 @@ export default function Sidebar({
   role,
   onLogout,
   moduleAccess = [],
+  dashboardPresentation = false,
 }: SidebarProps) {
   const pathname = usePathname();
   const [theme, setTheme] = useState<ThemePreference>('dark');
+  const [resolvedTheme, setResolvedTheme] = useState<'dark' | 'light'>('dark');
   const [mobileOpen, setMobileOpen] = useState(false);
   const activeModuleId = pathname.startsWith('/threat-intelligence') || pathname === '/indicators' || pathname.startsWith('/intelligence')
     ? 'threat-intelligence'
@@ -95,6 +111,8 @@ export default function Sidebar({
       ? 'case-management'
     : pathname.startsWith('/attack-surface')
       ? 'attack-surface-management'
+    : pathname.startsWith('/appsec')
+      ? 'appsec-posture'
     : administrationItemsForRole(role).some(item => isItemActive(item, pathname))
       ? 'administration'
       : null;
@@ -103,6 +121,11 @@ export default function Sidebar({
   useEffect(() => {
     const savedTheme = window.localStorage.getItem('cti-theme');
     setTheme(savedTheme === 'light' || savedTheme === 'system' ? savedTheme : 'dark');
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    const updateResolvedTheme = () => setResolvedTheme(savedTheme === 'system' ? (media.matches ? 'dark' : 'light') : savedTheme === 'light' ? 'light' : 'dark');
+    updateResolvedTheme();
+    media.addEventListener('change', updateResolvedTheme);
+    return () => media.removeEventListener('change', updateResolvedTheme);
   }, []);
 
   useEffect(() => {
@@ -114,20 +137,21 @@ export default function Sidebar({
     window.localStorage.setItem('cti-theme', value);
     applyTheme(value);
     setTheme(value);
+    setResolvedTheme(value === 'system' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : value);
   }
 
   const intelligenceAccess = moduleAccess.find(module => module.accessible === true && module.moduleSlug === 'threat-intelligence');
   const canAccessThreatIntelligence = Boolean(intelligenceAccess?.featureKeys.some(key => key === 'indicator-management' || key === 'intelligence-hub'));
   const catalogModules: readonly NavigationModule[] = moduleAccess
-    .filter(module => module.moduleSlug !== 'threat-intelligence' && module.accessible === true && (module.moduleSlug === 'case-management' ? module.featureKeys.includes('case-workflow') : module.moduleSlug === 'attack-surface-management' ? module.featureKeys.some(key => key === 'asset-management' || key === 'asset-discovery') : true))
+    .filter(module => module.moduleSlug !== 'threat-intelligence' && !isCatalogOnlyModule(module.moduleSlug) && module.accessible === true && (module.moduleSlug === 'case-management' ? module.featureKeys.includes('case-workflow') : module.moduleSlug === 'attack-surface-management' ? module.featureKeys.some(key => key === 'asset-management' || key === 'asset-discovery') : module.moduleSlug === 'appsec-posture' ? module.featureKeys.some(key => key === 'application-inventory' || key === 'finding-management' || key === 'posture-overview') : true))
     .map(module => ({
       id: module.moduleSlug,
       label: module.moduleName,
-      items: module.moduleSlug === 'case-management' ? caseManagementItems : module.moduleSlug === 'attack-surface-management' ? attackSurfaceItems.filter(() => module.featureKeys.includes('asset-management')) : [],
+      items: module.moduleSlug === 'case-management' ? caseManagementItems : module.moduleSlug === 'attack-surface-management' ? attackSurfaceItems.filter(() => module.featureKeys.includes('asset-management')) : module.moduleSlug === 'appsec-posture' ? appSecItems.filter(item => module.featureKeys.includes(item.label === 'Overview' ? 'posture-overview' : item.label === 'Applications' ? 'application-inventory' : 'finding-management')) : [],
     }));
   const modules: readonly NavigationModule[] = [
     ...catalogModules,
-    ...(canAccessThreatIntelligence ? [{ id: 'threat-intelligence', label: 'Threat Intelligence', items: threatIntelligenceItems.filter(item => ['Overview', 'Indicators', 'Feeds'].includes(item.label) ? intelligenceAccess?.featureKeys.includes('indicator-management') : intelligenceAccess?.featureKeys.includes('intelligence-hub')) }] : []),
+    ...(canAccessThreatIntelligence ? [{ id: 'threat-intelligence', label: 'Threat Intelligence', items: threatIntelligenceItems.filter(item => ['Overview', 'Indicators', 'IOC Candidates', 'Threat Feeds'].includes(item.label) ? intelligenceAccess?.featureKeys.includes('indicator-management') : intelligenceAccess?.featureKeys.includes('intelligence-hub')) }] : []),
     ...(administrationItemsForRole(role).length > 0 ? [{ id: 'administration', label: 'Administration', items: administrationItemsForRole(role) }] : []),
   ].sort((left, right) => moduleOrder(left.id) - moduleOrder(right.id));
 
@@ -148,18 +172,18 @@ export default function Sidebar({
       </Link>
 
       <nav id="sidebar-navigation" className={`sidebar-navigation${mobileOpen ? ' is-open' : ''}`} aria-label="Navigasi utama" onClick={event => { if (event.target instanceof Element && event.target.closest('a')) setMobileOpen(false); }}>
-        <NavigationLink item={dashboardItem} pathname={pathname} />
-        {modules.map(module => <ModuleSection expanded={expandedModules[module.id] ?? false} key={module.id} module={module} pathname={pathname} onToggle={toggleModule} />)}
+        <NavigationLink item={dashboardItem} pathname={pathname} displayLabel={dashboardPresentation ? 'Overview' : undefined} />
+        {modules.map(module => <ModuleSection dashboardPresentation={dashboardPresentation} expanded={expandedModules[module.id] ?? false} key={module.id} module={module} pathname={pathname} onToggle={toggleModule} />)}
       </nav>
 
       <div className="sidebar-footer">
         <span className="theme-select-label" id="cti-theme-label">Tema</span>
         <div className="theme-options" role="group" aria-labelledby="cti-theme-label">
-          <button type="button" className={theme === 'dark' ? 'is-active' : ''} aria-pressed={theme === 'dark'} onClick={() => changeTheme('dark')}><Moon size={16} aria-hidden="true" /> Gelap</button>
-          <button type="button" className={theme === 'light' ? 'is-active' : ''} aria-pressed={theme === 'light'} onClick={() => changeTheme('light')}><Sun size={16} aria-hidden="true" /> Terang</button>
-          <button type="button" className={theme === 'system' ? 'is-active' : ''} aria-pressed={theme === 'system'} onClick={() => changeTheme('system')}><Monitor size={16} aria-hidden="true" /> Sistem</button>
+          <button type="button" className={(dashboardPresentation ? resolvedTheme === 'dark' : theme === 'dark') ? 'is-active' : ''} aria-pressed={dashboardPresentation ? resolvedTheme === 'dark' : theme === 'dark'} onClick={() => changeTheme('dark')}><Moon size={16} aria-hidden="true" /> Gelap</button>
+          <button type="button" className={(dashboardPresentation ? resolvedTheme === 'light' : theme === 'light') ? 'is-active' : ''} aria-pressed={dashboardPresentation ? resolvedTheme === 'light' : theme === 'light'} onClick={() => changeTheme('light')}><Sun size={16} aria-hidden="true" /> Terang</button>
+          {!dashboardPresentation && <button type="button" className={theme === 'system' ? 'is-active' : ''} aria-pressed={theme === 'system'} onClick={() => changeTheme('system')}><Monitor size={16} aria-hidden="true" /> Sistem</button>}
         </div>
-        {onLogout && (
+        {onLogout && !dashboardPresentation && (
           <button className="logout" onClick={onLogout}>
             <LogOut size={16} aria-hidden="true" />
             Keluar
@@ -170,17 +194,28 @@ export default function Sidebar({
   );
 }
 
-function ModuleSection({ expanded, module, pathname, onToggle }: { readonly expanded: boolean; readonly module: NavigationModule; readonly pathname: string; readonly onToggle: (id: string) => void }) {
+function ModuleSection({ dashboardPresentation, expanded, module, pathname, onToggle }: { readonly dashboardPresentation: boolean; readonly expanded: boolean; readonly module: NavigationModule; readonly pathname: string; readonly onToggle: (id: string) => void }) {
   const submenuId = `sidebar-module-${module.id}`;
-  return <section className={`sidebar-module${module.items.some(item => isItemActive(item, pathname)) ? ' active' : ''}`}><button type="button" className="sidebar-module-toggle" aria-controls={submenuId} aria-expanded={expanded} onClick={() => onToggle(module.id)}><span>{module.label}</span>{expanded ? <ChevronDown size={15} aria-hidden="true" /> : <ChevronRight size={15} aria-hidden="true" />}</button>{expanded && <div className="sidebar-submenu" id={submenuId}>{module.items.length > 0 ? module.items.map(item => <NavigationLink item={item} key={item.href} pathname={pathname} />) : <span className="sidebar-empty-submenu">Belum ada halaman</span>}</div>}</section>;
+  const Icon = moduleIcons[module.id] ?? Layers3;
+  return <section className={`sidebar-module${module.items.some(item => isItemActive(item, pathname)) ? ' active' : ''}`}><button type="button" className="sidebar-module-toggle" aria-controls={submenuId} aria-expanded={expanded} onClick={() => onToggle(module.id)}>{dashboardPresentation && <Icon size={17} aria-hidden="true" />}<span>{module.label}</span>{expanded ? <ChevronDown size={15} aria-hidden="true" /> : <ChevronRight size={15} aria-hidden="true" />}</button>{expanded && <div className="sidebar-submenu" id={submenuId}>{module.items.length > 0 ? module.items.map(item => <NavigationLink item={item} key={item.href} pathname={pathname} />) : <span className="sidebar-empty-submenu">Belum ada halaman</span>}</div>}</section>;
 }
+
+const moduleIcons: Readonly<Record<string, LucideIcon>> = {
+  'case-management': BriefcaseBusiness,
+  'threat-intelligence': Eye,
+  'attack-surface-management': Layers3,
+  'appsec-posture': ShieldCheck,
+  administration: UsersRound,
+};
 
 function NavigationLink({
   item,
   pathname,
+  displayLabel,
 }: {
   readonly item: NavigationItem;
   readonly pathname: string;
+  readonly displayLabel?: string;
 }) {
   const Icon = item.icon;
   const isActive = isItemActive(item, pathname);
@@ -188,10 +223,11 @@ function NavigationLink({
     <Link
       href={item.href}
       className={`sidebar-link${isActive ? ' active' : ''}`}
+      aria-label={displayLabel ? item.label : undefined}
       aria-current={isActive ? 'page' : undefined}
     >
       <Icon size={17} aria-hidden="true" />
-      <span>{item.label}</span>
+      <span>{displayLabel ?? item.label}</span>
     </Link>
   );
 }

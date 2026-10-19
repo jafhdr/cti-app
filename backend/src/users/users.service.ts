@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma.service';
 import { Prisma } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { z } from 'zod';
+import { isCatalogOnlyFeature } from '../modules/system-modules';
 const assignmentSchema = z.array(z.object({ moduleId: z.string().min(1), featureKeys: z.array(z.string()).optional() }));
 import { AuthUser, BulkModuleAccessInput, ModuleAccessInput, UserRole } from './users.types';
 
@@ -90,8 +91,15 @@ export class UsersService {
   async resetPassword(currentUser: AuthUser, userId: string, password: string) {
     if (!password || password.length < 8) throw new BadRequestException('Password minimal 8 karakter');
     const target = await this.manageableTarget(currentUser, userId);
-    await this.prisma.user.update({ where: { id: userId }, data: { passwordHash: await bcrypt.hash(password, 12) } });
-    await this.audit(currentUser, target.tenantId, 'USER_PASSWORD_RESET_BY_ADMIN', { targetUserId: userId });
+    const passwordHash = await bcrypt.hash(password, 12);
+    await this.prisma.$transaction(async tx => {
+      await tx.user.update({ where: { id: userId }, data: { passwordHash, sessionVersion: { increment: 1 } } });
+      await tx.authSession.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } });
+      await tx.auditLog.create({ data: {
+        userId: currentUser.sub, tenantId: target.tenantId, action: 'USER_PASSWORD_RESET_BY_ADMIN',
+        metadata: { targetUserId: userId } as Prisma.InputJsonValue,
+      } });
+    });
     return { message: 'Password pengguna berhasil direset' };
   }
 
@@ -238,6 +246,9 @@ export class UsersService {
       const validKeys = new Set(module.features.map((feature) => feature.key));
       const featureKeys = Array.from(new Set<string>(entry.featureKeys ?? []));
       if (featureKeys.some((key) => !validKeys.has(key))) throw new BadRequestException('Fitur assignment tidak valid');
+      if (featureKeys.some((key) => isCatalogOnlyFeature(module.slug, key) && !module.featureKeys.includes(key))) {
+        throw new BadRequestException('Fitur catalog-only atau legacy tidak dapat diberikan');
+      }
       return { userId, tenantId, moduleId: entry.moduleId, featureKeys };
     });
   }

@@ -46,7 +46,9 @@ async function main() {
     ],
     'appsec-posture': [
       { key: 'posture-overview', name: 'Posture Overview', description: 'Ringkasan risiko keamanan aplikasi.' },
-      { key: 'advanced-chart', name: 'Advanced Charts', description: 'Visualisasi temuan dan tren risiko.' },
+      { key: 'advanced-chart', name: 'Advanced Charts (Legacy)', description: 'Legacy catalog only; tidak dapat diberikan sebagai fitur baru.' },
+      { key: 'application-inventory', name: 'Application Inventory', description: 'Kelola inventaris aplikasi.' },
+      { key: 'finding-management', name: 'Finding Management', description: 'Kelola temuan keamanan aplikasi.' },
     ],
     'case-management': [
       { key: 'case-workflow', name: 'Case Workflow', description: 'Kelola siklus investigasi insiden.' },

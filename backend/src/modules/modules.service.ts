@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma.service';
 import { type AuthUser } from '../users/users.types';
 import { ModuleAccessService } from '../auth/module-access.service';
 import { type CreateModuleInput, type UpdateModuleInput, type UpdateTenantModuleInput } from './modules.types';
+import { isSystemModule } from './system-modules';
 
 const configurableRoles = [Role.ADMIN, Role.USER] as const;
 type ConfigurableRole = (typeof configurableRoles)[number];
@@ -19,18 +20,19 @@ export class ModulesService {
       orderBy: [{ category: 'asc' }, { name: 'asc' }],
     });
     const access = await Promise.all(modules.map((module) => this.moduleAccess.evaluate(user, module.slug)));
-    return modules.map((module, index) => ({ ...module, accessible: access[index].accessible }));
+    return modules.map((module, index) => ({ ...module, source: isSystemModule(module.slug) ? 'SYSTEM' : 'CUSTOM', accessible: access[index].accessible }));
   }
 
   async listConfiguration(user: AuthUser, requestedTenantId?: string) {
     const tenantId = this.resolveTenant(user, requestedTenantId);
     const modules = await this.moduleAccess.listTenantPolicies(tenantId);
-    return modules.map(module => ({ ...module, access: module.roleAccess }));
+    return modules.map(module => ({ ...module, source: isSystemModule(module.slug) ? 'SYSTEM' : 'CUSTOM', access: module.roleAccess }));
   }
 
   async create(user: AuthUser, input: CreateModuleInput) {
     this.requireSuperAdmin(user);
     const data = this.createModuleData(input);
+    if (isSystemModule(data.slug)) throw new ConflictException('Slug modul sistem tidak dapat digunakan');
     try {
       const module = await this.prisma.appModule.create({ data });
       await this.audit(user, null, 'MODULE_CREATED', { moduleId: module.id, slug: module.slug });
@@ -43,7 +45,10 @@ export class ModulesService {
 
   async update(user: AuthUser, moduleId: string, input: UpdateModuleInput) {
     this.requireSuperAdmin(user);
-    await this.findModule(moduleId);
+    const existing = await this.findModule(moduleId);
+    if (isSystemModule(existing.slug) && (input.name !== undefined || input.slug !== undefined || input.description !== undefined || input.category !== undefined)) {
+      throw new ForbiddenException('Identitas modul sistem tidak dapat diedit');
+    }
     const data = this.updateModuleData(input);
     if (Object.keys(data).length === 0) throw new BadRequestException('Tidak ada perubahan modul');
     try {
@@ -54,6 +59,15 @@ export class ModulesService {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') throw new ConflictException('Slug modul sudah digunakan');
       throw error;
     }
+  }
+
+  async remove(user: AuthUser, moduleId: string) {
+    this.requireSuperAdmin(user);
+    const module = await this.findModule(moduleId);
+    if (isSystemModule(module.slug)) throw new ForbiddenException('Modul sistem tidak dapat dihapus');
+    await this.prisma.appModule.delete({ where: { id: moduleId } });
+    await this.audit(user, null, 'MODULE_DELETED', { moduleId, slug: module.slug });
+    return { id: moduleId, slug: module.slug };
   }
 
   async updateTenantAccess(user: AuthUser, moduleId: string, input: UpdateTenantModuleInput) {
@@ -103,7 +117,8 @@ export class ModulesService {
     const description = input.description?.trim();
     if (slug && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) throw new BadRequestException('Slug hanya boleh huruf kecil, angka, dan tanda hubung');
     if (input.category && !this.isCategory(input.category)) throw new BadRequestException('Kategori modul tidak valid');
-    return { ...(name ? { name } : {}), ...(slug ? { slug } : {}), ...(description ? { description } : {}), ...(input.category ? { category: input.category } : {}), ...(input.isActive === undefined ? {} : { isActive: input.isActive }) };
+    if (slug) throw new BadRequestException('Slug modul adalah identitas permanen');
+    return { ...(name ? { name } : {}), ...(description ? { description } : {}), ...(input.category ? { category: input.category } : {}), ...(input.isActive === undefined ? {} : { isActive: input.isActive }) };
   }
 
   private async findModule(id: string) {

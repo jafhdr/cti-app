@@ -3,7 +3,7 @@ import type { AuthService } from './auth.service';
 
 describe('auth cookie configuration', () => {
   const previous = process.env.NODE_ENV;
-  const auth = { login: jest.fn().mockResolvedValue({ accessToken: 'access', refreshToken: 'refresh', user: {} }) };
+  const auth = { login: jest.fn().mockResolvedValue({ accessToken: 'access', refreshToken: 'refresh', user: {} }), logout: jest.fn().mockResolvedValue(undefined) };
   const controller = new AuthController(auth as unknown as AuthService);
   const cookie = jest.fn();
   const clearCookie = jest.fn();
@@ -16,7 +16,7 @@ describe('auth cookie configuration', () => {
     await controller.login({ email: 'user@example.test', password: 'password' }, response as never);
     expect(cookie).toHaveBeenCalledTimes(2);
     for (const call of cookie.mock.calls) expect(call[2]).toEqual(expect.objectContaining({ secure, httpOnly: true, sameSite: 'lax', path: '/' }));
-    controller.logout(response as never);
+    await controller.logout({ cookies: { access_token: '' } } as never, response as never);
     for (const call of clearCookie.mock.calls) expect(call[1]).toEqual(expect.objectContaining({ secure, httpOnly: true, sameSite: 'lax', path: '/' }));
   });
 });

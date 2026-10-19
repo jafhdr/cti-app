@@ -12,6 +12,7 @@ import { IntelligenceModule } from './intelligence/intelligence.module';
 import { SubscriptionModule } from './subscription/subscription.module';
 import { CasesModule } from './cases/cases.module';
 import { AttackSurfaceManagementModule } from './attack-surface-management/attack-surface-management.module';
+import { AppSecModule } from './appsec/appsec.module';
 import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
@@ -28,6 +29,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     SubscriptionModule,
     CasesModule,
     AttackSurfaceManagementModule,
+    AppSecModule,
     UsersModule,
   ],
   providers: [PrismaService],

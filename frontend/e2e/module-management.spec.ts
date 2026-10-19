@@ -35,6 +35,27 @@ test('Module Management renders API features and a clear empty state', async ({ 
   await expect(asm.getByText('Asset Management', { exact: true })).toBeVisible();
   await expect(asm.getByText('Asset Discovery', { exact: true })).toBeVisible();
   const empty = page.getByRole('article').filter({ hasText: 'Empty Module' });
-  await expect(empty.getByText('Belum ada feature resmi untuk modul ini.')).toBeVisible();
+  await expect(empty.getByText('No feature access defined for this module yet.')).toBeVisible();
   await page.screenshot({ path: '../.omo/evidence/aud4/module-management-desktop.png', fullPage: true });
+});
+
+test('AppSec module catalog identifies implemented and legacy capabilities', async ({ page }) => {
+  await page.route('**/auth/me', route => route.fulfill({ json: { email: 'admin@cti.local', role: 'ADMIN', moduleAccess: [] } }));
+  await page.route('**/modules/configuration', route => route.fulfill({ json: [{
+    id: 'appsec', slug: 'appsec-posture', name: 'AppSec Posture', description: 'Application security posture.',
+    category: 'APPSEC', isActive: true, tenantEnabled: true, source: 'SYSTEM',
+    subscriptionIncluded: true, subscriptionActive: true, subscriptionSource: 'Team',
+    roleAccess: { ADMIN: true, USER: true },
+    policyAccess: { ADMIN: { accessible: true, reason: null }, USER: { accessible: true, reason: null } },
+    features: [
+      { id: 'overview', key: 'posture-overview', name: 'Posture Overview' },
+      { id: 'applications', key: 'application-inventory', name: 'Application Inventory' },
+      { id: 'findings', key: 'finding-management', name: 'Finding Management' },
+      { id: 'legacy', key: 'advanced-chart', name: 'Advanced Charts (Legacy)' },
+    ],
+  }] }));
+  await page.goto(`${app}/modules`);
+  const card = page.getByRole('article').filter({ hasText: 'AppSec Posture' });
+  for (const name of ['Posture Overview', 'Application Inventory', 'Finding Management']) await expect(card.getByText(name, { exact: true })).toBeVisible();
+  await expect(card.getByText('Advanced Charts (Legacy) (Catalog only / not assignable)')).toBeVisible();
 });

@@ -27,8 +27,11 @@ export class SubscriptionService {
     const subscription = await this.prisma.tenantSubscription.findUnique({ where: { tenantId }, include: subscriptionInclude });
     if (!subscription) return null;
     const includedModules = await this.moduleAccess.listTenantPolicies(tenantId);
+    const expired = (subscription.status === 'TRIAL' || subscription.status === 'ACTIVE') && subscription.renewalAt <= new Date();
     return {
       ...subscription,
+      status: expired ? 'EXPIRED' : subscription.status,
+      persistedStatus: subscription.status,
       subscriptionActive: includedModules[0]?.subscriptionActive ?? false,
       subscriptionSource: subscription.isCustom ? 'Custom Subscription' : subscription.package?.name ?? null,
       includedModules: includedModules.map(module => ({ id: module.id, name: module.name, slug: module.slug, subscriptionIncluded: module.subscriptionIncluded })),

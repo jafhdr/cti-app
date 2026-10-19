@@ -1,3 +1,4 @@
+const { createAccessToken } = require('../auth/integration-session.cjs');
 require('reflect-metadata');
 
 const assert = require('node:assert/strict');
@@ -122,10 +123,7 @@ before(async () => {
   app = await NestFactory.create(AppModule, { logger: false });
   await app.listen(0, '127.0.0.1');
   baseUrl = await app.getUrl();
-  accessToken = await new JwtService().signAsync(
-    { sub: userId, tenantId: primaryTenantId, role: 'ADMIN' },
-    { secret: process.env.JWT_ACCESS_SECRET, expiresIn: '5m' },
-  );
+  accessToken = await createAccessToken(prisma, userId, process.env.JWT_ACCESS_SECRET);
 });
 
 after(async () => {

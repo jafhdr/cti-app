@@ -25,7 +25,7 @@ test('user create edit and status use shared overlays across sizes and themes', 
     await page.emulateMedia({ colorScheme: name === 'system-light' ? 'light' : 'dark' });
     await page.evaluate(value => localStorage.setItem('cti-theme', value), theme);
     await page.reload();
-    await page.getByRole('button', { name: '+ Add User' }).click();
+    await page.getByRole('button', { name: 'Add user' }).click();
     await expect(create).toBeVisible();
     await expect(create).toHaveAttribute('aria-modal', 'true');
     await page.screenshot({ path: `${evidence}/user-create-${name}.png` });
@@ -50,7 +50,7 @@ test('user create edit and status use shared overlays across sizes and themes', 
 test('organization and module create forms use shared overlays', async ({ page }) => {
   await fixture(page);
   await page.goto(`${base}/tenants`);
-  await page.getByRole('button', { name: '+ Buat Tenant Baru' }).click();
+  await page.getByRole('button', { name: 'Create New Tenant' }).click();
   await expect(page.getByRole('dialog', { name: 'Buat Tenant Baru' })).toBeVisible();
   await page.screenshot({ path: `${evidence}/organization-create.png` });
   await page.setViewportSize({ width: 375, height: 900 });
@@ -87,7 +87,7 @@ test('subscription replacement confirmation retains current plan', async ({ page
   await page.route('**/subscription/my', route => route.fulfill({ json: subscription }));
   await page.goto(`${base}/subscription`);
   await expect(page.getByRole('heading', { name: 'Professional' }).first()).toBeVisible();
-  await page.getByRole('button', { name: 'Pilih Paket' }).click();
+  await page.getByRole('button', { name: 'Choose Plan' }).click();
   const confirm = page.getByRole('dialog', { name: 'Ganti subscription tenant' });
   await expect(confirm).toContainText('kehilangan akses efektif');
   await page.screenshot({ path: `${evidence}/subscription.png` });

@@ -4,6 +4,7 @@ export type ModulePolicy = {
   readonly id: string;
   readonly name: string;
   readonly slug: string;
+  readonly source: 'SYSTEM' | 'CUSTOM';
   readonly description: string;
   readonly category: string;
   readonly features: readonly AccessFeature[];

@@ -2,13 +2,19 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
 import { ModuleAccessService } from './module-access.service';
 import * as bcrypt from 'bcrypt';
-import { randomBytes, createHash } from 'crypto';
+import { randomBytes, randomUUID, createHash } from 'crypto';
+import * as nodemailer from 'nodemailer';
+
+const hashToken = (token: string) => createHash('sha256').update(token).digest('hex');
+const forgotResponse = { message: 'Jika email terdaftar, instruksi reset password telah dikirim.' };
 
 @Injectable()
 export class AuthService {
@@ -26,8 +32,18 @@ export class AuthService {
     if (!user.isActive) {
       throw new UnauthorizedException('Akun ini sudah dinonaktifkan');
     }
+    if (user.role !== 'SUPER_ADMIN' && !user.tenantId) {
+      throw new UnauthorizedException('Tenant akun ini tidak tersedia');
+    }
+    if (!user.tenantId) return this.issueSession(user);
+    const tenantId = user.tenantId;
 
-    return this.issueSession(user);
+    return this.prisma.$transaction(async tx => {
+      await tx.$queryRaw`SELECT "id" FROM "Tenant" WHERE "id" = ${tenantId} FOR SHARE`;
+      const tenant = await tx.tenant.findUnique({ where: { id: tenantId }, select: { isActive: true } });
+      if (!tenant?.isActive) throw new UnauthorizedException('Tenant akun ini sudah dinonaktifkan');
+      return this.issueSession(user, tx);
+    });
   }
 
   async signup(name: string, email: string, password: string, organization: string, organizationSlug: string) {
@@ -126,40 +142,84 @@ export class AuthService {
   async refresh(refreshToken: string) {
     try {
       if (!refreshToken) throw new Error('missing token');
-      const payload = await this.jwt.verifyAsync(refreshToken, {
+      const payload = await this.jwt.verifyAsync<{ sub: string; sid: string }>(refreshToken, {
         secret: process.env.JWT_REFRESH_SECRET,
       });
-      return this.jwt.signAsync(
-        { sub: payload.sub, tenantId: payload.tenantId, role: payload.role },
-        { secret: process.env.JWT_ACCESS_SECRET, expiresIn: '15m' },
-      );
+      if (!payload.sub || !payload.sid) throw new Error('missing session');
+      const [user, session] = await Promise.all([
+        this.prisma.user.findUnique({ where: { id: payload.sub }, select: { id: true, isActive: true, tenantId: true, role: true, sessionVersion: true, tenant: { select: { isActive: true } } } }),
+        this.prisma.authSession.findUnique({ where: { id: payload.sid } }),
+      ]);
+      if (!user?.isActive || (user.tenant && !user.tenant.isActive) || (user.role !== 'SUPER_ADMIN' && !user.tenantId) ||
+          !session || session.userId !== user.id || session.revokedAt || session.expiresAt <= new Date() || session.version !== user.sessionVersion ||
+          session.refreshTokenHash !== hashToken(refreshToken)) throw new Error('revoked or replayed');
+      const nextRefreshToken = await this.signRefresh(user.id, session.id);
+      const changed = await this.prisma.authSession.updateMany({
+        where: { id: session.id, userId: user.id, version: user.sessionVersion, refreshTokenHash: hashToken(refreshToken), revokedAt: null, expiresAt: { gt: new Date() } },
+        data: { refreshTokenHash: hashToken(nextRefreshToken) },
+      });
+      if (changed.count !== 1) throw new Error('refresh replay');
+      return { accessToken: await this.signAccess(user.id, session.id), refreshToken: nextRefreshToken };
     } catch {
       throw new UnauthorizedException('Refresh token tidak valid');
     }
   }
 
+  async logout(refreshToken?: string, accessToken?: string) {
+    for (const [token, secret] of [[refreshToken, process.env.JWT_REFRESH_SECRET], [accessToken, process.env.JWT_ACCESS_SECRET]] as const) {
+      if (!token) continue;
+      let payload: { sub: string; sid: string };
+      try {
+        payload = await this.jwt.verifyAsync<{ sub: string; sid: string }>(token, { secret });
+      } catch { continue; }
+      if (!payload.sub || !payload.sid) continue;
+      const where = token === refreshToken ? { refreshTokenHash: hashToken(token) } : {};
+      const revoked = await this.prisma.$transaction(async (tx) => {
+        const changed = await tx.authSession.updateMany({ where: { id: payload.sid, userId: payload.sub, revokedAt: null, ...where }, data: { revokedAt: new Date() } });
+        if (changed.count !== 1) return false;
+        const user = await tx.user.findUniqueOrThrow({ where: { id: payload.sub }, select: { tenantId: true } });
+        await tx.auditLog.create({ data: { userId: payload.sub, tenantId: user.tenantId, action: 'LOGOUT', metadata: { sessionId: payload.sid } } });
+        return true;
+      });
+      if (revoked) return;
+    }
+  }
+
   async forgotPassword(email: string) {
+    const host = process.env.SMTP_HOST;
+    const from = process.env.SMTP_FROM;
+    const port = Number(process.env.SMTP_PORT || 587);
+    if (!host || !from || !Number.isInteger(port) || port < 1 || port > 65535) throw new ServiceUnavailableException('Layanan email reset password belum tersedia');
     const normalizedEmail = email.toLowerCase().trim();
     const user = await this.prisma.user.findUnique({ where: { email: normalizedEmail } });
-
-    // Always return the same response to avoid account enumeration.
-    if (!user) return { message: 'Jika email terdaftar, instruksi reset password telah dibuat.' };
-
-    await this.prisma.passwordResetToken.deleteMany({ where: { userId: user.id, usedAt: null } });
-    const rawToken = randomBytes(32).toString('hex');
-    const tokenHash = createHash('sha256').update(rawToken).digest('hex');
-    const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
-    await this.prisma.passwordResetToken.create({ data: { tokenHash, userId: user.id, expiresAt } });
-
-    // MVP: without an email provider, expose the reset link in the server console only.
+    if (!user) return forgotResponse;
+    const rawToken = await this.prisma.$transaction(async tx => {
+      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${user.id}))::text`;
+      const recentCount = await tx.passwordResetToken.count({ where: { userId: user.id, createdAt: { gt: new Date(Date.now() - 60 * 60 * 1000) } } });
+      if (recentCount >= 3) return null;
+      await tx.passwordResetToken.updateMany({ where: { userId: user.id, usedAt: null }, data: { usedAt: new Date() } });
+      const token = randomBytes(32).toString('hex');
+      await tx.passwordResetToken.create({ data: { tokenHash: hashToken(token), userId: user.id, expiresAt: new Date(Date.now() + 30 * 60 * 1000) } });
+      return token;
+    });
+    if (!rawToken) return forgotResponse;
+    const tokenHash = hashToken(rawToken);
     const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${rawToken}`;
-    console.log(`[DEV] Password reset link for ${normalizedEmail}: ${resetUrl}`);
-
-    return { message: 'Jika email terdaftar, instruksi reset password telah dibuat.' };
+    const transport = nodemailer.createTransport({ host, port, secure: process.env.SMTP_SECURE === 'true', requireTLS: !!process.env.SMTP_USER && process.env.SMTP_SECURE !== 'true', auth: process.env.SMTP_USER ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASSWORD } : undefined });
+    try {
+      await transport.sendMail({ from, to: normalizedEmail, subject: 'Reset password SICTI', text: `Buka link berikut untuk mereset password Anda (berlaku 30 menit): ${resetUrl}\n\nJika Anda tidak meminta reset, abaikan email ini.` });
+    } catch {
+      await this.prisma.passwordResetToken.updateMany({ where: { tokenHash, usedAt: null }, data: { usedAt: new Date() } });
+      console.error('Password reset email delivery failed');
+      return forgotResponse;
+    } finally {
+      transport.close();
+    }
+    return forgotResponse;
   }
 
   async resetPassword(token: string, password: string) {
-    const tokenHash = createHash('sha256').update(token).digest('hex');
+    const tokenHash = hashToken(token);
     const reset = await this.prisma.passwordResetToken.findUnique({ where: { tokenHash } });
     if (!reset || reset.usedAt || reset.expiresAt.getTime() < Date.now()) {
       throw new BadRequestException('Token reset password tidak valid atau sudah kedaluwarsa');
@@ -172,29 +232,35 @@ export class AuthService {
     if (!account) throw new BadRequestException('Akun untuk token reset tidak ditemukan');
 
     const passwordHash = await bcrypt.hash(password, 12);
-    await this.prisma.$transaction([
-      this.prisma.user.update({ where: { id: reset.userId }, data: { passwordHash } }),
-      this.prisma.passwordResetToken.update({ where: { id: reset.id }, data: { usedAt: new Date() } }),
-      this.prisma.auditLog.create({
+    await this.prisma.$transaction(async tx => {
+      const claimed = await tx.passwordResetToken.updateMany({ where: { id: reset.id, usedAt: null, expiresAt: { gt: new Date() } }, data: { usedAt: new Date() } });
+      if (claimed.count !== 1) throw new BadRequestException('Token reset password tidak valid atau sudah kedaluwarsa');
+      await tx.user.update({ where: { id: reset.userId }, data: { passwordHash, sessionVersion: { increment: 1 } } });
+      await tx.authSession.updateMany({ where: { userId: reset.userId, revokedAt: null }, data: { revokedAt: new Date() } });
+      await tx.passwordResetToken.updateMany({ where: { userId: reset.userId, usedAt: null }, data: { usedAt: new Date() } });
+      await tx.auditLog.create({
         data: { userId: reset.userId, tenantId: account.tenantId, action: 'PASSWORD_RESET' },
-      }),
-    ]);
+      });
+    });
 
     return { message: 'Password berhasil diubah. Silakan login kembali.' };
   }
 
-  private async issueSession(user: any) {
-    const payload = { sub: user.id, tenantId: user.tenantId, role: user.role };
-    const accessToken = await this.jwt.signAsync(payload, {
-      secret: process.env.JWT_ACCESS_SECRET,
-      expiresIn: '15m',
-    });
-    const refreshToken = await this.jwt.signAsync(payload, {
-      secret: process.env.JWT_REFRESH_SECRET,
-      expiresIn: '7d',
-    });
+  private signAccess(userId: string, sessionId: string) {
+    return this.jwt.signAsync({ sub: userId, sid: sessionId }, { secret: process.env.JWT_ACCESS_SECRET, expiresIn: '15m' });
+  }
 
-    await this.prisma.auditLog.create({ data: { userId: user.id, tenantId: user.tenantId, action: 'LOGIN' } });
+  private signRefresh(userId: string, sessionId: string) {
+    return this.jwt.signAsync({ sub: userId, sid: sessionId, jti: randomUUID() }, { secret: process.env.JWT_REFRESH_SECRET, expiresIn: '7d' });
+  }
+
+  private async issueSession(user: { id: string; tenantId: string | null; email: string; name: string; role: string; tenant: unknown; sessionVersion: number }, db: Prisma.TransactionClient = this.prisma) {
+    const session = await db.authSession.create({ data: { userId: user.id, version: user.sessionVersion, refreshTokenHash: '', expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) } });
+    const refreshToken = await this.signRefresh(user.id, session.id);
+    await db.authSession.update({ where: { id: session.id }, data: { refreshTokenHash: hashToken(refreshToken) } });
+    const accessToken = await this.signAccess(user.id, session.id);
+
+    await db.auditLog.create({ data: { userId: user.id, tenantId: user.tenantId, action: 'LOGIN' } });
     return {
       accessToken,
       refreshToken,

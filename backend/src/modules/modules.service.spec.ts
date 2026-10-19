@@ -10,7 +10,7 @@ const tenantAdmin = { sub: 'admin-1', tenantId: 'tenant-own', role: 'ADMIN' } as
 
 describe('ModulesService', () => {
   const prisma = {
-    appModule: { findMany: jest.fn(), create: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
+    appModule: { findMany: jest.fn(), create: jest.fn(), findUnique: jest.fn(), update: jest.fn(), delete: jest.fn() },
     tenantSubscription: { findFirst: jest.fn().mockResolvedValue({ isCustom: true, customModules: [{ moduleId: 'asm' }] }) },
     tenantModule: { upsert: jest.fn() },
     moduleRoleAccess: { upsert: jest.fn() },
@@ -110,5 +110,18 @@ describe('ModulesService', () => {
     expect(prisma.moduleRoleAccess.upsert).toHaveBeenCalledWith(expect.objectContaining({
       where: { tenantModuleId_role: { tenantModuleId: 'tenant-module-1', role: Role.USER } },
     }));
+  });
+
+  it('rejects deleting the seeded ASM module', async () => {
+    prisma.appModule.findUnique.mockResolvedValue({ id: 'real-asm', slug: 'attack-surface-management' });
+    await expect(service.remove(superAdmin, 'real-asm')).rejects.toThrow(ForbiddenException);
+    expect(prisma.appModule.delete).not.toHaveBeenCalled();
+  });
+
+  it('deletes a custom module by ID', async () => {
+    prisma.appModule.findUnique.mockResolvedValue({ id: 'custom-id', slug: 'custom-key' });
+    prisma.appModule.delete.mockResolvedValue({ id: 'custom-id' });
+    await expect(service.remove(superAdmin, 'custom-id')).resolves.toEqual({ id: 'custom-id', slug: 'custom-key' });
+    expect(prisma.appModule.delete).toHaveBeenCalledWith({ where: { id: 'custom-id' } });
   });
 });

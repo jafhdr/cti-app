@@ -52,10 +52,8 @@ export class AuthController {
   @Post('refresh')
   async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const token = req.cookies?.refresh_token;
-    const accessToken = await this.auth.refresh(token);
-    res.cookie('access_token', accessToken, {
-      ...this.cookieOptions(), maxAge: 15 * 60 * 1000,
-    });
+    const result = await this.auth.refresh(token);
+    this.setSessionCookies(res, result);
     return { ok: true };
   }
 
@@ -70,7 +68,8 @@ export class AuthController {
   }
 
   @Post('logout')
-  logout(@Res({ passthrough: true }) res: Response) {
+  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    await this.auth.logout(req.cookies?.refresh_token, req.cookies?.access_token);
     res.clearCookie('access_token', this.cookieOptions());
     res.clearCookie('refresh_token', this.cookieOptions());
     return { ok: true };

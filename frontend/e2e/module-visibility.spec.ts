@@ -11,7 +11,7 @@ const modules = [
 async function session(page: Page, accessible: boolean, role: 'ADMIN' | 'USER' = 'ADMIN'): Promise<void> {
   await page.route('**/auth/me', route => route.fulfill({ json: {
     id: 'visibility-test', email: 'qa@example.test', role, tenantId: 'tenant-a',
-    moduleAccess: modules.map(module => ({ ...module, assigned: role === 'USER' && accessible, accessible, featureKeys: [] })),
+    moduleAccess: modules.map(module => ({ ...module, assigned: role === 'USER' && accessible, accessible, featureKeys: accessible ? (module.moduleSlug === 'attack-surface-management' ? ['asset-management', 'asset-discovery'] : module.moduleSlug === 'case-management' ? ['case-workflow'] : ['indicator-management']) : [] })),
   } }));
   await page.route('**/dashboard/summary', route => route.fulfill({ json: { dashboardMode: 'PERSONAL', tenantName: 'QA', indicators: 0, highRiskIndicators: 0, activeAlerts: 0, openCases: 0, users: 0, myIndicatorsCreated: 0, sources: 0, campaigns: 0, subscription: { plan: 'QA', status: 'ACTIVE' }, recentActivity: [], tenantOverview: [] } }));
   await page.route('**/intelligence/overview', route => route.fulfill({ json: { entities: [], relationships: [] } }));

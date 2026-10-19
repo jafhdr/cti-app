@@ -3,7 +3,7 @@ import type { Page } from '@playwright/test';
 
 const app = process.env.SIDEBAR_APP_URL || 'http://localhost:3000';
 const modules = [
-  { moduleId: 'intel', moduleSlug: 'threat-intelligence', moduleName: 'Intel dari katalog', assigned: true, accessible: true, featureKeys: ['read'] },
+  { moduleId: 'intel', moduleSlug: 'threat-intelligence', moduleName: 'Intel dari katalog', assigned: true, accessible: true, featureKeys: ['indicator-management', 'intelligence-hub'] },
   { moduleId: 'custom', moduleSlug: 'custom-module', moduleName: 'Modul katalog tambahan', assigned: true, accessible: true, featureKeys: [] },
   { moduleId: 'appsec', moduleSlug: 'appsec-posture', moduleName: 'AppSec Posture', assigned: false, accessible: false, featureKeys: [] },
 ];
@@ -21,8 +21,8 @@ for (const role of ['USER', 'ADMIN', 'SUPER_ADMIN'] as const) {
     const nav = page.getByRole('navigation', { name: 'Navigasi utama' });
     await expect(nav.getByRole('link', { name: 'Dashboard', exact: true })).toBeVisible();
     await expect(nav.getByRole('button', { name: 'Threat Intelligence' })).toBeVisible();
-    await expect(nav.getByRole('button', { name: 'Modul katalog tambahan' })).toBeVisible();
-    await expect(nav.getByRole('button', { name: 'AppSec Posture' })).toHaveCount(role === 'SUPER_ADMIN' ? 1 : 0);
+    await expect(nav.getByRole('button', { name: 'Modul katalog tambahan' })).toHaveCount(0);
+    await expect(nav.getByRole('button', { name: 'AppSec Posture' })).toHaveCount(0);
     await expect(nav.getByRole('button', { name: 'Administration' })).toHaveCount(role === 'USER' ? 0 : 1);
     await nav.getByRole('button', { name: 'Threat Intelligence' }).click();
     await expect(nav.getByRole('link', { name: 'Indicators', exact: true })).toBeVisible();
@@ -43,22 +43,23 @@ test('user with no assignment keeps only core navigation', async ({ page }) => {
   await session(page, 'USER', modules.map(module => ({ ...module, assigned: false, accessible: false })));
   await page.goto(`${app}/dashboard`);
   const nav = page.getByRole('navigation', { name: 'Navigasi utama' });
-  await expect(nav.getByRole('link')).toHaveText(['Dashboard']);
+  await expect(nav.getByRole('link')).toHaveText(['Overview']);
   await expect(nav.getByText('Modul katalog tambahan')).toHaveCount(0);
 });
 
 test('user with all assignments sees every catalog module', async ({ page }) => {
-  await session(page, 'USER', modules.map(module => ({ ...module, assigned: true, accessible: true })));
+  await session(page, 'USER', modules.map(module => ({ ...module, assigned: true, accessible: true, featureKeys: module.moduleSlug === 'appsec-posture' ? ['posture-overview', 'application-inventory', 'finding-management'] : module.featureKeys })));
   await page.goto(`${app}/dashboard`);
   const nav = page.getByRole('navigation', { name: 'Navigasi utama' });
   await expect(nav.getByText('AppSec Posture', { exact: true })).toBeVisible();
   await expect(nav.getByRole('button', { name: 'AppSec Posture' })).toBeVisible();
   await expect(nav.getByRole('button', { name: 'Threat Intelligence' })).toBeVisible();
+  await expect(nav.getByRole('button', { name: 'Modul katalog tambahan' })).toHaveCount(0);
   await expect(nav.getByRole('link')).toHaveCount(1);
 });
 
 test('super admin sees Attack Surface Management without tenant assignments', async ({ page }) => {
-  await session(page, 'SUPER_ADMIN', [{ moduleId: 'asm', moduleSlug: 'attack-surface-management', moduleName: 'Attack Surface Management', assigned: false, accessible: true, featureKeys: [] }]);
+  await session(page, 'SUPER_ADMIN', [{ moduleId: 'asm', moduleSlug: 'attack-surface-management', moduleName: 'Attack Surface Management', assigned: false, accessible: true, featureKeys: ['asset-management'] }]);
   await page.goto(`${app}/dashboard`);
   const nav = page.getByRole('navigation', { name: 'Navigasi utama' });
 

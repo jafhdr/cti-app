@@ -1,0 +1,221 @@
+/* AppSec reference contract. All presentation stays within this route shell. */
+.appsec-shell {
+  --as-canvas: #e7f0ff;
+  --as-surface: #fff;
+  --as-ink: #172033;
+  --as-muted: #6c7a90;
+  --as-line: #dfe7f3;
+  --as-blue: #1769ee;
+  --as-blue-tint: #e5efff;
+  --as-soft: #f7f9fc;
+  --as-critical: #e52d37;
+  --as-high: #f28b38;
+  --as-avatar: #ff9228;
+  --as-brand: #2867e9;
+  --as-primary: #1769ee;
+  --as-primary-hover: #1157c9;
+  --as-on-primary: #fff;
+  --as-high-soft: #fff2e8;
+  --as-high-ink: #c65e1c;
+  --as-shadow: 0 6px 18px rgba(37, 79, 144, .07);
+  --as-radius: 20px;
+  --as-card-radius: 17px;
+  --as-metric-radius: 16px;
+  --as-control-radius: 10px;
+  --as-gap: 20px;
+  --as-card-pad: 26px;
+  --as-page-inset: 24px;
+  --as-sidebar-width: 330px;
+  --as-header-height: 88px;
+  --as-control-height: 44px;
+  --as-space-xs: 6px;
+  --as-space-sm: 12px;
+  --as-space-md: 16px;
+  --as-space-lg: 18px;
+  --as-space-xl: 22px;
+  --as-text-xs: 11px;
+  --as-text-sm: 12px;
+  --as-text-md: 13px;
+  --as-text-lg: 14px;
+  --as-text-title: 22px;
+  --as-display: 'Times New Roman', Georgia, serif;
+  display: grid;
+  grid-template-columns: var(--as-sidebar-width) minmax(0, 1fr);
+  gap: var(--as-gap);
+  min-height: 100vh;
+  padding: var(--as-page-inset);
+  background: var(--as-canvas);
+  color: var(--as-ink);
+}
+html.dark .appsec-shell {
+  --as-canvas: #101827;
+  --as-surface: #182236;
+  --as-ink: #f0f4fc;
+  --as-muted: #aebbd0;
+  --as-line: #33445e;
+  --as-blue: #82adff;
+  --as-blue-tint: #263d63;
+  --as-soft: #202d43;
+  --as-critical: #ff7279;
+  --as-high: #ffb675;
+  --as-high-soft: #583a2d;
+  --as-high-ink: #ffbc86;
+  --as-shadow: 0 9px 24px rgba(0, 0, 0, .16);
+}
+.appsec-shell > .main { min-width: 0; overflow: visible; border: 0; background: transparent; }
+.appsec-shell > .sidebar {
+  position: sticky; top: 24px; align-self: start;
+  min-height: calc(100vh - 48px); max-height: calc(100vh - 48px);
+  padding: 20px 18px; border: 1px solid var(--as-line); border-radius: var(--as-radius);
+  background: var(--as-surface); box-shadow: var(--as-shadow);
+}
+.appsec-shell .sidebar .brand { justify-content: center; min-height: 54px; margin: 0 0 22px; padding: 0; border: 0; color: var(--as-ink); font: 750 16px/1.2 var(--cti-display); }
+.appsec-shell .sidebar .brand svg { box-sizing: content-box; padding: 7px; border-radius: 9px; background: var(--as-brand); color: var(--as-on-primary); }
+.appsec-shell .sidebar-navigation { gap: 7px; }
+.appsec-shell .sidebar-link, .appsec-shell .sidebar-module-toggle, .appsec-shell .sidebar-submenu a { min-height: 40px; padding: 9px 12px; border-radius: var(--as-control-radius); color: var(--as-ink); font: 500 13px/1.35 var(--cti-display); letter-spacing: 0; text-transform: none; }
+.appsec-shell .sidebar-module-toggle { justify-content: flex-start; gap: 11px; }
+.appsec-shell .sidebar-module-toggle > span { flex: 1; }
+.appsec-shell .sidebar-module-toggle > svg:last-child { margin-left: auto; }
+.appsec-shell .sidebar-link.active, .appsec-shell .sidebar-submenu a.active { border-color: transparent; background: var(--as-blue-tint); color: var(--as-blue); }
+.appsec-shell .sidebar-module.active > .sidebar-module-toggle { background: var(--as-soft); color: var(--as-ink); }
+.appsec-shell .sidebar-submenu { padding-left: 16px; }
+.appsec-shell .sidebar-footer { border: 0; }
+.appsec-shell .theme-select-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.appsec-shell .theme-options { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--as-space-xs); border: 0; background: transparent; }
+.appsec-shell .theme-options button.is-active { background: var(--as-blue-tint); color: var(--as-blue); box-shadow: none; }
+.appsec-shell .appsec-topbar { display: flex; align-items: center; justify-content: space-between; gap: var(--as-space-lg); min-height: var(--as-header-height); padding: 14px 30px; border: 1px solid var(--as-line); border-radius: var(--as-radius); background: var(--as-surface); box-shadow: var(--as-shadow); }
+.appsec-shell .appsec-topbar-context select { min-width: 180px; max-width: 280px; border: 1px solid var(--as-line); border-radius: var(--as-control-radius); background: var(--as-surface); color: var(--as-ink); }
+.appsec-shell .appsec-identity { display: flex; align-items: center; gap: 14px; margin-left: auto; }
+.appsec-shell .appsec-avatar { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--as-avatar); color: var(--as-on-primary); font: 700 16px var(--as-display); }
+.appsec-shell .appsec-identity > span:nth-child(2) { display: grid; gap: 2px; }
+.appsec-shell .appsec-identity strong { color: var(--as-ink); font: 700 18px var(--as-display); }
+.appsec-shell .appsec-identity small { color: var(--as-muted); font-size: var(--as-text-xs); }
+.appsec-shell .appsec-identity button { display: grid; place-items: center; width: 38px; height: 38px; margin-left: 12px; border: 0; background: transparent; color: var(--as-muted); cursor: pointer; }
+.appsec-shell .appsec-identity button:hover { color: var(--as-blue); }
+.appsec-shell .appsec-workspace { max-width: none; padding: 22px 0 48px; background: transparent; }
+.appsec-shell .appsec-heading { align-items: end; margin-bottom: 18px; }
+.appsec-shell .appsec-heading h1 { margin: 8px 0 7px; color: var(--as-ink); font: 700 clamp(28px, 2.7vw, 38px)/1.08 var(--as-display); letter-spacing: -.03em; }
+.appsec-shell .appsec-heading p { margin: 0; color: var(--as-muted); font-size: 15px; }
+.appsec-shell .source-eyebrow { color: var(--as-blue); font: 750 11px var(--cti-display); letter-spacing: .13em; }
+.appsec-shell .appsec-back { display: inline-flex; align-items: center; min-height: 30px; margin-bottom: 12px; color: var(--as-blue); font-size: var(--as-text-lg); }
+.appsec-shell .appsec-heading .cti-button, .appsec-shell .appsec-heading button { border-radius: 999px; }
+.appsec-shell .appsec-finding-detail .appsec-heading .cti-button, .appsec-shell .appsec-finding-detail .appsec-heading button { border-color: var(--as-avatar); background: var(--as-avatar); color: var(--as-on-primary); }
+.appsec-shell .appsec-posture-metrics, .appsec-shell .appsec-finding-metrics, .appsec-shell .appsec-application-metrics { display: grid; gap: var(--as-space-md); margin: 22px 0; border: 0; }
+.appsec-shell .appsec-posture-metrics { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.appsec-shell .appsec-finding-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.appsec-shell .appsec-application-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.appsec-shell .appsec-posture-metrics > div, .appsec-shell .appsec-finding-metrics > div, .appsec-shell .appsec-application-metrics > div { display: grid; align-content: center; gap: var(--as-space-sm); min-width: 0; min-height: 114px; padding: 22px 24px !important; border: 1px solid var(--as-line) !important; border-radius: var(--as-metric-radius); background: var(--as-surface); box-shadow: var(--as-shadow); }
+.appsec-shell .appsec-posture-metrics span, .appsec-shell .appsec-finding-metrics span, .appsec-shell .appsec-application-metrics span { color: var(--as-muted); font: 500 13px var(--cti-display); }
+.appsec-shell .appsec-posture-metrics strong, .appsec-shell .appsec-finding-metrics strong, .appsec-shell .appsec-application-metrics strong { color: var(--as-ink); font: 700 36px/1 var(--cti-display); }
+.appsec-shell .appsec-card, .appsec-shell .appsec-facts, .appsec-shell .appsec-assets { border: 1px solid var(--as-line); border-radius: var(--as-card-radius); background: var(--as-surface); box-shadow: var(--as-shadow); }
+.appsec-shell .appsec-posture-grid { gap: var(--as-space-lg); }
+.appsec-shell .appsec-posture-grid .appsec-card { min-height: 320px; padding: var(--as-card-pad) !important; }
+.appsec-shell .appsec-posture-grid h2, .appsec-shell .appsec-section-head h2 { margin: 0 0 22px; color: var(--as-ink); font: 700 22px/1.2 var(--cti-display); letter-spacing: -.02em; }
+.appsec-shell .appsec-distribution > div { padding: 6px 0 12px; color: var(--as-muted); font-size: var(--as-text-md); }
+.appsec-shell .appsec-distribution > div strong { color: var(--as-ink); }
+.appsec-shell .appsec-distribution meter { height: 9px; border-radius: 999px; }
+.appsec-shell .appsec-distribution meter::-webkit-meter-bar { border: 0; border-radius: 999px; background: var(--as-line); }
+.appsec-shell .appsec-distribution meter::-webkit-meter-optimum-value { border-radius: 999px; background: var(--as-blue); }
+.appsec-shell .appsec-distribution:first-child > div:first-of-type meter::-webkit-meter-optimum-value { background: var(--as-critical); }
+.appsec-shell .appsec-distribution:first-child > div:nth-of-type(2) meter::-webkit-meter-optimum-value { background: var(--as-high); }
+.appsec-shell .appsec-top-applications { min-height: 156px !important; }
+.appsec-shell .appsec-top-applications li { align-items: center; padding: 15px 16px; border: 0; border-radius: 11px; background: var(--as-soft); }
+.appsec-shell .appsec-top-applications a { font-weight: 700; }
+.appsec-shell .appsec-top-applications small { font-size: var(--as-text-sm); }
+.appsec-shell .appsec-top-applications li > span { font-size: var(--as-text-sm); text-align: right; }
+.appsec-shell .appsec-filters { display: grid; grid-template-columns: minmax(180px, 2fr) repeat(3, minmax(130px, 1fr)); gap: var(--as-space-sm); padding: 20px 24px; }
+.appsec-shell .appsec-filters label { min-width: 0; }
+.appsec-shell .appsec-filters input, .appsec-shell .appsec-filters select { min-width: 0; width: 100%; min-height: var(--as-control-height); border: 1px solid var(--as-line); border-radius: var(--as-control-radius); background: var(--as-soft); color: var(--as-ink); font-size: var(--as-text-md); }
+.appsec-shell .appsec-filters select { background: var(--as-surface); }
+.appsec-shell .appsec-findings-list .cti-table th, .appsec-shell .appsec-applications-list .cti-table th { background: var(--as-soft); color: var(--as-muted); font: 700 11px var(--cti-display); letter-spacing: .08em; text-transform: uppercase; }
+.appsec-shell .appsec-findings-list .cti-table td, .appsec-shell .appsec-applications-list .cti-table td { border-color: var(--as-line); color: var(--as-ink); font-size: var(--as-text-sm); }
+.appsec-shell .appsec-findings-list .cti-table a, .appsec-shell .appsec-applications-list .cti-table a { color: var(--as-blue); }
+.appsec-shell .appsec-pagination { background: var(--as-soft); color: var(--as-muted); font-size: var(--as-text-sm); }
+.appsec-shell .appsec-facts { gap: 1px; margin-bottom: 20px; border: 0; background: var(--as-line); }
+.appsec-shell .appsec-facts > div { min-height: 78px; padding: 17px 22px; }
+.appsec-shell .appsec-facts dt, .appsec-shell .appsec-remediation dt { color: var(--as-muted); font-size: var(--as-text-sm); }
+.appsec-shell .appsec-facts dd, .appsec-shell .appsec-remediation dd { color: var(--as-ink); font-size: var(--as-text-lg); font-weight: 600; }
+.appsec-shell .appsec-assets { padding: var(--as-card-pad); }
+.appsec-shell .appsec-section-head { margin-bottom: 18px; }
+.appsec-shell .appsec-section-head h2 { margin: 6px 0 0; font-size: 19px; }
+.appsec-shell .appsec-detail-lower { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--as-space-lg); }
+.appsec-shell .appsec-detail-lower > .appsec-assets { grid-column: 1 / -1; }
+.appsec-shell .appsec-detail-lower.has-ti > .appsec-assets { grid-column: 1; }
+.appsec-shell .appsec-integrations { display: contents; }
+.appsec-shell .appsec-detail-lower.has-ti .appsec-integrations > .appsec-assets:first-of-type { grid-column: 2; }
+.appsec-shell .appsec-detail-lower .appsec-integrations > .appsec-assets { grid-column: 1 / -1; }
+.appsec-shell .appsec-remediation { gap: var(--as-space-lg); }
+.appsec-shell .appsec-transition { max-width: none; margin-top: 22px; padding-top: 18px; }
+.appsec-shell .appsec-transition button { justify-self: end; border-radius: 999px; }
+.appsec-shell .appsec-asset-list article { background: var(--as-blue-tint); border-color: var(--as-line); }
+.appsec-shell .appsec-state { color: var(--as-muted); }
+@media (max-width: 1100px) {
+  .appsec-shell { grid-template-columns: 250px minmax(0, 1fr); gap: var(--as-space-md); padding: 16px; }
+  .appsec-shell .appsec-posture-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .appsec-shell .appsec-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 900px) {
+  .appsec-shell { display: block; }
+  .appsec-shell > .sidebar { position: relative; top: 0; min-height: 0; max-height: none; margin-bottom: 14px; }
+  .appsec-shell .appsec-application-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .appsec-shell .appsec-detail-lower, .appsec-shell .appsec-detail-lower.has-ti { grid-template-columns: 1fr; }
+  .appsec-shell .appsec-detail-lower > .appsec-assets, .appsec-shell .appsec-detail-lower.has-ti > .appsec-assets, .appsec-shell .appsec-detail-lower .appsec-integrations > .appsec-assets { grid-column: 1 / -1; }
+}
+@media (max-width: 640px) {
+  .appsec-shell { padding: 12px; }
+  .appsec-shell .appsec-topbar { min-height: 70px; padding: 12px 16px; }
+  .appsec-shell .appsec-topbar-context select { min-width: 110px; max-width: 145px; }
+  .appsec-shell .appsec-identity { gap: 7px; }
+  .appsec-shell .appsec-avatar { width: 34px; height: 34px; font-size: var(--as-text-sm); }
+  .appsec-shell .appsec-identity strong { max-width: 95px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--as-text-md); }
+  .appsec-shell .appsec-identity small { font-size: 10px; }
+  .appsec-shell .appsec-identity button { margin-left: 0; }
+  .appsec-shell .appsec-posture-metrics, .appsec-shell .appsec-finding-metrics, .appsec-shell .appsec-application-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .appsec-shell .appsec-posture-metrics > div, .appsec-shell .appsec-finding-metrics > div, .appsec-shell .appsec-application-metrics > div { min-height: 100px; padding: 15px !important; }
+  .appsec-shell .appsec-posture-grid .appsec-card { min-height: 0; }
+  .appsec-shell .appsec-filters { grid-template-columns: 1fr; }
+  .appsec-shell .appsec-top-applications li { align-items: start; flex-direction: column; }
+  .appsec-shell .appsec-top-applications li > span { text-align: left; }
+}
+.appsec-shell .soc-button-primary { border-color: var(--as-primary); background: var(--as-primary); color: var(--as-on-primary); }
+.appsec-shell .soc-button-primary:hover:not(:disabled) { background: var(--as-primary-hover); }
+.appsec-shell .soc-button-outline { border-color: var(--as-line); background: var(--as-surface); color: var(--as-ink); }
+.appsec-shell .appsec-heading .soc-button-primary { min-height: 40px; padding-inline: 20px; }
+.appsec-shell .appsec-finding-detail .appsec-heading .soc-button-outline { border-color: var(--as-avatar); background: var(--as-avatar); color: var(--as-on-primary); }
+.appsec-shell .appsec-transition .soc-button-primary { min-height: 38px; }
+.appsec-shell .appsec-findings-list .ioc-severity, .appsec-shell .appsec-finding-detail .ioc-severity { padding: 4px 10px; border-radius: 999px; font: 700 11px/1.2 var(--cti-display); text-transform: capitalize; }
+.appsec-shell .appsec-findings-list .severity-critical, .appsec-shell .appsec-finding-detail .severity-critical { border-color: var(--as-critical); background: var(--as-critical); color: var(--as-on-primary); }
+.appsec-shell .appsec-findings-list .severity-high, .appsec-shell .appsec-finding-detail .severity-high { border-color: var(--as-high); background: var(--as-high-soft); color: var(--as-high-ink); }
+.appsec-shell .appsec-findings-list .cti-status, .appsec-shell .appsec-finding-detail .cti-status { border: 0; border-radius: 999px; background: var(--as-blue-tint); color: var(--as-blue); font: 700 11px/1.2 var(--cti-display); text-transform: capitalize; }
+.appsec-shell .appsec-finding-detail .appsec-facts > div:nth-child(3) dd { display: inline-flex; width: max-content; padding: 4px 10px; border-radius: 999px; background: var(--as-blue-tint); color: var(--as-blue); }
+.appsec-shell .appsec-asset-list article strong { color: var(--as-blue); }
+.appsec-shell .appsec-integrations .appsec-transition { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--as-space-sm); }
+.appsec-shell .appsec-integrations .appsec-transition label { grid-column: 1 / -1; }
+.appsec-shell .appsec-integrations .appsec-transition button { justify-self: end; grid-column: 2; }
+html.dark .appsec-shell .soc-button-primary { border-color: var(--as-brand); background: var(--as-brand); color: var(--as-on-primary); }
+html.dark .appsec-shell .appsec-findings-list .severity-high, html.dark .appsec-shell .appsec-finding-detail .severity-high { background: var(--as-high-soft); color: var(--as-high-ink); }
+@media (max-width: 640px) { .appsec-shell .appsec-integrations .appsec-transition { grid-template-columns: 1fr; } .appsec-shell .appsec-integrations .appsec-transition button { grid-column: 1; } }
+.appsec-shell .appsec-integrations .appsec-transition label:first-of-type { grid-column: 1; }
+.appsec-shell .appsec-integrations .appsec-transition button:first-of-type { grid-column: 2; align-self: end; }
+.appsec-shell .appsec-integrations .appsec-transition label:last-of-type { grid-column: 1 / -1; }
+.appsec-shell .appsec-asset-badges { display: flex; flex-wrap: wrap; justify-content: end; gap: var(--as-space-xs); }
+.appsec-shell .appsec-asset-badges > span { padding: 4px 9px; border: 1px solid var(--as-line); border-radius: 999px; background: var(--as-surface); color: var(--as-muted); font: 700 11px var(--cti-display); }
+.appsec-shell .appsec-asset-badges > span:nth-child(2) { border-color: var(--as-blue); color: var(--as-blue); }
+.appsec-shell .appsec-asset-badges > span:nth-child(3) { border-color: var(--as-high); color: var(--as-high); }
+@media (max-width: 640px) { .appsec-shell .appsec-integrations .appsec-transition label:first-of-type, .appsec-shell .appsec-integrations .appsec-transition button:first-of-type, .appsec-shell .appsec-integrations .appsec-transition label:last-of-type { grid-column: 1; } .appsec-shell .appsec-asset-badges { justify-content: start; } }
+@media (max-width: 900px) {
+  .appsec-shell .appsec-detail-lower.has-ti .appsec-integrations > .appsec-assets:first-of-type { grid-column: 1 / -1; }
+  .appsec-shell .appsec-detail-lower > *, .appsec-shell .appsec-integrations > * { min-width: 0; }
+}
+@media (max-width: 640px) {
+  .appsec-shell .appsec-heading { align-items: stretch; }
+  .appsec-shell .appsec-heading > div { width: 100%; }
+}
+body:has(.appsec-shell) { --as-modal-primary: #1769ee; --as-modal-on-primary: #fff; }
+html.dark body:has(.appsec-shell) { --as-modal-primary: #2867e9; }
+body:has(.appsec-shell) .cti-overlay .soc-button-primary { border-color: var(--as-modal-primary); background: var(--as-modal-primary); color: var(--as-modal-on-primary); }
+body:has(.appsec-shell) .cti-overlay .soc-button-primary:hover:not(:disabled) { filter: brightness(.9); }
+@media (max-width: 900px) {
+  .appsec-shell .appsec-findings-list .cti-table .ioc-severity,
+  .appsec-shell .appsec-findings-list .cti-table .cti-status { justify-self: start; width: max-content; }
+}

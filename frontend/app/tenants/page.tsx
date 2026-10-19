@@ -3,12 +3,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Table } from '@/components/ui/table';
 import { ConfirmationModal, FormModal } from '@/components/ui/modal-patterns';
 import SharedSidebar from '../../components/dashboard/Sidebar';
 import type { ModulePolicy } from '../../lib/access-policy';
+import type { ModuleAccess } from '../../lib/module-access';
+import './tenant-management.css';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -24,61 +27,14 @@ type Tenant = {
 
 type CurrentUser = {
   id: string;
+  name: string;
   role: 'SUPER_ADMIN' | 'ADMIN' | 'USER';
   tenant: { id: string; name: string } | null;
+  moduleAccess: ModuleAccess[];
 };
 
-function LegacySidebar({ role, onLogout }: { role: string; onLogout: () => void }) {
-  const items = [
-    { label: 'Dashboard', href: '/dashboard' },
-    { label: 'Indicators', href: '/indicators' },
-    { label: 'Threat Actors', href: '#' },
-    { label: 'Campaigns', href: '#' },
-    { label: 'Cases', href: '#' },
-    { label: 'Reports', href: '#' },
-    { label: 'Sources', href: '#' },
-    { label: 'Alerts', href: '#' },
-    ...(role === 'SUPER_ADMIN'
-      ? [
-          { label: 'ADMIN', href: '', divider: true },
-          { label: 'Tenant Management', href: '/tenants' },
-          { label: '👥 User Management', href: '/users' },
-          { label: '📋 Audit Log', href: '/audit-logs' },
-        ]
-      : role === 'ADMIN'
-      ? [
-          { label: 'ADMIN', href: '', divider: true },
-          { label: '👥 User Management', href: '/users' },
-          { label: '📋 Audit Log', href: '/audit-logs' },
-        ]
-      : []),
-  ];
-
-  return (
-    <aside className="sidebar" style={{ display: 'flex', flexDirection: 'column' }}>
-      <div className="brand">CTI Platform</div>
-      <nav className="nav" style={{ flex: 1 }}>
-        {items.map((item) =>
-          (item as any).divider ? (
-            <div key={item.label} style={{ fontSize: 10, color: '#64748b', padding: '14px 12px 4px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-              {item.label}
-            </div>
-          ) : (
-            <Link
-              key={item.label}
-              href={item.href}
-              className={`nav-item${item.href === '/tenants' ? ' active' : ''}`}
-            >
-              {item.label}
-            </Link>
-          )
-        )}
-      </nav>
-      <button onClick={onLogout} className="logout" style={{ margin: '16px 0 0', width: '100%', textAlign: 'center' }}>
-        Logout
-      </button>
-    </aside>
-  );
+function initials(name: string): string {
+  return name.trim().split(/\s+/).slice(0, 2).map(part => part.charAt(0).toUpperCase()).join('') || 'U';
 }
 
 export default function TenantsPage() {
@@ -190,31 +146,34 @@ export default function TenantsPage() {
 
   if (loading) {
     return (
-      <div className="app">
+      <div className="app tenant-management-page">
         <aside className="sidebar"><div className="brand">CTI Platform</div></aside>
         <section className="main"><div className="content" style={{ paddingTop: 60, textAlign: 'center', color: 'var(--soc-muted)' }}>Memuat tenant…</div></section>
       </div>
     );
   }
 
-  if (forbidden) return <div className="app"><SharedSidebar role={currentUser?.role ?? 'USER'} onLogout={logout} /><section className="main"><main className="content admin-workspace"><p className="admin-state" role="alert">You don’t have permission to access this area.</p></main></section></div>;
+  if (forbidden) return <div className="app tenant-management-page"><SharedSidebar role={currentUser?.role ?? 'USER'} moduleAccess={currentUser?.moduleAccess} onLogout={logout} dashboardPresentation /><section className="main"><main className="content admin-workspace"><p className="admin-state" role="alert">You don’t have permission to access this area.</p></main></section></div>;
 
   return (
-    <div className="app">
-      <SharedSidebar role={currentUser?.role ?? 'USER'} onLogout={logout} />
+    <div className="app tenant-management-page">
+      <SharedSidebar role={currentUser?.role ?? 'USER'} moduleAccess={currentUser?.moduleAccess} onLogout={logout} dashboardPresentation />
       <section className="main">
-        <header className="topbar">
-          <div style={{ fontWeight: 600 }}>Tenant Management</div>
-          <span style={{ fontSize: 13, color: 'var(--soc-muted)' }}>{currentUser?.role}</span>
+        <header className="topbar tenant-topbar">
+          <div className="tenant-profile">
+            <span className="tenant-profile-avatar" aria-hidden="true">{initials(currentUser?.name ?? '')}</span>
+            <span><strong>{currentUser?.name}</strong><small>{currentUser?.role.replaceAll('_', ' ')}</small></span>
+            <button type="button" className="tenant-header-logout" onClick={logout} aria-label="Keluar dari Tenant Management"><LogOut size={20} aria-hidden="true" /></button>
+          </div>
         </header>
-        <main className="content editorial-module admin-workspace">
+        <main className="content editorial-module admin-workspace tenant-content">
           <Link className="admin-back-link" href="/administration">← Administration overview</Link>
-          <div className="admin-heading-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
+          <div className="admin-heading-row tenant-heading-row">
             <div>
-              <span className="source-eyebrow">TENANT MANAGEMENT</span><h1>Organizations in your platform.</h1>
+              <span className="source-eyebrow">TENANT MANAGEMENT</span><h1>Organizations in your platform</h1>
               <p>Manage tenant status, users and access to the platform.</p>
             </div>
-            <Button view="action" size="l" onClick={() => { setError(''); setSuccess(''); setShowForm(true); }}>+ Buat Tenant Baru</Button>
+            <Button view="action" size="l" onClick={() => { setError(''); setSuccess(''); setShowForm(true); }}>Create New Tenant</Button>
           </div>
 
           <section className="editorial-metrics" aria-label="Tenant summary"><div><span>Total tenants</span><strong>{tenants.length}</strong></div><div><span>Active</span><strong>{tenants.filter(tenant => tenant.isActive).length}</strong></div><div><span>Users</span><strong>{tenants.reduce((count, tenant) => count + tenant._count.users, 0)}</strong></div><div><span>Indicators</span><strong>{tenants.reduce((count, tenant) => count + tenant._count.indicators, 0)}</strong></div></section>
@@ -252,24 +211,24 @@ export default function TenantsPage() {
           </FormModal>
           <ConfirmationModal open={Boolean(statusTarget)} onOpenChange={open => { if (!open) setStatusTarget(null); }} title={statusTarget?.isActive ? 'Nonaktifkan organisasi' : 'Aktifkan organisasi'} target={statusTarget?.name} confirmLabel={statusTarget?.isActive ? 'Nonaktifkan' : 'Aktifkan'} destructive={statusTarget?.isActive} loading={saving} error={statusTarget ? error : ''} onConfirm={confirmStatus} />
 
-          <Card view="outlined" className="admin-directory" style={{ padding: 24 }}>
-            <h2 style={{ margin: '0 0 20px' }}>Daftar Tenant ({tenants.length})</h2>
+          <Card view="outlined" className="admin-directory tenant-directory">
+            <h2>Tenant List ({tenants.length})</h2>
             {tenants.length === 0 ? (
               <p style={{ color: 'var(--soc-muted)' }}>Belum ada tenant terdaftar.</p>
             ) : (
               <Table
                 data={tenants}
                 columns={[
-                  { id: 'name', name: 'Nama Tenant', template: (t: Tenant) => <div><div style={{ fontWeight: 600 }}>{t.name}</div><div style={{ fontSize: 12, color: 'var(--soc-muted)' }}>{t.slug}</div></div> },
-                  { id: 'status', name: 'Status', template: (t: Tenant) => <span className={`status-pill ${t.isActive ? 'is-active' : 'is-inactive'}`}>{t.isActive ? 'Aktif' : 'Nonaktif'}</span> },
-                  { id: 'users', name: 'User', template: (t: Tenant) => t._count.users },
+                  { id: 'name', name: 'Tenant Name', template: (t: Tenant) => <div className="tenant-name-cell"><strong>{t.name}</strong><span>{t.slug}</span></div> },
+                  { id: 'status', name: 'Status', template: (t: Tenant) => <span className={`status-pill ${t.isActive ? 'is-active' : 'is-inactive'}`}>{t.isActive ? 'Active' : 'Inactive'}</span> },
+                  { id: 'users', name: 'Users', template: (t: Tenant) => t._count.users },
                   { id: 'indicators', name: 'Indicators', template: (t: Tenant) => t._count.indicators },
-                  { id: 'createdAt', name: 'Dibuat', template: (t: Tenant) => new Date(t.createdAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) },
-                  { id: 'actions', name: 'Aksi', template: (t: Tenant) => (
-                    <div style={{ display: 'flex', gap: 8 }}>
+                  { id: 'createdAt', name: 'Created', template: (t: Tenant) => new Date(t.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) },
+                  { id: 'actions', name: 'Actions', template: (t: Tenant) => (
+                    <div className="tenant-row-actions">
                       <Button view="flat" size="s" onClick={() => void viewTenant(t)}>View</Button>
-                      <Button view={t.isActive ? 'flat-danger' : 'flat'} size="s" onClick={() => toggleStatus(t)}>{t.isActive ? 'Nonaktifkan' : 'Aktifkan'}</Button>
-                      <Button view="flat" size="s" onClick={() => router.push('/users?tenantId=' + t.id)}>Lihat User</Button>
+                      <Button view="flat" size="s" onClick={() => router.push('/users?tenantId=' + t.id)}>View Users</Button>
+                      <Button view={t.isActive ? 'flat-danger' : 'flat'} size="s" onClick={() => toggleStatus(t)}>{t.isActive ? 'Deactivate' : 'Activate'}</Button>
                     </div>
                   )},
                 ]}

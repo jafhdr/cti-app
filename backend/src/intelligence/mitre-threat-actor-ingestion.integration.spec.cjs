@@ -1,3 +1,4 @@
+const { createAccessToken } = require('../auth/integration-session.cjs');
 require('reflect-metadata');
 const assert = require('node:assert/strict');
 const { after, before, test } = require('node:test');
@@ -60,8 +61,8 @@ before(async () => {
   await app.listen(0, '127.0.0.1');
   baseUrl = await app.getUrl();
   const jwt = new JwtService();
-  adminToken = await jwt.signAsync({ sub: admin.id, tenantId: primaryTenantId, role: 'ADMIN' }, { secret: process.env.JWT_ACCESS_SECRET, expiresIn: '5m' });
-  userToken = await jwt.signAsync({ sub: user.id, tenantId: primaryTenantId, role: 'USER' }, { secret: process.env.JWT_ACCESS_SECRET, expiresIn: '5m' });
+  adminToken = await createAccessToken(prisma, admin.id, process.env.JWT_ACCESS_SECRET);
+  userToken = await createAccessToken(prisma, user.id, process.env.JWT_ACCESS_SECRET);
 });
 
 after(async () => {

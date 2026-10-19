@@ -1,0 +1,90 @@
+﻿/* Tenant Management reference styling. All rules stay on the target route. */
+.tenant-management-page{--tm-canvas:#e9f0ff;--tm-surface:#fff;--tm-ink:#172036;--tm-muted:#718096;--tm-blue:#1465ff;--tm-tint:#e2ecff;--tm-border:#e2e9f3;--tm-shadow:0 8px 20px rgba(24,63,133,.08);grid-template-columns:300px minmax(0,1fr);gap:28px;padding:24px;background:var(--tm-canvas);color:var(--tm-ink)}
+html.dark .tenant-management-page{--tm-canvas:#10182b;--tm-surface:#19243a;--tm-ink:#f5f7ff;--tm-muted:#aab8cd;--tm-blue:#a8b6ff;--tm-tint:#2d3b60;--tm-border:#354462;--tm-shadow:0 8px 20px rgba(0,0,0,.16)}
+.tenant-management-page .main{overflow:visible;min-width:0;border:0;border-radius:0;background:transparent}
+.tenant-management-page .sidebar,.tenant-management-page .tenant-topbar{border:1px solid var(--tm-border);border-radius:24px;background:var(--tm-surface);box-shadow:var(--tm-shadow)}
+.tenant-management-page .sidebar{top:24px;max-height:calc(100vh - 48px);min-height:calc(100vh - 48px);padding:22px 18px 18px;color:var(--tm-ink)}
+.tenant-management-page .sidebar .brand{justify-content:center;min-height:54px;margin:0 0 22px;padding:0;border:0;color:var(--tm-ink);font:750 16px/1.2 var(--cti-display)}
+.tenant-management-page .sidebar .brand svg{box-sizing:content-box;padding:7px;border-radius:9px;background:#2164ea;color:#fff}
+.tenant-management-page .sidebar-navigation{gap:7px}
+.tenant-management-page .sidebar-link,.tenant-management-page .sidebar-module-toggle,.tenant-management-page .sidebar-submenu a{min-height:40px;padding:9px 12px;border-radius:11px;color:var(--tm-ink);font:500 13px/1.35 var(--cti-display);letter-spacing:0;text-transform:none}
+.tenant-management-page .sidebar-module-toggle{justify-content:flex-start;gap:11px}
+.tenant-management-page .sidebar-module-toggle>span{flex:1}
+.tenant-management-page .sidebar-module-toggle>svg:last-child{margin-left:auto}
+.tenant-management-page .sidebar-link:hover,.tenant-management-page .sidebar-module-toggle:hover,.tenant-management-page .sidebar-submenu a:hover{background:var(--tm-tint);color:var(--tm-blue)}
+.tenant-management-page .sidebar-link.active,.tenant-management-page .sidebar-submenu a.active{border-color:transparent;background:var(--tm-tint);color:var(--tm-blue)}
+.tenant-management-page .sidebar-module.active>.sidebar-module-toggle{background:#f0f4fb;color:var(--tm-ink)}
+html.dark .tenant-management-page .sidebar-module.active>.sidebar-module-toggle{background:var(--tm-tint)}
+.tenant-management-page .sidebar-submenu{padding-left:16px}
+.tenant-management-page .sidebar-footer{border:0}
+.tenant-management-page .theme-select-label{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.tenant-management-page .theme-options{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;border:0;background:transparent}
+.tenant-management-page .theme-options button.is-active{background:var(--tm-tint);color:var(--tm-blue);box-shadow:none}
+.tenant-management-page .tenant-topbar{display:flex;justify-content:flex-end;align-items:center;min-height:86px;margin-bottom:22px;padding:12px 32px}
+.tenant-management-page .tenant-profile{display:flex;align-items:center;gap:14px}
+.tenant-management-page .tenant-profile-avatar{display:grid;place-items:center;flex:none;width:44px;height:44px;border-radius:50%;background:#ff9228;color:#fff;font:700 17px Georgia,serif}
+.tenant-management-page .tenant-profile>span:nth-child(2){display:grid;gap:1px}
+.tenant-management-page .tenant-profile strong{color:var(--tm-ink);font:700 18px Georgia,serif}
+.tenant-management-page .tenant-profile small{color:var(--tm-muted);font-size:12px}
+.tenant-management-page .tenant-header-logout{display:grid;place-items:center;width:40px;height:40px;margin-left:12px;border:0;border-radius:10px;background:transparent;color:var(--tm-muted);cursor:pointer}
+.tenant-management-page .tenant-header-logout:hover{background:var(--tm-tint);color:var(--tm-blue)}
+.tenant-management-page .tenant-content{max-width:none;padding:0 0 52px}
+.tenant-management-page .admin-back-link{margin:0 0 24px;color:var(--tm-blue);font-size:13px}
+.tenant-management-page .tenant-heading-row{display:flex;justify-content:space-between;align-items:center;gap:28px;margin-bottom:26px}
+.tenant-management-page .source-eyebrow{color:var(--tm-blue);font-size:11px;letter-spacing:.16em}
+.tenant-management-page .tenant-heading-row h1{margin:10px 0 8px;color:var(--tm-ink);font:700 clamp(28px,2.7vw,40px)/1.08 Georgia,'Times New Roman',serif;letter-spacing:-.035em}
+.tenant-management-page .tenant-heading-row p{margin:0;color:var(--tm-muted);font-size:14px}
+.tenant-management-page .tenant-heading-row button{flex:none;min-height:46px;padding:11px 22px;border:0;border-radius:999px;background:#0964ff;color:#fff;box-shadow:0 7px 14px rgba(9,100,255,.2);font:650 13px var(--cti-display)}
+.tenant-management-page .editorial-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin:26px 0 26px;border:0}
+.tenant-management-page .editorial-metrics>div{min-width:0;min-height:122px;padding:23px 24px;border:1px solid var(--tm-border)!important;border-radius:18px;background:var(--tm-surface);box-shadow:var(--tm-shadow)}
+.tenant-management-page .editorial-metrics span{color:var(--tm-muted);font-size:13px}
+.tenant-management-page .editorial-metrics strong{margin-top:14px;color:var(--tm-ink);font:750 clamp(30px,2.8vw,45px)/1 var(--cti-display);letter-spacing:-.06em}
+.tenant-management-page .editorial-section-heading{margin:0 0 14px}
+.tenant-management-page .editorial-section-heading h2{margin:6px 0 0;color:var(--tm-ink);font-size:clamp(22px,2vw,29px);letter-spacing:-.04em}
+.tenant-management-page .tenant-directory{padding:0!important;overflow:hidden;border:1px solid var(--tm-border)!important;border-radius:20px!important;background:var(--tm-surface)!important;box-shadow:var(--tm-shadow)!important}
+.tenant-management-page .tenant-directory>h2{margin:0;padding:19px 24px;border-bottom:1px solid var(--tm-border);color:var(--tm-ink);font-size:19px;letter-spacing:-.03em}
+.tenant-management-page .tenant-directory>.cti-table-wrap{border:0;border-radius:0;overflow-x:auto}
+.tenant-management-page .tenant-directory table{min-width:860px;width:100%;border-collapse:collapse}
+.tenant-management-page .tenant-directory th{padding:12px 20px!important;background:#f5f7fb!important;color:#9aaac0!important;font-size:11px!important;letter-spacing:.1em;text-transform:uppercase}
+html.dark .tenant-management-page .tenant-directory th{background:#26334c!important;color:var(--tm-muted)!important}
+.tenant-management-page .tenant-directory td{padding:17px 20px!important;border-top:1px solid var(--tm-border)!important;background:var(--tm-surface)!important;color:var(--tm-ink)}
+.tenant-management-page .tenant-directory tbody tr:hover td{background:var(--tm-tint)!important}
+.tenant-management-page .tenant-name-cell{display:grid;gap:3px;min-width:180px}
+.tenant-management-page .tenant-name-cell strong{font-size:13px;overflow-wrap:anywhere}
+.tenant-management-page .tenant-name-cell span{color:var(--tm-muted);font-size:11px;overflow-wrap:anywhere}
+.tenant-management-page .tenant-directory .status-pill.is-active{background:#defbea!important;color:#168b4c!important}
+.tenant-management-page .tenant-directory .status-pill.is-inactive{background:#ffe8e8!important;color:#c43d43!important}
+.tenant-management-page .tenant-row-actions{display:flex!important;flex-wrap:nowrap!important;align-items:center;gap:8px!important;min-width:260px}
+.tenant-management-page .tenant-row-actions button{flex:none;min-width:auto;padding:7px 9px;white-space:nowrap}
+.tenant-management-page .tenant-row-actions button:last-child{border:1px solid #ffc6c6;border-radius:9px;background:#ffe8e8;color:#c3262f}
+.tenant-management-page .admin-detail{border-color:var(--tm-border);border-radius:20px;background:var(--tm-surface);box-shadow:var(--tm-shadow)}
+.tenant-management-page .admin-detail dl>div{border-color:var(--tm-border);background:var(--tm-canvas)}
+.tenant-management-page .admin-state{border-color:var(--tm-border);background:var(--tm-surface)}
+.tenant-management-page :is(a,button,input):focus-visible{outline:2px solid var(--tm-blue);outline-offset:2px}
+@media(max-width:1250px){.tenant-management-page{grid-template-columns:252px minmax(0,1fr);gap:18px;padding:16px}.tenant-management-page .tenant-directory table{min-width:900px}}
+@media(max-width:900px){.tenant-management-page{display:block;padding:10px}.tenant-management-page .sidebar{position:relative;top:auto;max-height:none;min-height:0;margin-bottom:12px}.tenant-management-page .tenant-topbar{min-height:68px}.tenant-management-page .editorial-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.tenant-management-page .tenant-directory>.cti-table-wrap{overflow-x:auto}.tenant-management-page .tenant-directory .cti-table{min-width:860px!important}.tenant-management-page .tenant-directory .cti-table thead{position:static;width:auto;height:auto;overflow:visible;clip:auto}.tenant-management-page .tenant-directory .cti-table tbody{display:table-row-group}.tenant-management-page .tenant-directory .cti-table tbody tr{display:table-row;padding:0;border:0}.tenant-management-page .tenant-directory .cti-table tbody td{display:table-cell;padding:17px 20px!important}.tenant-management-page .tenant-directory .cti-table tbody td::before{display:none}.tenant-management-page .tenant-row-actions{display:flex!important;min-width:260px}}
+@media(max-width:600px){.tenant-management-page .tenant-topbar{padding:10px 16px}.tenant-management-page .tenant-heading-row{align-items:stretch;flex-direction:column}.tenant-management-page .tenant-heading-row button{align-self:flex-start}.tenant-management-page .editorial-metrics{gap:10px}.tenant-management-page .editorial-metrics>div{min-height:100px;padding:18px}.tenant-management-page .editorial-metrics strong{font-size:32px}.tenant-management-page .tenant-directory>h2{padding:16px}.tenant-management-page .tenant-profile strong{font-size:15px}}
+/* Final reference geometry and table interaction refinements. */
+@media(min-width:1251px){.tenant-management-page{grid-template-columns:330px minmax(0,1fr);gap:40px}}
+.tenant-management-page .admin-back-link{margin-bottom:16px}
+.tenant-management-page .tenant-heading-row{margin-bottom:18px}
+.tenant-management-page .tenant-heading-row h1{font-size:clamp(28px,2.3vw,34px)}
+.tenant-management-page .editorial-metrics{margin-top:16px}
+.tenant-management-page .editorial-metrics strong{font-size:clamp(30px,2.5vw,38px)}
+.tenant-management-page .editorial-section-heading h2{font-size:clamp(22px,1.7vw,25px)}
+.tenant-management-page .tenant-heading-row button{padding-inline:28px}
+.tenant-management-page .tenant-directory .cti-table td:last-child>.tenant-row-actions{display:flex!important;flex-wrap:nowrap!important;gap:8px!important;min-width:250px}
+@media(max-width:900px){
+  .tenant-management-page .tenant-directory>.cti-table-wrap{overflow:visible}
+  .tenant-management-page .tenant-directory .cti-table{min-width:0!important}
+  .tenant-management-page .tenant-directory .cti-table thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+  .tenant-management-page .tenant-directory .cti-table tbody{display:grid;gap:12px;padding:12px}
+  .tenant-management-page .tenant-directory .cti-table tbody tr{display:grid;padding:12px 16px;border:1px solid var(--tm-border);border-radius:14px;background:var(--tm-surface)}
+  .tenant-management-page .tenant-directory .cti-table tbody td{display:grid;grid-template-columns:minmax(90px,30%) minmax(0,1fr);gap:10px;padding:8px 0!important;border:0!important;background:transparent!important;overflow-wrap:anywhere}
+  .tenant-management-page .tenant-directory .cti-table tbody td::before{display:block;content:attr(data-label);color:var(--tm-muted);font-size:11px;font-weight:700;text-transform:uppercase}
+  .tenant-management-page .tenant-directory .cti-table tbody td:last-child{display:block}
+  .tenant-management-page .tenant-directory .cti-table tbody td:last-child::before{margin-bottom:8px}
+  .tenant-management-page .tenant-directory .cti-table td:last-child>.tenant-row-actions{display:flex!important;flex-wrap:wrap!important;min-width:0}
+}
+@media(max-width:600px){.tenant-management-page .tenant-directory .cti-table tbody{padding:10px}.tenant-management-page .tenant-directory .cti-table tbody td{grid-template-columns:minmax(78px,29%) minmax(0,1fr)}}
+html.dark .tenant-management-page .tenant-row-actions button:not(:last-child){color:#c5d2ff}

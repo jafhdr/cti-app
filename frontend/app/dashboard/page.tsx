@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { Activity, Building2, Globe2, LogOut, UserRound } from 'lucide-react';
 import Sidebar from '../../components/dashboard/Sidebar';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -41,15 +42,16 @@ type Summary = {
   dashboardMode: 'GLOBAL' | 'TENANT_ADMIN' | 'PERSONAL';
   tenantName: string | null;
   totalTenants: number | null;
-  indicators: number;
-  highRiskIndicators: number;
-  activeAlerts: number;
-  openCases: number;
-  users: number;
-  myIndicatorsCreated: number;
-  sources: number;
-  campaigns: number;
-  subscription: { plan: string; status: string };
+  indicators: number | null;
+  highRiskIndicators: number | null;
+  activeAlerts: number | null;
+  openCases: number | null;
+  users: number | null;
+  myIndicatorsCreated: number | null;
+  sources: number | null;
+  campaigns: number | null;
+  subscription: { plan: string | null; status: string; persistedStatus: string | null };
+  activityAvailable: boolean;
   recentActivity: ActivityItem[];
   tenantOverview: TenantRow[];
 };
@@ -57,11 +59,11 @@ type Summary = {
 /* ─────────────────────────────────────────────
    Helper — stat card
 ───────────────────────────────────────────── */
-function StatCard({ title, value, accent }: { title: string; value: number | string; accent?: string }) {
+function StatCard({ title, value }: { title: string; value: number | string | null }) {
   return (
-    <div className="card" style={{ borderTop: accent ? `3px solid ${accent}` : undefined }}>
+    <div className="card">
       <div className="card-title">{title}</div>
-      <div className="metric">{value}</div>
+      <div className="metric">{value ?? "—"}</div>
     </div>
   );
 }
@@ -71,17 +73,37 @@ function CommandOverview({ summary, user }: { summary: Summary; user: Me }) {
     { label: 'Cari indicator', href: '/indicators', enabled: user.moduleAccess.some(module => module.moduleSlug === 'threat-intelligence' && module.accessible && module.featureKeys.includes('indicator-management')) },
     { label: 'Lihat asset', href: '/attack-surface/assets', enabled: user.moduleAccess.some(module => module.moduleSlug === 'attack-surface-management' && module.accessible && module.featureKeys.includes('asset-management')) },
     { label: 'Buka cases', href: '/cases', enabled: user.moduleAccess.some(module => module.moduleSlug === 'case-management' && module.accessible && module.featureKeys.includes('case-workflow')) },
-  ];
+  ].filter(action => action.enabled);
   const metrics = [
     { label: 'Indicators monitored', value: summary.indicators },
     { label: 'High risk indicators', value: summary.highRiskIndicators },
     { label: 'Open investigations', value: summary.openCases },
     { label: 'Active alerts', value: summary.activeAlerts },
-  ];
+  ].filter((metric): metric is { label: string; value: number } => metric.value !== null);
+  const hasSignals = summary.indicators !== null;
   return <section className="command-overview" aria-label="Ringkasan command center">
-    <div className="command-hero"><div className="command-hero-copy"><span className="command-eyebrow">CTI / {summary.dashboardMode.replace('_', ' ')}</span><h2>Security visibility,<br /><span>in one place.</span></h2><p>{summary.tenantName ?? 'Platform'} · Intelligence, exposure, and investigations in one operational view.</p><div className="command-actions">{actions.filter(action => action.enabled).map(action => <Link className="quick-action is-info" key={action.href} href={action.href}>{action.label} ↗</Link>)}</div></div><div className="command-visual" aria-label="Live summary of available intelligence"><div className="command-visual-top"><span>LIVE WORKSPACE</span><span>● CONNECTED</span></div><div className="command-visual-center"><small>INTELLIGENCE SIGNALS</small><strong>{summary.indicators}</strong><span>Indicators in scope</span></div><div className="command-visual-bottom"><span>HIGH RISK <b>{summary.highRiskIndicators}</b></span><span>OPEN CASES <b>{summary.openCases}</b></span></div></div></div>
-    <div className="command-kpis">{metrics.map(metric => <article className="command-metric" key={metric.label}><strong>{metric.value}</strong><span>{metric.label}</span></article>)}</div>
-    <div className="command-detail-grid"><article className="command-story"><span className="command-eyebrow">01 / RISK POSTURE</span><h3>Focus on what needs attention.</h3><p>High risk indicators are drawn from the current dashboard summary. Explore the accessible modules to investigate the underlying records.</p><div className="command-risk"><span>High risk indicators</span><strong>{summary.highRiskIndicators}</strong></div></article><article className="command-story command-story-secondary"><span className="command-eyebrow">02 / WORKFLOW</span><h3>Move from signal to investigation.</h3><p>Review intelligence, inspect your attack surface, and continue open cases in the same workspace.</p><div className="command-actions">{actions.filter(action => action.enabled).map(action => <Link className="quick-action is-info" key={action.href} href={action.href}>{action.label} ↗</Link>)}{actions.every(action => !action.enabled) && <p className="muted">Tidak ada modul yang dapat diakses.</p>}</div></article></div>
+    <div className={`command-hero${hasSignals ? '' : ' command-hero-empty'}`}>
+      <div className="command-hero-copy">
+        <span className="command-eyebrow">CTI / {summary.dashboardMode.replace('_', ' ')}</span>
+        <h2>Security visibility,<br /><span>in one place.</span></h2>
+        <p>{summary.tenantName ?? 'Platform'} · Ringkasan kondisi saat ini, bukan tren historis.</p>
+        {summary.dashboardMode !== 'GLOBAL' && <p>Subscription: {summary.subscription.plan ? `${summary.subscription.plan} · ` : ''}{summary.subscription.status}</p>}
+        <div className="command-actions">{actions.map(action => <Link className="quick-action is-info" key={action.href} href={action.href}>{action.label} ↗</Link>)}</div>
+      </div>
+      {hasSignals && <div className="command-visual" aria-label="Ringkasan intelligence saat ini">
+        <div className="command-visual-top"><span>WORKSPACE SNAPSHOT</span><span>● TERSEDIA</span></div>
+        <div className="command-visual-center"><small>INTELLIGENCE SIGNALS</small><strong>{summary.indicators}</strong><span>Indicators in scope</span></div>
+        <div className="command-visual-bottom">
+          {summary.highRiskIndicators !== null && <span>HIGH RISK <b>{summary.highRiskIndicators}</b></span>}
+          {summary.openCases !== null && <span>OPEN CASES <b>{summary.openCases}</b></span>}
+        </div>
+      </div>}
+    </div>
+    {metrics.length > 0 ? <div className="command-kpis">{metrics.map(metric => <article className="command-metric" key={metric.label}><strong>{metric.value}</strong><span>{metric.label}</span></article>)}</div> : <p className="muted">Tidak ada statistik modul yang dapat diakses.</p>}
+    <div className={`command-detail-grid${summary.highRiskIndicators === null ? ' command-detail-empty' : ''}`}>
+      {summary.highRiskIndicators !== null && <article className="command-story"><span className="command-eyebrow">01 / RISK POSTURE</span><h3>Focus on what needs attention.</h3><p>High risk indicators are drawn from the current dashboard summary. Explore the accessible modules to investigate the underlying records.</p><div className="command-risk"><span>High risk indicators</span><strong>{summary.highRiskIndicators}</strong></div></article>}
+      <article className="command-story command-story-secondary"><span className="command-eyebrow">02 / WORKFLOW</span><h3>Move from signal to investigation.</h3><p>Review the modules available in this workspace.</p><div className="command-actions">{actions.map(action => <Link className="quick-action is-info" key={action.href} href={action.href}>{action.label} ↗</Link>)}{actions.length === 0 && <p className="muted">Tidak ada modul yang dapat diakses.</p>}</div></article>
+    </div>
   </section>;
 }
 
@@ -103,36 +125,31 @@ function actionLabel(action: string) {
     TENANT_DEACTIVATED: 'Tenant dinonaktifkan',
     PASSWORD_RESET: 'Reset password',
   };
-  return map[action] ?? action;
+  return map[action] ?? action.toLowerCase().replaceAll('_', ' ').replace(/^\p{L}/u, letter => letter.toUpperCase());
+}
+
+function initials(name: string): string {
+  return name.trim().split(/\s+/).slice(0, 2).map(part => part.charAt(0).toUpperCase()).join('') || 'U';
 }
 
 /* ─────────────────────────────────────────────
    Shared — Activity Log
 ───────────────────────────────────────────── */
-function ActivityLog({ items }: { items: ActivityItem[] }) {
+function ActivityLog({ items, available = true }: { items: ActivityItem[]; available?: boolean }) {
   return (
     <div className="section card">
-      <h3 style={{ margin: '0 0 14px' }}>📜 Aktivitas Terbaru</h3>
-      {items.length === 0 ? (
+      <h3 className="dashboard-activity-title"><Activity aria-hidden="true" size={20} /> Aktivitas Terbaru</h3>
+      {!available ? <p className="muted">Riwayat aktivitas tidak tersedia untuk peran ini.</p> : items.length === 0 ? (
         <p className="muted">Belum ada aktivitas tercatat.</p>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+        <div className="dashboard-activity-list">
           {items.map((item) => (
             <div
               key={item.id}
               className="activity-row"
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: '1px 1px',
-                background: 'var(--soc-nav)',
-                borderRadius: 8,
-                fontSize: 14,
-              }}
             >
               <span>{actionLabel(item.action)}</span>
-              <span style={{ color: 'var(--soc-muted)', fontSize: 12 }}>
+              <span className="dashboard-activity-date">
                 {new Date(item.createdAt).toLocaleString('id-ID', {
                   day: '2-digit', month: 'short', year: 'numeric',
                   hour: '2-digit', minute: '2-digit',
@@ -146,165 +163,6 @@ function ActivityLog({ items }: { items: ActivityItem[] }) {
   );
 }
 
-/* ─────────────────────────────────────────────
-   Dashboard — SUPER_ADMIN (GLOBAL)
-───────────────────────────────────────────── */
-function GlobalDashboard({ summary }: { summary: Summary }) {
-  return (
-    <>
-      <div style={{ background: 'var(--soc-banner-global)', color: 'var(--soc-ink)', borderRadius: 6, padding: '10px 12px', marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div>
-          <div style={{ fontSize: 12, opacity: 0.6, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Mode</div>
-          <div style={{ fontSize: 20, fontWeight: 700 }}>🌐 Platform Overview — Super Admin</div>
-          <div style={{ marginTop: 6, fontSize: 13, opacity: 0.7 }}>Anda melihat data seluruh platform secara global</div>
-        </div>
-        <span className="badge">{summary.subscription.status}</span>
-      </div>
-
-      <div className="grid" style={{ marginBottom: 20 }}>
-        <StatCard title="Total Tenant Aktif" value={summary.totalTenants ?? 0} accent="var(--soc-violet)" />
-        <StatCard title="Total User Platform" value={summary.users} accent="var(--soc-blue)" />
-        <StatCard title="Total Indicators" value={summary.indicators} accent="var(--soc-yellow)" />
-        <StatCard title="High Risk Indicators" value={summary.highRiskIndicators} accent="var(--soc-red)" />
-      </div>
-
-      <div className="grid" style={{ marginBottom: 10 }}>
-        <StatCard title="Active Alerts" value={summary.activeAlerts} />
-        <StatCard title="Open Cases" value={summary.openCases} />
-        <StatCard title="Campaigns" value={summary.campaigns} />
-        <StatCard title="Sources" value={summary.sources} />
-      </div>
-
-      {summary.tenantOverview.length > 0 && (
-        <div className="section card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <h3 style={{ margin: 0 }}>🏢 Tenant Aktif</h3>
-            <Link href="/tenants" style={{ fontSize: 13, color: '#4155d8', fontWeight: 600 }}>Kelola Semua Tenant →</Link>
-          </div>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-            <thead>
-              <tr style={{ background: '#f8fafc' }}>
-                {['Nama Tenant', 'Slug', 'User Aktif', 'Indicators'].map(h => (
-                  <th key={h} style={{ textAlign: 'left', padding: '5px 6px', fontSize: 12, fontWeight: 600, color: '#687386', borderBottom: '1px solid #e6eaf0' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {summary.tenantOverview.map((t) => (
-                <tr key={t.id} style={{ borderBottom: '1px solid #e6eaf0' }}>
-                  <td style={{ padding: '5px 5px' }}>{t.name}</td>
-                  <td style={{ padding: '5px 5px', color: '#687386' }}>{t.slug}</td>
-                  <td style={{ padding: '5px 5px' }}>{t._count.users}</td>
-                  <td style={{ padding: '5px 5px' }}>{t._count.indicators}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      <div className="section card" style={{ marginTop: 20, marginBottom: 20 }}>
-        <h3 style={{ margin: '0 0 14px' }}>⚡ Quick Actions</h3>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <Link href="/tenants" className="quick-action is-info">Kelola Tenant</Link>
-          <Link href="/users" className="quick-action is-success">Kelola User</Link>
-          <Link href="/audit-logs" className="quick-action is-warning">Audit Log Global</Link>
-        </div>
-      </div>
-
-      <ActivityLog items={summary.recentActivity} />
-    </>
-  );
-}
-
-/* ─────────────────────────────────────────────
-   Dashboard — ADMIN (TENANT_ADMIN)
-───────────────────────────────────────────── */
-function TenantAdminDashboard({ summary, user }: { summary: Summary; user: Me }) {
-  return (
-    <>
-      <div style={{ background: 'var(--soc-banner-admin)', color: 'var(--soc-ink)', borderRadius: 6, padding: '24px 28px', marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div>
-          <div style={{ fontSize: 12, opacity: 0.6, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Workspace</div>
-          <div style={{ fontSize: 20, fontWeight: 700 }}>🏢 {summary.tenantName ?? user.tenant?.name}</div>
-          <div style={{ marginTop: 6, fontSize: 13, opacity: 0.7 }}>Administrator Tenant · {summary.subscription.plan}</div>
-        </div>
-        <span className="badge">{summary.subscription.status}</span>
-      </div>
-
-      <div className="grid" style={{ marginBottom: 20 }}>
-        <StatCard title="User Aktif" value={summary.users} accent="var(--soc-blue)" />
-        <StatCard title="Total Indicators" value={summary.indicators} accent="var(--soc-yellow)" />
-        <StatCard title="High Risk" value={summary.highRiskIndicators} accent="var(--soc-red)" />
-        <StatCard title="Indicators Anda" value={summary.myIndicatorsCreated} accent="var(--soc-green)" />
-      </div>
-
-      <div className="grid" style={{ marginBottom: 20 }}>
-        <StatCard title="Active Alerts" value={summary.activeAlerts} />
-        <StatCard title="Open Cases" value={summary.openCases} />
-        <StatCard title="Campaigns" value={summary.campaigns} />
-        <StatCard title="Sources" value={summary.sources} />
-      </div>
-
-      <div className="section card" style={{ marginBottom: 20 }}>
-        <h3 style={{ margin: '0 0 14px' }}>⚡ Quick Actions</h3>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <Link href="/indicators" className="quick-action is-info">+ Tambah Indicator</Link>
-          <Link href="/users" className="quick-action is-success">Kelola User</Link>
-          <Link href="/audit-logs" className="quick-action is-warning">Audit Log</Link>
-        </div>
-      </div>
-
-      <ActivityLog items={summary.recentActivity} />
-    </>
-  );
-}
-
-/* ─────────────────────────────────────────────
-   Dashboard — USER (PERSONAL)
-───────────────────────────────────────────── */
-function PersonalDashboard({ summary, user }: { summary: Summary; user: Me }) {
-  return (
-    <>
-      <div style={{ background: 'var(--soc-banner-user)', color: 'var(--soc-ink)', borderRadius: 6, padding: '24px 28px', marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div>
-          <div style={{ fontSize: 12, opacity: 0.6, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Workspace</div>
-          <div style={{ fontSize: 20, fontWeight: 700 }}>👋 Halo, {user.name}!</div>
-          <div style={{ marginTop: 6, fontSize: 13, opacity: 0.7 }}>{summary.tenantName ?? user.tenant?.name} · {summary.subscription.plan}</div>
-        </div>
-        <span className="badge">{summary.subscription.status}</span>
-      </div>
-
-      <div className="grid" style={{ marginBottom: 20 }}>
-        <StatCard title="Indicators Anda" value={summary.myIndicatorsCreated} accent="var(--soc-green)" />
-        <StatCard title="Total Indicators Tenant" value={summary.indicators} accent="var(--soc-yellow)" />
-        <StatCard title="High Risk (Tenant)" value={summary.highRiskIndicators} accent="var(--soc-red)" />
-        <StatCard title="Active Alerts" value={summary.activeAlerts} accent="var(--soc-violet)" />
-      </div>
-
-      <div className="grid" style={{ marginBottom: 20 }}>
-        <StatCard title="Open Cases" value={summary.openCases} />
-        <StatCard title="Campaigns" value={summary.campaigns} />
-        <StatCard title="Sources" value={summary.sources} />
-        <StatCard title="User Aktif (Tenant)" value={summary.users} />
-      </div>
-
-      <div className="section card" style={{ marginBottom: 20 }}>
-        <h3 style={{ margin: '0 0 14px' }}>⚡ Quick Actions</h3>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <Link href="/indicators" className="quick-action is-info">+ Tambah Indicator</Link>
-          <Link href="/indicators" className="quick-action is-success">Browse Indicators</Link>
-        </div>
-      </div>
-
-      <ActivityLog items={summary.recentActivity} />
-    </>
-  );
-}
-
-/* ─────────────────────────────────────────────
-   Main Page
-───────────────────────────────────────────── */
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<Me | null>(null);
@@ -338,28 +196,28 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="app">
+      <div className="app dashboard-page">
         <aside className="sidebar"><div className="brand">CTI Platform</div></aside>
-        <section className="main"><div className="content" style={{ paddingTop: 60, textAlign: 'center', color: '#687386' }}>Memuat dashboard…</div></section>
+        <section className="main"><div className="content dashboard-loading" role="status">Memuat dashboard…</div></section>
       </div>
     );
   }
 
   if (!user || !summary) {
     return (
-      <div className="app">
-        <aside className="sidebar"><div className="brand">CTI Platform</div></aside>
-        <section className="main"><div className="content">{error && <div className="error">{error}</div>}</div></section>
+      <div className="app dashboard-page">
+        {user ? <Sidebar role={user.role} moduleAccess={user.moduleAccess} onLogout={logout} /> : <aside className="sidebar"><div className="brand">CTI Platform</div></aside>}
+        <section className="main"><main className="content dashboard-error"><div className="card" role="alert"><h1>Dashboard tidak tersedia</h1><p>{error || 'Gagal memuat data dashboard.'}</p><button className="primary" onClick={() => window.location.reload()}>Coba lagi</button></div></main></section>
       </div>
     );
   }
 
-  const topbarTitle =
-    summary.dashboardMode === 'GLOBAL'
-      ? '🌐 Platform Overview'
-      : summary.dashboardMode === 'TENANT_ADMIN'
-      ? `🏢 ${summary.tenantName}`
-      : `👋 ${user.name}`;
+  const topbarTitle = summary.dashboardMode === 'GLOBAL'
+    ? 'Platform Overview'
+    : summary.dashboardMode === 'TENANT_ADMIN'
+      ? summary.tenantName
+      : user.name;
+  const TopbarIcon = summary.dashboardMode === 'GLOBAL' ? Globe2 : summary.dashboardMode === 'TENANT_ADMIN' ? Building2 : UserRound;
 
   const subTitle =
     summary.dashboardMode === 'GLOBAL'
@@ -369,17 +227,16 @@ export default function DashboardPage() {
       : `${summary.tenantName ?? user.tenant?.name} · Pengguna`;
 
   return (
-    <div className="app">
-      <Sidebar role={user.role} moduleAccess={user.moduleAccess} onLogout={logout} />
+    <div className="app dashboard-page">
+      <Sidebar role={user.role} moduleAccess={user.moduleAccess} onLogout={logout} dashboardPresentation />
 
       <section className="main">
         <header className="topbar">
-          <div style={{ fontWeight: 600 }}>{topbarTitle}</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <span style={{ fontSize: 13, color: '#687386' }}>
-              {user.email} · <strong>{user.role}</strong>
-            </span>
-            <button className="logout" onClick={logout}>Logout</button>
+          <div className="dashboard-topbar-title"><TopbarIcon aria-hidden="true" size={18} /><span><strong>{topbarTitle}</strong><small>{subTitle}</small></span></div>
+          <div className="dashboard-topbar-actions">
+            <span className="dashboard-profile-avatar" aria-hidden="true">{initials(user.name)}</span>
+            <span className="dashboard-topbar-account"><strong>{user.name}</strong><small>{user.role.replaceAll('_', ' ')}</small></span>
+            <button className="logout" onClick={logout} aria-label="Keluar dari Dashboard"><LogOut size={19} aria-hidden="true" /></button>
           </div>
         </header>
 
@@ -393,10 +250,10 @@ export default function DashboardPage() {
 
           <CommandOverview summary={summary} user={user} />
 
-          <section className="dashboard-secondary" aria-label="Additional workspace metrics"><div className="dashboard-section-title"><span className="command-eyebrow">WORKSPACE / COVERAGE</span><h2>More of the picture.</h2></div><div className="dashboard-secondary-grid"><StatCard title="Sources" value={summary.sources} /><StatCard title="Campaigns" value={summary.campaigns} /><StatCard title="Users" value={summary.users} /><StatCard title="Indicators you created" value={summary.myIndicatorsCreated} /></div>{user.role !== 'USER' && <div className="command-actions dashboard-admin-actions"><Link className="quick-action is-info" href="/users">Kelola user ↗</Link><Link className="quick-action is-info" href="/audit-logs">Audit log ↗</Link>{user.role === 'SUPER_ADMIN' && <Link className="quick-action is-info" href="/tenants">Kelola tenant ↗</Link>}</div>}</section>
+          <section className="dashboard-secondary" aria-label="Additional workspace metrics"><div className="dashboard-section-title"><span className="command-eyebrow">WORKSPACE / COVERAGE</span><h2>More of the picture.</h2></div><div className="dashboard-secondary-grid">{summary.sources !== null && <StatCard title="Sources" value={summary.sources} />}{summary.campaigns !== null && <StatCard title="Campaigns" value={summary.campaigns} />}{summary.users !== null && <StatCard title="Users" value={summary.users} />}{summary.myIndicatorsCreated !== null && <StatCard title="Indicators you created" value={summary.myIndicatorsCreated} />}{[summary.sources, summary.campaigns, summary.users, summary.myIndicatorsCreated].every(value => value === null) && <p className="muted dashboard-empty-metric">Tidak ada statistik tambahan yang dapat diakses.</p>}</div>{user.role !== 'USER' && <div className="command-actions dashboard-admin-actions"><Link className="quick-action is-info" href="/users">Kelola user ↗</Link><Link className="quick-action is-info" href="/audit-logs">Audit log ↗</Link>{user.role === 'SUPER_ADMIN' && <Link className="quick-action is-info" href="/tenants">Kelola tenant ↗</Link>}</div>}</section>
 
-          <section className="dashboard-activity"><div className="dashboard-section-title"><span className="command-eyebrow">WORKSPACE / RECENT</span><h2>Activity in context.</h2></div><ActivityLog items={summary.recentActivity} /></section>
-          {summary.dashboardMode === 'GLOBAL' && summary.tenantOverview.length > 0 && <section className="dashboard-tenants"><div className="dashboard-section-title"><span className="command-eyebrow">PLATFORM / TENANTS</span><h2>Tenant overview.</h2></div><div className="card"><div className="dashboard-tenant-link"><Link href="/tenants">Kelola semua tenant ↗</Link></div><div className="dashboard-table-scroll"><table><thead><tr><th>Tenant</th><th>Slug</th><th>Users</th><th>Indicators</th></tr></thead><tbody>{summary.tenantOverview.map(tenant => <tr key={tenant.id}><td>{tenant.name}</td><td>{tenant.slug}</td><td>{tenant._count.users}</td><td>{tenant._count.indicators}</td></tr>)}</tbody></table></div></div></section>}
+          <section className="dashboard-activity"><div className="dashboard-section-title"><span className="command-eyebrow">WORKSPACE / RECENT</span><h2>Activity in context.</h2></div><ActivityLog items={summary.recentActivity} available={summary.activityAvailable} /></section>
+          {summary.dashboardMode === 'GLOBAL' && summary.tenantOverview.length > 0 && <section className="dashboard-tenants"><div className="dashboard-section-title"><span className="command-eyebrow">PLATFORM / TENANTS</span><h2>Tenant overview.</h2></div><div className="card"><div className="dashboard-tenant-link"><Link href="/tenants">Kelola semua tenant ↗</Link></div><div className="dashboard-table-scroll"><table><thead><tr><th>Tenant</th><th>Slug</th><th>Users</th><th>Indicators</th></tr></thead><tbody>{summary.tenantOverview.map(tenant => <tr key={tenant.id}><td><span className="dashboard-tenant-avatar" aria-hidden="true">{initials(tenant.name)}</span>{tenant.name}</td><td>{tenant.slug}</td><td>{tenant._count.users}</td><td>{tenant._count.indicators}</td></tr>)}</tbody></table></div></div></section>}
         </main>
       </section>
     </div>

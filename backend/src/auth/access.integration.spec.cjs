@@ -10,6 +10,7 @@ const bcrypt = require('bcrypt');
 const { AuthModule } = require('../../dist/src/auth/auth.module');
 const { UsersModule } = require('../../dist/src/users/users.module');
 const { ModulesModule } = require('../../dist/src/modules/modules.module');
+const { ModuleAccessService } = require('../../dist/src/auth/module-access.service');
 const { SubscriptionModule } = require('../../dist/src/subscription/subscription.module');
 const { CasesModule } = require('../../dist/src/cases/cases.module');
 const { AttackSurfaceManagementModule } = require('../../dist/src/attack-surface-management/attack-surface-management.module');
@@ -57,7 +58,8 @@ test('real database, authenticated HTTP and browser access hierarchy', { timeout
       assert.equal(response.status, 201); cookies.set(account.id, response.headers.getSetCookie().map(c => c.split(';')[0]).join('; '));
     }
     async function subscribe() { assert.equal((await request(admin, '/subscription', 'POST', { packageId, billingCycle: 'MONTHLY', isCustom: false })).status, 201); }
-    const allAccess = modules.map(m => ({ moduleId: m.id, featureKeys: m.features.map(f => f.key) }));
+    const catalogOnly = { 'appsec-posture': ['advanced-chart'], 'threat-intelligence': ['export'], 'case-management': ['alert-triage'] };
+    const allAccess = modules.map(m => ({ moduleId: m.id, featureKeys: m.features.filter(f => !(catalogOnly[m.slug] ?? []).includes(f.key)).map(f => f.key) }));
     async function assign(account, access = allAccess) { const response = await request(admin, `/users/${account.id}/module-access`, 'PUT', { access }); assert.equal(response.status, 200, JSON.stringify(response.body)); }
     async function assertAccess(account, expected) {
       const response = await request(account, '/auth/me'); assert.equal(response.status, 200);
@@ -69,6 +71,63 @@ test('real database, authenticated HTTP and browser access hierarchy', { timeout
     });
     await subscribe();
     await t.test('ADMIN and USER need individual assignment', async () => { await assertAccess(admin, false); await assertAccess(user, false); await assign(admin); await assign(user); await assertAccess(admin, true); await assertAccess(user, true); });
+    await t.test('catalog-only grants are rejected without changing implemented access', async () => {
+      for (const [slug, key] of [['appsec-posture', 'advanced-chart'], ['threat-intelligence', 'export'], ['case-management', 'alert-triage']]) {
+        const module = modules.find(item => item.slug === slug);
+        const access = allAccess.map(entry => entry.moduleId === module.id ? { ...entry, featureKeys: [...entry.featureKeys, key] } : entry);
+        assert.equal((await request(admin, `/users/${user.id}/module-access`, 'PUT', { access })).status, 400, key);
+        const state = (await request(user, '/auth/me')).body.moduleAccess.find(item => item.moduleSlug === slug);
+        assert.equal(state.accessible, true);
+        assert.equal(state.featureKeys.includes(key), false);
+      }
+    });
+    await t.test('stored legacy keys remain assigned but never authorize functional features', async () => {
+      const accessService = app.get(ModuleAccessService);
+      const actor = { sub: user.id, tenantId, role: 'USER' };
+      const rootActor = { sub: root.id, tenantId: null, role: 'SUPER_ADMIN' };
+      const pairs = [['appsec-posture', 'advanced-chart', 'finding-management'], ['threat-intelligence', 'export', 'indicator-management'], ['case-management', 'alert-triage', 'case-workflow']];
+      try {
+        for (const [slug, key, validKey] of pairs) {
+          const module = modules.find(item => item.slug === slug);
+          await prisma.userModuleAccess.update({ where: { userId_tenantId_moduleId: { userId: user.id, tenantId, moduleId: module.id } }, data: { featureKeys: [key, validKey] } });
+          const state = (await request(user, '/auth/me')).body.moduleAccess.find(item => item.moduleSlug === slug);
+          assert.equal(state.assigned, true); assert.equal(state.accessible, true);
+          assert.deepEqual(state.featureKeys, [key, validKey]);
+          assert.deepEqual(state.features, [validKey]);
+          assert.equal((await accessService.evaluate(actor, slug, [key])).accessible, false);
+          assert.equal((await accessService.evaluate(actor, slug, [validKey])).accessible, true);
+          assert.equal((await accessService.evaluate(rootActor, slug, [key])).accessible, false);
+          assert.equal((await accessService.evaluateForTenant(rootActor, tenantId, slug, [key])).accessible, false);
+          const rootState = (await request(root, '/auth/me')).body.moduleAccess.find(item => item.moduleSlug === slug);
+          assert.equal(rootState.features.includes(key), false);
+          assert.equal(rootState.features.includes(validKey), true);
+          const adminAssignment = { userId: admin.id, tenantId, moduleId: module.id };
+          await prisma.userModuleAccess.update({ where: { userId_tenantId_moduleId: adminAssignment }, data: { featureKeys: [key, validKey] } });
+          try {
+            const adminState = (await request(admin, '/auth/me')).body.moduleAccess.find(item => item.moduleSlug === slug);
+            assert.equal(adminState.assigned, true); assert.equal(adminState.accessible, true);
+            assert.deepEqual(adminState.features, [validKey]);
+            assert.equal((await accessService.evaluate({ sub: admin.id, tenantId, role: 'ADMIN' }, slug, [key])).accessible, false);
+          } finally {
+            await prisma.userModuleAccess.update({ where: { userId_tenantId_moduleId: adminAssignment }, data: { featureKeys: allAccess.find(item => item.moduleId === module.id).featureKeys } });
+          }
+          const stored = await prisma.userModuleAccess.findUnique({ where: { userId_tenantId_moduleId: { userId: user.id, tenantId, moduleId: module.id } } });
+          assert.deepEqual(stored.featureKeys, [key, validKey]);
+        }
+        const caseModule = modules.find(item => item.slug === 'case-management');
+        await prisma.userModuleAccess.update({ where: { userId_tenantId_moduleId: { userId: user.id, tenantId, moduleId: caseModule.id } }, data: { featureKeys: ['alert-triage'] } });
+        const onlyLegacy = (await request(user, '/auth/me')).body.moduleAccess.find(item => item.moduleSlug === 'case-management');
+        assert.equal(onlyLegacy.assigned, true); assert.equal(onlyLegacy.accessible, true);
+        assert.deepEqual(onlyLegacy.featureKeys, ['alert-triage']); assert.deepEqual(onlyLegacy.features, []);
+        assert.equal((await request(user, '/cases')).status, 403);
+      } finally {
+        for (const [slug] of pairs) {
+          const module = modules.find(item => item.slug === slug);
+          const original = allAccess.find(item => item.moduleId === module.id);
+          await prisma.userModuleAccess.update({ where: { userId_tenantId_moduleId: { userId: user.id, tenantId, moduleId: module.id } }, data: { featureKeys: original.featureKeys } });
+        }
+      }
+    });
     await t.test('real TI Case ASM APIs allow fully entitled assigned users', async () => {
       for (const path of ['/indicators', '/cases', '/attack-surface/assets']) for (const account of [admin, user]) assert.equal((await request(account, path)).status, 200, path);
     });
@@ -89,7 +148,23 @@ test('real database, authenticated HTTP and browser access hierarchy', { timeout
       assert.equal((await request(root, '/subscription/status', 'PATCH', { tenantId, status: 'CANCELLED' })).status, 200);
       await assertAccess(admin, false);
       await request(root, '/subscription/status', 'PATCH', { tenantId, status: 'ACTIVE' });
-      await prisma.tenantSubscription.update({ where: { tenantId }, data: { renewalAt: new Date(0) } }); await assertAccess(user, false); await subscribe();
+      const active = await request(admin, '/subscription/my');
+      assert.equal(active.body.status, 'ACTIVE');
+      assert.equal(active.body.subscriptionActive, true);
+      await prisma.tenantSubscription.update({ where: { tenantId }, data: { renewalAt: new Date(0) } });
+      const expired = await request(admin, '/subscription/my');
+      assert.equal(expired.body.status, 'EXPIRED');
+      assert.equal(expired.body.persistedStatus, 'ACTIVE');
+      assert.equal(expired.body.subscriptionActive, false);
+      await assertAccess(user, false);
+      await prisma.tenantSubscription.update({ where: { tenantId }, data: { status: 'TRIAL', renewalAt: new Date(Date.now() + 60_000) } });
+      assert.equal((await request(admin, '/subscription/my')).body.status, 'TRIAL');
+      await prisma.tenantSubscription.update({ where: { tenantId }, data: { renewalAt: new Date('2000-01-01T00:00:00.000Z') } });
+      assert.equal((await request(admin, '/subscription/my')).body.status, 'EXPIRED');
+      await subscribe();
+      const renewed = await request(admin, '/subscription/my');
+      assert.equal(renewed.body.status, 'ACTIVE');
+      assert.equal(renewed.body.subscriptionActive, true);
     });
     await t.test('foreign tenant reads writes assignments rejected and root selection works', async () => {
       for (const path of [`/modules/configuration?tenantId=${foreignId}`, `/subscription/my?tenantId=${foreignId}`, `/users/tenant/${foreignId}/module-access`, `/users/${foreign.id}/module-access`]) assert.equal((await request(admin, path)).status, 403, path);
@@ -109,6 +184,8 @@ test('real database, authenticated HTTP and browser access hierarchy', { timeout
       await prisma.packageModule.create({ data: { packageId, moduleId: asm.id } }); await assign(user);
     });
     await t.test('invalid assignment JSON fails before writes and inactive users have no effective access', async () => {
+      assert.equal((await fetch(api + '/modules/configuration')).status, 401);
+      assert.equal((await request(admin, `/users/${randomUUID()}/module-access`)).status, 404);
       assert.equal((await request(admin, '/users/' + user.id + '/module-access', 'PUT', { access: [{ moduleId: asm.id, featureKeys: 'asset-management' }] })).status, 400);
       await prisma.user.update({ where: { id: user.id }, data: { isActive: false } });
       assert.equal((await request(user, '/auth/me')).status, 401);
@@ -145,7 +222,7 @@ test('real database, authenticated HTTP and browser access hierarchy', { timeout
       const evidence = require('node:path').resolve('../.omo/evidence/3menu2');
       for (const width of [375, 768, 1280]) {
         await page.setViewportSize({ width, height: 900 });
-        for (const [path, ready] of [['/subscription', 'Included Modules'], ['/modules', 'Module Management'], ['/module-access', 'Assignment per user']]) {
+        for (const [path, ready] of [['/subscription', 'Subscription'], ['/modules', 'Control your security platform.'], ['/module-access', 'Access at every layer.']]) {
           await page.goto('http://localhost:3000' + path);
           await expect(page.getByRole('heading', { name: ready, exact: true })).toBeVisible({ timeout: 30000 });
           if (path === '/modules') await expect(page.locator('.module-card').first()).toBeVisible();
@@ -161,13 +238,27 @@ test('real database, authenticated HTTP and browser access hierarchy', { timeout
       await page.getByRole('button', { name: 'Simpan Akses Modul' }).click(); await expect(page.getByRole('status')).toContainText('berhasil');
       await page.goto('http://localhost:3000/attack-surface/assets');
       await expect(page.getByRole('button', { name: 'Attack Surface Management', exact: true })).toBeVisible({ timeout: 30000 });
-      await expect(page.getByRole('heading', { name: 'Attack Surface Assets' })).toBeVisible({ timeout: 30000 });
+      await expect(page.getByRole('heading', { name: 'Know what is exposed.' })).toBeVisible({ timeout: 30000 });
       await page.screenshot({ path: evidence + '/asm-positive.png', fullPage: true });
+      await prisma.tenantSubscription.update({ where: { tenantId }, data: { renewalAt: new Date('2000-01-01T00:00:00.000Z') } });
+      await page.goto('http://localhost:3000/subscription');
+      await expect(page.getByLabel('Subscription saat ini').locator('.subscription-state')).toHaveText('EXPIRED');
+      await expect(page.getByLabel('Usage and entitlements').getByText('0')).toBeVisible();
+      await expect(page.getByLabel('Platform capabilities').getByText('Unavailable').first()).toBeVisible();
+      await page.screenshot({ path: evidence + '/subscription-expired.png', fullPage: true });
+      assert.equal((await request(admin, '/auth/me')).body.moduleAccess.find(entry => entry.moduleSlug === asm.slug).accessible, false);
+      assert.equal((await request(admin, '/attack-surface/assets')).status, 403);
+      await subscribe();
+      await page.reload();
+      await expect(page.getByLabel('Subscription saat ini').locator('.subscription-state')).toHaveText('ACTIVE');
+      await expect(page.getByLabel('Usage and entitlements').getByText('4')).toBeVisible();
+      await page.screenshot({ path: evidence + '/subscription-renewed.png', fullPage: true });
       await assign(admin, allAccess.filter(entry => entry.moduleId !== asm.id));
       const revoked = (await request(admin, '/auth/me')).body.moduleAccess.find(entry => entry.moduleSlug === asm.slug);
       assert.equal(revoked.assigned, false);
       assert.equal(revoked.accessible, false);
       assert.equal((await request(admin, '/attack-surface/assets')).status, 403);
+      await page.goto('http://localhost:3000/attack-surface/assets');
       await page.reload();
       await expect(page.getByText('Access denied', { exact: true })).toBeVisible();
       await expect(page.getByRole('button', { name: 'Attack Surface Management', exact: true })).toHaveCount(0);

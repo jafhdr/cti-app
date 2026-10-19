@@ -3,8 +3,9 @@ const test = require('node:test');
 const { randomUUID } = require('node:crypto');
 require('dotenv').config();
 const { PrismaClient } = require('@prisma/client');
-const { JwtService } = require('@nestjs/jwt');
-const token = id => new JwtService().sign({ sub: id }, { secret: process.env.JWT_ACCESS_SECRET });
+const { createAccessToken } = require('../auth/integration-session.cjs');
+const tokens = new Map();
+const token = id => tokens.get(id);
 const request = (path, id, method = 'GET', body) => fetch(`http://localhost:3002${path}`, { method, headers: { ...(id ? { Authorization: `Bearer ${token(id)}` } : {}), ...(body ? { 'Content-Type': 'application/json' } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) });
 test('Phase 7 records one notification and enforces report and read boundaries', { timeout: 60000 }, async () => {
  const db = new PrismaClient(); const mark = randomUUID(); let tenantId; let otherId; let adminId; let userId; let deniedId; let superId;
@@ -18,6 +19,7 @@ test('Phase 7 records one notification and enforces report and read boundaries',
   await db.moduleRoleAccess.createMany({ data: [{ tenantModuleId: policy.id, role: 'ADMIN', isAllowed: true }, { tenantModuleId: policy.id, role: 'USER', isAllowed: true }] });
   const makeUser = async (prefix, role) => (await db.user.create({ data: { email: `${prefix}-${mark}@example.invalid`, name: prefix, passwordHash: 'x', role, ...(role === 'SUPER_ADMIN' ? {} : { tenantId }) } })).id;
   adminId = await makeUser('admin', 'ADMIN'); userId = await makeUser('user', 'USER'); deniedId = await makeUser('denied', 'ADMIN'); superId = await makeUser('super', 'SUPER_ADMIN');
+  for (const id of [adminId, userId, deniedId, superId]) tokens.set(id, await createAccessToken(db, id, process.env.JWT_ACCESS_SECRET));
   for (const id of [adminId, userId]) await db.userModuleAccess.create({ data: { userId: id, tenantId, moduleId: module.id, featureKeys: ['asset-management'] } });
   const asset = await db.asset.create({ data: { tenantId, name: 'Phase 7', type: 'IP_ADDRESS', value: '192.0.2.77' } });
   const finding = async (key, severity, firstSeenAt) => db.assetFinding.create({ data: { tenantId, assetId: asset.id, title: key, description: key, type: 'TEST', severity, source: 'TEST', sourceKey: key, ...(firstSeenAt ? { firstSeenAt } : {}) } });

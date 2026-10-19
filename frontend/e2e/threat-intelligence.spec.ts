@@ -27,7 +27,13 @@ test('entity sections and Intelligence Hub stay inside Threat Intelligence', asy
   }
   await page.goto(`${app}/threat-intelligence/indicators`);
   await expect(page.getByRole('heading', { name: 'Track known malicious infrastructure.' })).toBeVisible();
-  await expect(page.locator('.ti-section-tabs')).toBeVisible();
+  await expect(page.locator('.ti-section-tabs')).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'IOC Candidates' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Threat Feeds' })).toBeVisible();
+  await page.getByRole('link', { name: 'IOC Candidates' }).click();
+  await expect(page).toHaveURL(/\/threat-intelligence\/ioc-candidates$/);
+  await expect(page.getByRole('heading', { name: 'IOC Candidate Review' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'IOC Candidates' })).toHaveAttribute('aria-current', 'page');
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: '../.omo/evidence/threat-intelligence/indicators-desktop.png', fullPage: true });
   await page.goto(`${app}/threat-intelligence/hub`);
@@ -36,6 +42,34 @@ test('entity sections and Intelligence Hub stay inside Threat Intelligence', asy
   await expect(page.getByRole('button', { name: 'Buat case' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Buat alert' })).toHaveCount(0);
   await page.screenshot({ path: '../.omo/evidence/threat-intelligence/hub-desktop.png', fullPage: true });
+});
+
+test('feature access limits Threat Intelligence sidebar links', async ({ page }) => {
+  await page.route('**/auth/me', route => route.fulfill({ json: {
+    id: 'feature-test', email: 'qa@example.test', role: 'ADMIN', tenantId: 'tenant-a',
+    moduleAccess: [{ moduleSlug: 'threat-intelligence', moduleName: 'Threat Intelligence', accessible: true, featureKeys: ['indicator-management'] }],
+  } }));
+  await page.route('**/intelligence/overview', route => route.fulfill({ json: { entities: [], relationships: [] } }));
+  await page.goto(`${app}/threat-intelligence`);
+  const sidebar = page.getByRole('navigation', { name: 'Navigasi utama' });
+  await expect(sidebar.getByRole('link', { name: 'IOC Candidates' })).toBeVisible();
+  await expect(sidebar.getByRole('link', { name: 'Threat Feeds' })).toBeVisible();
+  await expect(sidebar.getByRole('link', { name: 'Threat Actors' })).toHaveCount(0);
+  await expect(sidebar.getByRole('link', { name: 'Intelligence Hub' })).toHaveCount(0);
+  await page.goto(`${app}/threat-intelligence/hub`);
+  await expect(page.getByText('Anda tidak memiliki akses ke modul Threat Intelligence.')).toBeVisible();
+});
+
+test('Threat Intelligence sidebar works on tablet', async ({ page }) => {
+  await login(page);
+  await page.setViewportSize({ width: 768, height: 1024 });
+  await page.goto(`${app}/threat-intelligence`);
+  await expect(page.locator('.ti-section-tabs')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Menu navigasi' }).click();
+  await expect(page.getByRole('link', { name: 'IOC Candidates' })).toBeVisible();
+  await page.getByRole('link', { name: 'IOC Candidates' }).click();
+  await expect(page).toHaveURL(/\/threat-intelligence\/ioc-candidates$/);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(768);
 });
 
 test('Threat Intelligence remains usable on mobile', async ({ page }) => {
@@ -47,7 +81,7 @@ test('Threat Intelligence remains usable on mobile', async ({ page }) => {
   await page.goto(`${app}/threat-intelligence/hub`);
   await expect(page.getByRole('heading', { name: 'Intelligence Hub', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'CTI Platform dashboard' })).toBeVisible();
-  await expect(page.locator('.ti-section-tabs')).toBeVisible();
+  await expect(page.locator('.ti-section-tabs')).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
   await page.locator('.sidebar-navigation').evaluate(element => { element.scrollLeft = 0; });
   await page.locator('.sidebar').evaluate(element => { element.scrollLeft = 0; });

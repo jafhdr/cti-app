@@ -16,29 +16,9 @@ export class AuditService {
   constructor(private readonly prisma: PrismaService) {}
 
   async list(currentUser: AuthUser, filter: AuditListFilter = {}) {
-    if (currentUser.role === 'USER') {
-      throw new ForbiddenException('Akses ditolak: User tidak memiliki izin untuk melihat audit log');
-    }
-
     const safePage = Math.max(filter.page || 1, 1);
     const safeLimit = Math.min(Math.max(filter.limit || 50, 1), 100);
-
-    const where: Prisma.AuditLogWhereInput = {};
-
-    if (currentUser.role === 'SUPER_ADMIN') {
-      // Superadmin can see all logs, or filter by a specific tenantId if requested
-      if (filter.tenantId) {
-        where.tenantId = filter.tenantId;
-      }
-    } else if (currentUser.role === 'ADMIN') {
-      // Tenant admin is strictly constrained to their own tenant
-      if (!currentUser.tenantId) {
-        throw new ForbiddenException('Tenant context tidak valid');
-      }
-      where.tenantId = currentUser.tenantId;
-    } else {
-      throw new ForbiddenException('Akses ditolak');
-    }
+    const where = this.scope(currentUser, filter.tenantId);
 
     if (filter.userId) {
       where.userId = filter.userId;
@@ -66,7 +46,7 @@ export class AuditService {
             },
           },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip: (safePage - 1) * safeLimit,
         take: safeLimit,
       }),
@@ -89,5 +69,20 @@ export class AuditService {
     }));
 
     return { items, page: safePage, limit: safeLimit, total };
+  }
+
+  async actions(currentUser: AuthUser, tenantId?: string) {
+    const rows = await this.prisma.auditLog.groupBy({
+      by: ['action'],
+      where: this.scope(currentUser, tenantId),
+      orderBy: { action: 'asc' },
+    });
+    return rows.map((row) => row.action);
+  }
+
+  private scope(currentUser: AuthUser, tenantId?: string): Prisma.AuditLogWhereInput {
+    if (currentUser.role === 'SUPER_ADMIN') return tenantId ? { tenantId } : {};
+    if (currentUser.role === 'ADMIN' && currentUser.tenantId) return { tenantId: currentUser.tenantId };
+    throw new ForbiddenException('Akses ditolak');
   }
 }

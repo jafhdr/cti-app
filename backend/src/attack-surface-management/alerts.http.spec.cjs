@@ -3,10 +3,10 @@ const test = require('node:test');
 const { randomUUID } = require('node:crypto');
 require('dotenv').config();
 const { PrismaClient } = require('@prisma/client');
-const { JwtService } = require('@nestjs/jwt');
+const { createAccessToken } = require('../auth/integration-session.cjs');
 const base = 'http://localhost:3001';
-const jwt = new JwtService();
-const token = id => jwt.sign({ sub: id }, { secret: process.env.JWT_ACCESS_SECRET });
+const tokens = new Map();
+const token = id => tokens.get(id);
 const request = (path, id, method = 'GET', body) => fetch(`${base}${path}`, { method, headers: { ...(id ? { Authorization: `Bearer ${token(id)}` } : {}), ...(body ? { 'Content-Type': 'application/json' } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) });
 
 test('real HTTP guards enforce ASM, Case and tenant boundaries', { timeout: 60000 }, async () => {
@@ -41,6 +41,7 @@ test('real HTTP guards enforce ASM, Case and tenant boundaries', { timeout: 6000
     superId = superAdmin.id;
     await prisma.userModuleAccess.create({ data: { userId: adminId, tenantId, moduleId: asm.id, featureKeys: ['asset-management'] } });
     await prisma.userModuleAccess.create({ data: { userId, tenantId, moduleId: asm.id, featureKeys: ['asset-management'] } });
+    for (const id of [adminId, deniedId, userId, superId]) tokens.set(id, await createAccessToken(prisma, id, process.env.JWT_ACCESS_SECRET));
     const asset = await prisma.asset.create({ data: { tenantId, name: 'HTTP IP', type: 'IP_ADDRESS', value: '192.0.2.58' } });
     const alert = await prisma.alert.create({ data: { tenantId, assetId: asset.id, source: 'ASM', sourceKey: `http:${marker}`, title: 'HTTP QA Alert', severity: 'HIGH' } });
     const route = `/attack-surface/assets/${asset.id}/alerts`;

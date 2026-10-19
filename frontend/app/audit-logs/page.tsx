@@ -5,6 +5,8 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, type TableColumn } from '@/components/ui/table';
 import { useRouter } from 'next/navigation';
+import { LogOut } from 'lucide-react';
+import './audit-log-visual.css';
 import Sidebar from '../../components/dashboard/Sidebar';
 import type { ModuleAccess } from '../../lib/module-access';
 
@@ -51,31 +53,28 @@ type CurrentUser = {
   moduleAccess: ModuleAccess[];
 };
 
-const ACTION_LABELS: Record<string, { label: string; color: string }> = {
-  LOGIN: { label: '🔑 Login', color: '#0070f3' },
-  SIGNUP: { label: '📝 Registrasi', color: '#10b981' },
-  USER_CREATED: { label: '👤 User Dibuat', color: '#10b981' },
-  USER_UPDATED: { label: '✏️ User Diperbarui', color: '#6366f1' },
-  USER_ROLE_UPDATED: { label: '🛡️ Role Diubah', color: '#f59e0b' },
-  USER_PASSWORD_RESET_BY_ADMIN: { label: '🔒 Reset Password Admin', color: '#ec4899' },
-  USER_ACTIVATED: { label: '✅ User Diaktifkan', color: '#10b981' },
-  USER_DEACTIVATED: { label: '⛔ User Dinonaktifkan', color: '#ef4444' },
-  USER_MODULE_ACCESS_REPLACED: { label: '📦 Modul Akses Diganti', color: '#8b5cf6' },
-  USER_MODULE_ACCESS_BULK_REPLACED: { label: '📦 Modul Akses Massal', color: '#8b5cf6' },
-  TENANT_CREATED: { label: '🏢 Tenant Dibuat', color: '#10b981' },
-  TENANT_ACTIVATED: { label: '✅ Tenant Diaktifkan', color: '#10b981' },
-  TENANT_DEACTIVATED: { label: '⛔ Tenant Dinonaktifkan', color: '#ef4444' },
-  SUBSCRIPTION_UPDATED: { label: '💳 Langganan Diperbarui', color: '#3b82f6' },
-  INDICATOR_CREATED: { label: '🎯 Indikator Dibuat', color: '#10b981' },
-  INDICATOR_UPDATED: { label: '✏️ Indikator Diperbarui', color: '#6366f1' },
-  INDICATOR_DEACTIVATED: { label: '⛔ Indikator Dinonaktifkan', color: '#ef4444' },
-  INTELLIGENCE_ENTITY_CREATED: { label: '🌐 Entitas Intelijen Dibuat', color: '#10b981' },
-  INTELLIGENCE_RELATIONSHIP_CREATED: { label: '🔗 Relasi Intelijen Dibuat', color: '#6366f1' },
-  CASE_CREATED: { label: '📁 Kasus Dibuat', color: '#10b981' },
-  CASE_STATUS_UPDATED: { label: '🔄 Status Kasus Diperbarui', color: '#f59e0b' },
-  ALERT_CREATED: { label: '🚨 Alert Dibuat', color: '#ef4444' },
-  ALERT_STATUS_UPDATED: { label: '🔄 Status Alert Diperbarui', color: '#f59e0b' },
+const ACTION_LABELS: Record<string, { label: string; tone: string }> = {
+  LOGIN: { label: 'Login', tone: 'info' }, SIGNUP: { label: 'Registration', tone: 'success' },
+  USER_CREATED: { label: 'User created', tone: 'success' }, USER_UPDATED: { label: 'User updated', tone: 'info' },
+  USER_ROLE_UPDATED: { label: 'Role updated', tone: 'warning' }, USER_PASSWORD_RESET_BY_ADMIN: { label: 'Password reset', tone: 'warning' },
+  USER_ACTIVATED: { label: 'User activated', tone: 'success' }, USER_DEACTIVATED: { label: 'User deactivated', tone: 'danger' },
+  USER_MODULE_ACCESS_REPLACED: { label: 'Module access updated', tone: 'info' },
+  USER_MODULE_ACCESS_BULK_REPLACED: { label: 'Bulk module access updated', tone: 'info' },
+  TENANT_CREATED: { label: 'Tenant created', tone: 'success' }, TENANT_ACTIVATED: { label: 'Tenant activated', tone: 'success' },
+  TENANT_DEACTIVATED: { label: 'Tenant deactivated', tone: 'danger' },
+  SUBSCRIPTION_UPDATED: { label: 'Subscription updated', tone: 'info' },
+  INDICATOR_CREATED: { label: 'Indicator created', tone: 'success' },
+  INDICATOR_UPDATED: { label: 'Indicator updated', tone: 'info' },
+  INDICATOR_DEACTIVATED: { label: 'Indicator deactivated', tone: 'danger' },
+  INTELLIGENCE_ENTITY_CREATED: { label: 'Intelligence entity created', tone: 'success' },
+  INTELLIGENCE_RELATIONSHIP_CREATED: { label: 'Intelligence relationship created', tone: 'info' },
+  CASE_CREATED: { label: 'Case created', tone: 'success' }, CASE_STATUS_UPDATED: { label: 'Case status updated', tone: 'warning' },
+  ALERT_CREATED: { label: 'Alert created', tone: 'danger' }, ALERT_STATUS_UPDATED: { label: 'Alert status updated', tone: 'warning' },
 };
+
+function activityLabel(action: string): { label: string; tone: string } {
+  return ACTION_LABELS[action] ?? { label: action.toLowerCase().replaceAll('_', ' ').replace(/^./, letter => letter.toUpperCase()), tone: 'neutral' };
+}
 
 export default function AuditLogsPage() {
   const router = useRouter();
@@ -88,6 +87,7 @@ export default function AuditLogsPage() {
   const [tenants, setTenants] = useState<TenantOption[]>([]);
   const [selectedTenant, setSelectedTenant] = useState<string>('');
   const [actionFilter, setActionFilter] = useState<string>('');
+  const [availableActions, setAvailableActions] = useState<string[]>([]);
 
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -133,6 +133,15 @@ export default function AuditLogsPage() {
     }
   }, [router]);
 
+  const loadActions = useCallback(async (tenantId: string) => {
+    const params = new URLSearchParams();
+    if (tenantId) params.set('tenantId', tenantId);
+    const response = await fetch(`${API}/audit-logs/actions?${params}`, { credentials: 'include', cache: 'no-store' });
+    if (!response.ok) throw new Error('Gagal memuat pilihan aktivitas.');
+    const actions: string[] = await response.json();
+    setAvailableActions(actions);
+  }, []);
+
   useEffect(() => {
     (async () => {
       try {
@@ -161,20 +170,24 @@ export default function AuditLogsPage() {
           }
         }
 
-        await loadLogs(1, '', '');
+        await Promise.all([loadLogs(1, '', ''), loadActions('')]);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Terjadi kesalahan inisialisasi.');
       } finally {
         setLoading(false);
       }
     })();
-  }, [router, loadLogs]);
+  }, [router, loadLogs, loadActions]);
 
   async function handleFilterChange(newTenant: string, newAction: string) {
     setSelectedTenant(newTenant);
     setActionFilter(newAction);
     setPage(1);
-    await loadLogs(1, newTenant, newAction);
+    try {
+      await Promise.all([loadLogs(1, newTenant, newAction), loadActions(newTenant)]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Gagal memuat pilihan aktivitas.');
+    }
   }
 
   async function handlePageChange(newPage: number) {
@@ -223,329 +236,33 @@ export default function AuditLogsPage() {
   const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN';
   const totalPages = Math.max(Math.ceil(total / limit), 1);
 
+  const tenantName = isSuperAdmin ? tenants.find(tenant => tenant.id === selectedTenant)?.name : currentUser?.tenant?.name;
+  const tenantScoped = !isSuperAdmin || Boolean(selectedTenant);
   const columns: TableColumn<AuditLog>[] = [
-    {
-      id: 'createdAt',
-      name: 'Waktu',
-      template: (log: AuditLog) => (
-        <span style={{ fontSize: 13, whiteSpace: 'nowrap' }}>
-          {new Date(log.createdAt).toLocaleString('id-ID', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-          })}
-        </span>
-      ),
-    },
-    ...(isSuperAdmin
-      ? [
-          {
-            id: 'tenant',
-            name: 'Tenant',
-            template: (log: AuditLog) =>
-              log.tenant ? (
-                <div>
-                  <strong style={{ fontSize: 13 }}>{log.tenant.name}</strong>
-                  <br />
-                  <span
-                    style={{
-                      display: 'inline-block',
-                      fontSize: 11,
-                      padding: '1px 6px',
-                      background: 'rgba(99, 102, 241, 0.1)',
-                      color: '#4f46e5',
-                      borderRadius: 4,
-                      marginTop: 2,
-                    }}
-                  >
-                    {log.tenant.slug}
-                  </span>
-                </div>
-              ) : (
-                <span style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>
-                  🌐 Platform / Global
-                </span>
-              ),
-          },
-        ]
-      : []),
-    {
-      id: 'user',
-      name: 'Aktor / User',
-      template: (log: AuditLog) =>
-        log.user ? (
-          <div>
-            <div style={{ fontWeight: 600, fontSize: 13 }}>{log.user.name}</div>
-            <div style={{ fontSize: 12, color: '#64748b' }}>{log.user.email}</div>
-            <span
-              style={{
-                display: 'inline-block',
-                fontSize: 10,
-                fontWeight: 700,
-                padding: '1px 5px',
-                borderRadius: 4,
-                marginTop: 2,
-                background:
-                  log.user.role === 'SUPER_ADMIN'
-                    ? '#ede9fe'
-                    : log.user.role === 'ADMIN'
-                    ? '#dbeafe'
-                    : '#f1f5f9',
-                color:
-                  log.user.role === 'SUPER_ADMIN'
-                    ? '#6d28d9'
-                    : log.user.role === 'ADMIN'
-                    ? '#1d4ed8'
-                    : '#475569',
-              }}
-            >
-              {log.user.role}
-            </span>
-          </div>
-        ) : log.userId ? (
-          <span style={{ fontSize: 12, color: '#64748b' }}>User ID: {log.userId}</span>
-        ) : (
-          <span style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>Sistem</span>
-        ),
-    },
-    {
-      id: 'action',
-      name: 'Aktivitas',
-      template: (log: AuditLog) => {
-        const item = ACTION_LABELS[log.action];
-        return (
-          <span
-            style={{
-              display: 'inline-block',
-              fontSize: 12,
-              fontWeight: 600,
-              padding: '3px 8px',
-              borderRadius: 6,
-              background: item ? `${item.color}15` : '#f1f5f9',
-              color: item ? item.color : '#334155',
-              border: item ? `1px solid ${item.color}30` : '1px solid #e2e8f0',
-            }}
-          >
-            {item ? item.label : log.action}
-          </span>
-        );
-      },
-    },
-    {
-      id: 'metadata',
-      name: 'Detail',
-      template: (log: AuditLog) => {
-        if (!log.metadata || Object.keys(log.metadata).length === 0) {
-          return <span style={{ color: '#94a3b8', fontSize: 12 }}>-</span>;
-        }
-        return (
-          <details style={{ cursor: 'pointer', fontSize: 12 }}>
-            <summary style={{ color: '#4f46e5', userSelect: 'none' }}>
-              Lihat Detail ({Object.keys(log.metadata).length} field)
-            </summary>
-            <pre
-              style={{
-                marginTop: 6,
-                padding: 8,
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
-                borderRadius: 4,
-                fontSize: 11,
-                maxHeight: 180,
-                overflowY: 'auto',
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-all',
-              }}
-            >
-              {JSON.stringify(log.metadata, null, 2)}
-            </pre>
-          </details>
-        );
-      },
-    },
+    { id: 'createdAt', name: 'Time', template: log => <time className="audit-time" dateTime={log.createdAt}>{new Date(log.createdAt).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</time> },
+    ...(!tenantScoped ? [{ id: 'tenant', name: 'Tenant', template: (log: AuditLog) => log.tenant ? <div className="audit-tenant-cell"><strong>{log.tenant.name}</strong><small>{log.tenant.slug}</small></div> : <span className="audit-muted">Platform / Global</span> }] : []),
+    { id: 'user', name: 'Actor / User', template: log => log.user ? <div className="audit-actor"><div><strong>{log.user.name}</strong><span className={`audit-role audit-role-${log.user.role.toLowerCase()}`}>{log.user.role}</span></div><small>{log.user.email}</small></div> : <span className="audit-muted">{log.userId ? `User ID: ${log.userId}` : 'System'}</span> },
+    { id: 'action', name: 'Activity', template: log => { const activity = activityLabel(log.action); return <span className={`audit-activity audit-activity-${activity.tone}`}><span aria-hidden="true" />{activity.label}</span>; } },
+    { id: 'metadata', name: 'Details', template: log => !log.metadata || Object.keys(log.metadata).length === 0 ? <span className="audit-muted">—</span> : <details className="audit-details"><summary>View details</summary><pre>{JSON.stringify(log.metadata, null, 2)}</pre></details> },
   ];
 
   return (
-    <div className="app">
-      <Sidebar role={currentUser?.role} moduleAccess={currentUser?.moduleAccess ?? []} onLogout={logout} />
-
+    <div className="app audit-log-shell">
+      <Sidebar role={currentUser?.role} moduleAccess={currentUser?.moduleAccess ?? []} dashboardPresentation onLogout={logout} />
       <section className="main">
-        <header className="topbar">
-          <div style={{ fontWeight: 600 }}>📋 Audit Log</div>
-          <span style={{ fontSize: 13, color: '#687386' }}>
-            {currentUser?.email} ·{' '}
-            <strong style={{ color: isSuperAdmin ? '#6d28d9' : '#1d4ed8' }}>
-              {currentUser?.role}
-            </strong>
-          </span>
-        </header>
-
-        <main className="content">
-          <div className="cti-title-row" style={{ marginBottom: 20 }}>
-            <div>
-              <h1 style={{ fontSize: 24, fontWeight: 700, margin: '0 0 6px' }}>
-                {isSuperAdmin ? '🌐 Audit Log Seluruh Platform' : '📋 Audit Log Tenant'}
-              </h1>
-              <p style={{ color: '#687386', margin: 0, fontSize: 14 }}>
-                {isSuperAdmin
-                  ? 'Memantau seluruh aktivitas log dan perubahan dari semua tenant dan pengguna sistem.'
-                  : `Riwayat aktivitas pengelolaan akun dan operasional pada tenant ${
-                      currentUser?.tenant?.name ? `"${currentUser.tenant.name}"` : 'Anda'
-                    }.`}
-              </p>
-            </div>
-          </div>
-
-          {/* Filters card */}
-          <Card view="outlined" style={{ padding: '16px 20px', marginBottom: 20 }}>
-            <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-              {isSuperAdmin && (
-                <div className="audit-filter-field" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <label htmlFor="tenant-filter" style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>
-                    Filter Tenant
-                  </label>
-                  <select
-                    id="tenant-filter"
-                    value={selectedTenant}
-                    onChange={(e) => handleFilterChange(e.target.value, actionFilter)}
-                    style={{
-                      height: 36,
-                      padding: '0 12px',
-                      borderRadius: 6,
-                      border: '1px solid #cbd5e1',
-                      fontSize: 13,
-                      background: '#fff',
-                    }}
-                  >
-                    <option value="">Semua Tenant (Global)</option>
-                    {tenants.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name} ({t.slug})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              <div className="audit-filter-field" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label htmlFor="action-filter" style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>
-                  Filter Aktivitas
-                </label>
-                <select
-                  id="action-filter"
-                  value={actionFilter}
-                  onChange={(e) => handleFilterChange(selectedTenant, e.target.value)}
-                  style={{
-                    height: 36,
-                    padding: '0 12px',
-                    borderRadius: 6,
-                    border: '1px solid #cbd5e1',
-                    fontSize: 13,
-                    background: '#fff',
-                  }}
-                >
-                  <option value="">Semua Aktivitas</option>
-                  {Object.entries(ACTION_LABELS).map(([actionKey, { label }]) => (
-                    <option key={actionKey} value={actionKey}>
-                      {label} ({actionKey})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {(selectedTenant || actionFilter) && (
-                <div style={{ alignSelf: 'flex-end' }}>
-                  <Button
-                    variant="ghost"
-                    size="s"
-                    onClick={() => handleFilterChange('', '')}
-                    style={{ color: '#ef4444', height: 36 }}
-                  >
-                    ✕ Reset Filter
-                  </Button>
-                </div>
-              )}
-
-              <div style={{ marginLeft: 'auto', alignSelf: 'flex-end' }}>
-                <Button
-                  variant="outline"
-                  size="s"
-                  onClick={() => loadLogs(page, selectedTenant, actionFilter)}
-                  disabled={refreshing}
-                  style={{ height: 36 }}
-                >
-                  {refreshing ? 'Memuat…' : '🔄 Segarkan'}
-                </Button>
-              </div>
-            </div>
+        <header className="topbar audit-topbar"><div className="audit-profile"><span className="audit-avatar" aria-hidden="true">{(currentUser?.name ?? currentUser?.email ?? '').split(' ').map(part => part[0]).join('').slice(0, 2).toUpperCase()}</span><span><strong>{currentUser?.name ?? currentUser?.email}</strong><small>{currentUser?.role?.replaceAll('_', ' ')}</small></span><button type="button" aria-label="Keluar dari Audit Log" onClick={() => void logout()}><LogOut size={20} aria-hidden="true" /></button></div></header>
+        <main className="content audit-log-page">
+          <div className="audit-heading"><span className="source-eyebrow">AUDIT LOG</span><h1>{tenantScoped ? 'Tenant audit log' : 'Platform audit log'}</h1><p>{tenantScoped ? `History of account management and operational activity for tenant “${tenantName ?? 'Current tenant'}”.` : 'History of account management and operational activity across the platform.'}</p></div>
+          <Card view="outlined" className="audit-filter-card"><div className="audit-filter-row">
+            {isSuperAdmin && <div className="audit-filter-field"><label htmlFor="tenant-filter">TENANT</label><select id="tenant-filter" value={selectedTenant} onChange={event => void handleFilterChange(event.target.value, '')}><option value="">All tenants (global)</option>{tenants.map(tenant => <option key={tenant.id} value={tenant.id}>{tenant.name} ({tenant.slug})</option>)}</select></div>}
+            <div className="audit-filter-field"><label htmlFor="action-filter">ACTIVITY TYPE</label><select id="action-filter" value={actionFilter} onChange={event => void handleFilterChange(selectedTenant, event.target.value)}><option value="">All activities</option>{availableActions.map(action => <option key={action} value={action}>{activityLabel(action).label} ({action})</option>)}</select></div>
+            <Button variant="outline" size="s" className="audit-refresh" onClick={() => Promise.all([loadLogs(page, selectedTenant, actionFilter), loadActions(selectedTenant)]).catch(() => setError('Gagal memuat pilihan aktivitas.'))} disabled={refreshing}>{refreshing ? 'Loading…' : 'Refresh'}</Button>
+            {(selectedTenant || actionFilter) && <Button variant="ghost" size="s" className="audit-reset" onClick={() => void handleFilterChange('', '')}>Reset filters</Button>}
+          </div></Card>
+          {error && <Card view="outlined" className="audit-error" role="alert">{error}</Card>}
+          <Card view="outlined" className="audit-table-card">{logs.length === 0 ? <div className="audit-empty"><strong>No activity logs</strong><p>{selectedTenant || actionFilter ? 'No logs match the current filters.' : 'No activity has been recorded yet.'}</p></div> : <Table data={logs} columns={columns} />}
+            {total > 0 && <div className="audit-pagination"><span>Showing {logs.length} of {total} log entries{isSuperAdmin && !selectedTenant ? ' across all tenants' : ''}</span><div className="audit-pagination-controls"><Button variant="outline" size="s" onClick={() => void handlePageChange(page - 1)} disabled={page <= 1 || refreshing}>Previous</Button><span>Page {page} of {totalPages}</span><Button variant="outline" size="s" onClick={() => void handlePageChange(page + 1)} disabled={page >= totalPages || refreshing}>Next</Button></div></div>}
           </Card>
-
-          {error && (
-            <Card view="outlined" className="cti-activity" style={{ marginBottom: 16, borderColor: '#fca5a5' }}>
-              <p style={{ color: '#dc2626', margin: 0 }}>{error}</p>
-            </Card>
-          )}
-
-          {/* Data Table */}
-          <Card view="outlined" className="cti-activity">
-            {logs.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px 20px', color: '#687386' }}>
-                <p style={{ fontSize: 16, fontWeight: 500, margin: '0 0 4px' }}>Tidak ada log aktivitas</p>
-                <p style={{ fontSize: 13, margin: 0 }}>
-                  {selectedTenant || actionFilter
-                    ? 'Tidak ditemukan log dengan kriteria filter saat ini.'
-                    : 'Belum ada riwayat aktivitas yang tercatat.'}
-                </p>
-              </div>
-            ) : (
-              <Table data={logs} columns={columns} />
-            )}
-          </Card>
-
-          {/* Pagination */}
-          {total > 0 && (
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginTop: 16,
-                padding: '0 8px',
-                fontSize: 13,
-                color: '#64748b',
-              }}
-            >
-              <div>
-                Menampilkan {logs.length} dari total <strong>{total}</strong> riwayat log
-                {isSuperAdmin && !selectedTenant && ' (seluruh tenant)'}
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Button
-                  variant="outline"
-                  size="s"
-                  onClick={() => handlePageChange(page - 1)}
-                  disabled={page <= 1 || refreshing}
-                >
-                  ← Sebelumnya
-                </Button>
-                <span style={{ padding: '0 8px', fontWeight: 600 }}>
-                  Halaman {page} dari {totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="s"
-                  onClick={() => handlePageChange(page + 1)}
-                  disabled={page >= totalPages || refreshing}
-                >
-                  Selanjutnya →
-                </Button>
-              </div>
-            </div>
-          )}
         </main>
       </section>
     </div>

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+﻿import { expect, test } from '@playwright/test';
 
 const api = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 const app = 'http://localhost:3000';
@@ -49,8 +49,8 @@ test('super admin can view and filter audit logs from the page', async ({ page }
   await login(page, 'superadmin@cti.local', 'SuperAdmin123!');
   await page.goto(`${app}/audit-logs`);
 
-  await expect(page.getByRole('heading', { name: '🌐 Audit Log Seluruh Platform' })).toBeVisible();
-  const tenantFilter = page.getByLabel('Filter Tenant');
+  await expect(page.getByRole('heading', { name: 'Platform audit log' })).toBeVisible();
+  const tenantFilter = page.getByLabel('TENANT');
   await expect(tenantFilter).toBeVisible();
   expect(await tenantFilter.locator('option').count()).toBeGreaterThan(1);
 

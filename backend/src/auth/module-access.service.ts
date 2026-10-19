@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { type AuthUser } from '../users/users.types';
 import { effectiveModuleDecision, modulePolicyDecision } from './effective-module-access';
+import { isCatalogOnlyFeature } from '../modules/system-modules';
 
 export type ModuleAccessResult = { readonly accessible: true } | { readonly accessible: false; readonly reason: string };
 
@@ -74,13 +75,14 @@ export class ModuleAccessService {
       return {
         ...module, roleAllowed, assigned, featureKeys, ...decision,
         assignable: superAdmin || modulePolicyDecision(policy).accessible,
-        effectiveFeatures: decision.accessible ? featureKeys.filter(key => module.features.some(feature => feature.key === key)) : [],
+        effectiveFeatures: decision.accessible ? featureKeys.filter(key => !isCatalogOnlyFeature(module.slug, key) && module.features.some(feature => feature.key === key)) : [],
       };
     });
   }
 
   async evaluate(user: AuthUser | undefined, slug: string, requiredFeatures?: readonly string[]): Promise<ModuleAccessResult> {
     if (!user) return { accessible: false, reason: 'Sesi pengguna tidak tersedia' };
+    if (requiredFeatures?.some(key => isCatalogOnlyFeature(slug, key))) return { accessible: false, reason: 'Fitur catalog-only tidak tersedia' };
     if (user.role === 'SUPER_ADMIN') return { accessible: true };
     if (!user.tenantId) return { accessible: false, reason: 'Tenant context wajib tersedia' };
     const module = (await this.listForUser(user, slug)).find(entry => entry.slug === slug);
@@ -88,6 +90,19 @@ export class ModuleAccessService {
     if (!module.accessible) return { accessible: false, reason: module.reason ?? 'Akses modul ditolak' };
     if (requiredFeatures?.some(key => !module.effectiveFeatures.includes(key))) {
       return { accessible: false, reason: 'Anda tidak memiliki akses ke fitur yang diperlukan' };
+    }
+    return { accessible: true };
+  }
+
+  async evaluateForTenant(user: AuthUser, tenantId: string, slug: string, requiredFeatures?: readonly string[]): Promise<ModuleAccessResult> {
+    if (requiredFeatures?.some(key => isCatalogOnlyFeature(slug, key))) return { accessible: false, reason: 'Fitur catalog-only tidak tersedia' };
+    if (user.role !== 'SUPER_ADMIN') return this.evaluate(user, slug, requiredFeatures);
+    const module = (await this.listTenantPolicies(tenantId, slug)).find(entry => entry.slug === slug);
+    if (!module) return { accessible: false, reason: 'Modul ini sedang tidak aktif' };
+    const decision = modulePolicyDecision({ ...module, roleAllowed: true });
+    if (!decision.accessible) return { accessible: false, reason: decision.reason ?? 'Akses modul ditolak' };
+    if (requiredFeatures?.some(key => !module.features.some(feature => feature.key === key))) {
+      return { accessible: false, reason: 'Fitur yang diperlukan tidak tersedia' };
     }
     return { accessible: true };
   }

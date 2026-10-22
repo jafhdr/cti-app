@@ -45,7 +45,7 @@ export function AppSecShell({ children }: { readonly children: ReactNode }) {
           const available: readonly Tenant[] = await tenantResponse.json();
           if (cancelled) return;
           setTenants(available);
-          const saved = sessionStorage.getItem('appsec-workspace-tenant');
+          const saved = new URLSearchParams(window.location.search).get('tenantId') || sessionStorage.getItem('appsec-workspace-tenant');
           setTenantId(available.find(tenant => tenant.id === saved)?.id ?? '');
         }
       } catch (cause) { if (!cancelled) setError(cause instanceof Error ? cause.message : 'Gagal memuat workspace.'); }

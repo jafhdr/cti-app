@@ -15,6 +15,7 @@ const userIds = [];
 let app;
 let baseUrl;
 let packageId;
+let createdModuleId;
 let primaryTenantId;
 let secondaryTenantId;
 let adminToken;
@@ -42,7 +43,15 @@ before(async () => {
   previousMitreUrl = process.env.MITRE_ATTACK_STIX_URL;
   process.env.MITRE_ATTACK_STIX_URL = `http://127.0.0.1:${mitreAddress.port}/enterprise-attack.json`;
 
-  const threatModule = await prisma.appModule.findUniqueOrThrow({ where: { slug: 'threat-intelligence' } });
+  let threatModule = await prisma.appModule.findUnique({ where: { slug: 'threat-intelligence' } });
+  if (!threatModule) {
+    threatModule = await prisma.appModule.create({ data: { slug: 'threat-intelligence', name: 'QA Threat Intelligence',
+      description: 'MITRE integration QA', category: 'CTI', features: { create: [
+        { key: 'intelligence-hub', name: 'Intelligence Hub', description: 'QA' },
+        { key: 'indicator-management', name: 'Indicator Management', description: 'QA' },
+      ] } } });
+    createdModuleId = threatModule.id;
+  }
   const subscriptionPackage = await prisma.subscriptionPackage.create({ data: { name: `MITRE ingestion QA ${runId}`, type: 'PREDEFINED', billingCycle: 'MONTHLY', priceMonthly: 0, modules: { create: { moduleId: threatModule.id } } } });
   packageId = subscriptionPackage.id;
   const primary = await prisma.tenant.create({ data: { name: `MITRE primary ${runId}`, slug: `mitre-primary-${runId}` } });
@@ -73,6 +82,7 @@ after(async () => {
   if (userIds.length > 0) await prisma.user.deleteMany({ where: { id: { in: userIds } } });
   if (tenantIds.length > 0) await prisma.tenant.deleteMany({ where: { id: { in: tenantIds } } });
   if (packageId) await prisma.subscriptionPackage.deleteMany({ where: { id: packageId } });
+  if (createdModuleId) await prisma.appModule.delete({ where: { id: createdModuleId } });
   await prisma.$disconnect();
 });
 

@@ -27,7 +27,7 @@ export default function CasesLayout({ children }: { readonly children: ReactNode
   const [tenantId, setTenantId] = useState('');
 
   useEffect(() => {
-    setTenantId(sessionStorage.getItem('case-workspace-tenant') || '');
+    setTenantId(new URLSearchParams(window.location.search).get('tenantId') || sessionStorage.getItem('case-workspace-tenant') || '');
   }, []);
 
   useEffect(() => {

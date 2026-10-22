@@ -1,0 +1,112 @@
+const assert = require('node:assert/strict');
+const test = require('node:test');
+const { randomUUID } = require('node:crypto');
+const fs = require('node:fs');
+const line = fs.readFileSync('.env', 'utf8').split(/\r?\n/).find(value => value.startsWith('DATABASE_URL='));
+if (!line) throw new Error('QA database configuration missing');
+const url = new URL(line.slice(13).replace(/^"|"$/g, ''));
+if (!['localhost', '127.0.0.1'].includes(url.hostname)) throw new Error('QA database must be local');
+url.pathname = '/cti_db13_qa';
+process.env.DATABASE_URL = url.toString();
+const { PrismaClient } = require('@prisma/client');
+const { IndicatorsService } = require('../../dist/src/indicators/indicators.service');
+const { IndicatorFeedsService } = require('../../dist/src/indicators/indicator-feeds.service');
+const { NotificationOutboxWorker } = require('../../dist/src/notifications/notification-outbox.worker');
+const { ModuleAccessService } = require('../../dist/src/auth/module-access.service');
+const { PrismaService } = require('../../dist/src/prisma.service');
+const { DashboardModule } = require('../../dist/src/dashboard/dashboard.module');
+const { Test } = require('@nestjs/testing');
+const { ConfigModule } = require('@nestjs/config');
+const { ValidationPipe } = require('@nestjs/common');
+const { createAccessToken } = require('../auth/integration-session.cjs');
+const cookieParser = require('cookie-parser');
+
+test('Indicator escalation reaches only eligible Dashboard recipients', { timeout: 120000 }, async () => {
+  const db = new PrismaClient();
+  const marker = randomUUID();
+  let tenantId; let otherId; let moduleId; let createdModule = false; let app;
+  try {
+    const tenant = await db.tenant.create({ data: { name: 'Risk QA', slug: `risk-${marker}` } }); tenantId = tenant.id;
+    const other = await db.tenant.create({ data: { name: 'Risk other QA', slug: `risk-other-${marker}` } }); otherId = other.id;
+    const createUser = (name, role, targetTenant = tenantId, isActive = true) => db.user.create({ data: { tenantId: targetTenant, name, email: `${name}-${marker}@example.test`, passwordHash: 'qa', role, isActive } });
+    const actor = await createUser('actor', 'ADMIN');
+    const recipient = await createUser('recipient', 'ADMIN');
+    const denied = await createUser('denied', 'ADMIN');
+    const ordinary = await createUser('ordinary', 'USER');
+    const inactive = await createUser('inactive', 'ADMIN', tenantId, false);
+    const foreign = await createUser('foreign', 'ADMIN', otherId);
+    let module = await db.appModule.findUnique({ where: { slug: 'threat-intelligence' } });
+    if (!module) { module = await db.appModule.create({ data: { slug: 'threat-intelligence', name: 'QA TI', description: 'QA', category: 'CTI' } }); createdModule = true; }
+    moduleId = module.id;
+    await db.moduleFeature.upsert({ where: { moduleId_key: { moduleId, key: 'indicator-management' } }, update: {}, create: { moduleId, key: 'indicator-management', name: 'Indicator Management', description: 'QA' } });
+    const subscription = await db.tenantSubscription.create({ data: { tenantId, isCustom: true, billingCycle: 'MONTHLY', priceMonthly: 0, status: 'ACTIVE', renewalAt: new Date(Date.now() + 86400000) } });
+    await db.tenantCustomModule.create({ data: { subscriptionId: subscription.id, moduleId } });
+    const setting = await db.tenantModule.create({ data: { tenantId, moduleId, isEnabled: true } });
+    await db.moduleRoleAccess.createMany({ data: ['ADMIN', 'USER'].map(role => ({ tenantModuleId: setting.id, role, isAllowed: true })) });
+    for (const user of [actor, recipient, ordinary, inactive]) await db.userModuleAccess.create({ data: { userId: user.id, tenantId, moduleId, featureKeys: ['indicator-management'] } });
+    const input = { value: `risk-${marker}.test`, type: 'DOMAIN', severity: 'LOW', confidence: 50, status: 'ACTIVE', description: 'QA' };
+    const indicator = await db.indicator.create({ data: { tenantId, ...input } });
+    const service = new IndicatorsService(db);
+    const principal = { sub: actor.id, tenantId, role: 'ADMIN' };
+    const events = () => db.notificationOutbox.findMany({ where: { tenantId, type: 'INDICATOR_RISK_CHANGED' }, orderBy: { createdAt: 'asc' } });
+    await service.update(principal, indicator.id, { ...input, description: 'metadata' });
+    assert.equal((await events()).length, 0);
+    await Promise.all([service.update(principal, indicator.id, { ...input, severity: 'HIGH' }), service.update(principal, indicator.id, { ...input, severity: 'HIGH' })]);
+    assert.equal((await events()).length, 1, 'concurrent logical escalation deduplicated');
+    await service.update(principal, indicator.id, { ...input, severity: 'HIGH', confidence: 80 });
+    assert.equal((await events()).length, 1);
+    await service.update(principal, indicator.id, { ...input, severity: 'CRITICAL' });
+    assert.equal((await events()).length, 2);
+    const source = await db.intelligenceSource.create({ data: { tenantId, name: 'URLhaus Feed', sourceType: 'OPEN_SOURCE', createdBy: actor.id } });
+    const feed = new IndicatorFeedsService(db, {}, { get: () => undefined });
+    const normalized = severity => [{ value: input.value, type: input.type, severity, confidence: 90, tags: [], description: 'Feed QA' }];
+    await feed.upsertIndicators(principal, tenantId, source.id, 'URLhaus', normalized('CRITICAL'));
+    assert.equal((await events()).length, 2, 'repeated identical feed result has no risk event');
+    await service.update(principal, indicator.id, { ...input, severity: 'LOW' });
+    await feed.upsertIndicators(principal, tenantId, source.id, 'URLhaus', normalized('HIGH'));
+    assert.equal((await events()).length, 3, 'feed escalation emits risk event');
+    await assert.rejects(() => service.update(principal, indicator.id, { ...input, value: '' }));
+    assert.equal((await events()).length, 3, 'failed update has no event');
+    const worker = new NotificationOutboxWorker(db, new ModuleAccessService(db), { addInterval() {} });
+    await worker.runOnce();
+    const notices = await db.notification.findMany({ where: { tenantId, type: 'INDICATOR_RISK_CHANGED' }, include: { recipients: true }, orderBy: { eventAt: 'asc' } });
+    assert.equal(notices.length, 3);
+    assert.deepEqual(notices.map(notice => notice.priority).sort(), ['CRITICAL', 'HIGH', 'HIGH']);
+    for (const notice of notices) { assert.equal(notice.route, `/indicators?indicatorId=${indicator.id}`); assert.deepEqual(notice.recipients.map(item => item.userId), notice.priority === 'HIGH' && notice.eventAt > notices[1].eventAt ? [actor.id, recipient.id] : [recipient.id]); }
+    const ref = await Test.createTestingModule({ imports: [ConfigModule.forRoot({ isGlobal: true }), DashboardModule] }).overrideProvider(PrismaService).useValue(db).compile();
+    app = ref.createNestApplication({ logger: false }); app.use(cookieParser()); app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true })); await app.listen(0, '127.0.0.1');
+    const base = `http://127.0.0.1:${app.getHttpServer().address().port}`;
+    const token = await createAccessToken(db, recipient.id, process.env.JWT_ACCESS_SECRET);
+    const foreignToken = await createAccessToken(db, foreign.id, process.env.JWT_ACCESS_SECRET);
+    const request = (path, auth = token, method = 'GET') => fetch(base + path, { method, headers: { Authorization: `Bearer ${auth}` } });
+    const feedResponse = await request('/dashboard/notifications'); assert.equal(feedResponse.status, 200, await feedResponse.clone().text());
+    const feedBody = await feedResponse.json(); assert.equal(feedBody.unreadCount, 5);
+    const items = feedBody.items.filter(item => item.type === 'INDICATOR_RISK_CHANGED'); assert.equal(items.length, 3);
+    assert.ok(items.every(item => item.title === 'Indicator Risk Increased' && item.route === `/indicators?indicatorId=${indicator.id}`));
+    const read = await request(`/dashboard/notifications/${encodeURIComponent(items[0].id)}/read`, token, 'PATCH'); assert.equal(read.status, 200, await read.clone().text());
+    assert.equal((await (await request('/dashboard/notifications')).json()).unreadCount, 4);
+    assert.equal((await request(`/dashboard/notifications/${encodeURIComponent(items[1].id)}/read`, foreignToken, 'PATCH')).status, 403);
+    assert.equal((await request('/dashboard/notifications', foreignToken)).status, 403);
+    assert.equal((await db.notificationRecipient.count({ where: { tenantId, userId: { in: [denied.id, ordinary.id, inactive.id, foreign.id] } } })), 0);
+    assert.equal((await db.notificationRecipient.count({ where: { tenantId, userId: actor.id } })), 3,
+      'feed summaries and feed risk event include the scheduler actor');
+  } finally {
+    if (app) await app.close();
+    if (tenantId) {
+      await db.notificationOutbox.deleteMany({ where: { tenantId } });
+      await db.notificationRecipient.deleteMany({ where: { tenantId } });
+      await db.notification.deleteMany({ where: { tenantId } });
+      await db.auditLog.deleteMany({ where: { tenantId } });
+      await db.indicatorSourceObservation.deleteMany({ where: { tenantId } });
+      await db.indicator.deleteMany({ where: { tenantId } });
+      await db.intelligenceSource.deleteMany({ where: { tenantId } });
+      await db.userModuleAccess.deleteMany({ where: { tenantId } });
+      await db.tenantModule.deleteMany({ where: { tenantId } });
+      await db.tenantSubscription.deleteMany({ where: { tenantId } });
+      await db.user.deleteMany({ where: { tenantId: { in: [tenantId, otherId] } } });
+      await db.tenant.deleteMany({ where: { id: { in: [tenantId, otherId] } } });
+      if (createdModule) await db.appModule.delete({ where: { id: moduleId } });
+    }
+    await db.$disconnect();
+  }
+});

@@ -6,6 +6,8 @@ const { ValidationPipe } = require('@nestjs/common');
 const { JwtService } = require('@nestjs/jwt');
 const { PrismaClient } = require('@prisma/client');
 const { AppSecModule } = require('../../dist/src/appsec/appsec.module');
+const { NotificationOutboxWorker } = require('../../dist/src/notifications/notification-outbox.worker');
+const { ModuleAccessService } = require('../../dist/src/auth/module-access.service');
 const { createAccessToken } = require('../auth/integration-session.cjs');
 
 const transitions = [
@@ -108,7 +110,7 @@ test('AppSec real database HTTP lifecycle, tenant and feature access', { timeout
       assert.equal((await call(admin, `${path}/${own.id}`, 'DELETE')).status, 200);
       assert.equal((await call(admin, path)).body.length, 1);
       for (const action of ['APPSEC_APPLICATION_ASSET_LINKED', 'APPSEC_APPLICATION_ASSET_UNLINKED']) {
-        const audit = await prisma.auditLog.findFirst({ where: { tenantId: a.id, action } });
+        const audit = await prisma.auditLog.findFirst({ where: { tenantId: a.id, action, metadata: { path: ['assetId'], equals: own.id } } });
         assert.equal(audit.metadata.applicationId, applicationId);
         assert.equal(audit.metadata.assetId, own.id);
       }
@@ -255,6 +257,46 @@ test('AppSec real database HTTP lifecycle, tenant and feature access', { timeout
       assert.equal((await call(admin, `${findingPath}/${made.body.id}`, 'PATCH', { status: 'OPEN', remediationNote: 'Note' })).status, 200);
       assert.equal(await prisma.auditLog.count({ where: { tenantId: a.id, action: 'APPSEC_FINDING_STATUS_CHANGED', metadata: { path: ['findingId'], equals: made.body.id } } }), count);
       for (const action of ['APPSEC_APPLICATION_CREATED', 'APPSEC_APPLICATION_UPDATED', 'APPSEC_FINDING_CREATED', 'APPSEC_FINDING_UPDATED', 'APPSEC_FINDING_STATUS_CHANGED']) assert.ok(await prisma.auditLog.count({ where: { tenantId: a.id, action } }), action);
+    });
+    await t.test('authenticated high risk delivery, validation and inactive policies', async () => {
+      const recipient = await prisma.user.create({ data: { name: 'Notification admin', email: `notification-${marker}@example.test`, passwordHash: 'qa', role: 'ADMIN', tenantId: a.id } });
+      users.push(recipient);
+      await prisma.userModuleAccess.create({ data: { userId: recipient.id, tenantId: a.id, moduleId: module.id, featureKeys: ['finding-management'] } });
+      const high = await call(admin, findingPath, 'POST', { applicationId, title: `High risk ${marker}`, severity: 'CRITICAL' });
+      assert.equal(high.status, 201);
+      assert.equal(await prisma.notificationOutbox.count({ where: { tenantId: a.id, type: 'APPSEC_FINDING_CREATED_HIGH_RISK', payload: { path: ['findingId'], equals: high.body.id } } }), 1);
+      const worker = new NotificationOutboxWorker(prisma, new ModuleAccessService(prisma), { addInterval() {} });
+      for (let pass = 0; pass < 20; pass += 1) {
+        if (await prisma.notification.findFirst({ where: { tenantId: a.id, resourceId: high.body.id } })) break;
+        await worker.runOnce();
+      }
+      const notice = await prisma.notification.findFirstOrThrow({ where: { tenantId: a.id, resourceId: high.body.id } });
+      assert.equal(await prisma.notificationRecipient.count({ where: { notificationId: notice.id, userId: recipient.id } }), 1);
+      assert.equal(await prisma.notificationRecipient.count({ where: { notificationId: notice.id, userId: admin.id } }), 0);
+      await worker.runOnce();
+      assert.equal(await prisma.notification.count({ where: { tenantId: a.id, resourceId: high.body.id } }), 1);
+      assert.equal((await call(admin, findingPath, 'POST', { applicationId, title: '', severity: 'HIGH' })).status, 400);
+      assert.equal((await call(admin, findingPath, 'POST', { applicationId, title: 'Bad severity', severity: 'EXTREME' })).status, 400);
+      assert.equal((await call(admin, `${findingPath}/${high.body.id}`, 'PATCH', { status: 'NOT_A_STATUS' })).status, 400);
+      const auditsBefore = await prisma.auditLog.count({ where: { tenantId: a.id, action: 'APPSEC_FINDING_CREATED' } });
+      await prisma.$executeRawUnsafe("CREATE FUNCTION appsec_db22_reject_outbox() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'qa outbox rollback'; END $$");
+      await prisma.$executeRawUnsafe('CREATE TRIGGER appsec_db22_reject_outbox_trigger BEFORE INSERT ON "NotificationOutbox" FOR EACH ROW EXECUTE FUNCTION appsec_db22_reject_outbox()');
+      try { assert.equal((await call(admin, findingPath, 'POST', { applicationId, title: `Rollback ${marker}`, severity: 'HIGH' })).status, 500); }
+      finally {
+        await prisma.$executeRawUnsafe('DROP TRIGGER appsec_db22_reject_outbox_trigger ON "NotificationOutbox"');
+        await prisma.$executeRawUnsafe('DROP FUNCTION appsec_db22_reject_outbox()');
+      }
+      assert.equal(await prisma.appSecFinding.count({ where: { tenantId: a.id, title: `Rollback ${marker}` } }), 0);
+      assert.equal(await prisma.auditLog.count({ where: { tenantId: a.id, action: 'APPSEC_FINDING_CREATED' } }), auditsBefore);
+      await prisma.tenantSubscription.update({ where: { id: subscription.id }, data: { renewalAt: new Date(Date.now() - 1000) } });
+      assert.equal((await call(admin, `${findingPath}/${high.body.id}`)).status, 403);
+      await prisma.tenantSubscription.update({ where: { id: subscription.id }, data: { renewalAt: new Date(Date.now() + 86400000) } });
+      await prisma.user.update({ where: { id: user.id }, data: { isActive: false } });
+      assert.equal((await call(user, findingPath)).status, 401);
+      await prisma.user.update({ where: { id: user.id }, data: { isActive: true } });
+      await prisma.tenant.update({ where: { id: a.id }, data: { isActive: false } });
+      try { assert.equal((await call(admin, findingPath)).status, 401); }
+      finally { await prisma.tenant.update({ where: { id: a.id }, data: { isActive: true } }); }
     });
     await t.test('posture aggregates actual tenant findings and excludes foreign data', async () => {
       const c = await prisma.tenant.create({ data: { name: 'AppSec posture', slug: `appsec-posture-${marker}` } });

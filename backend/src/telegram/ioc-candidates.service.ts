@@ -19,6 +19,7 @@ export class IocCandidatesService {
     
     let processed = 0;
     let failed = 0;
+    const notifiedTenants = new Set<string>();
     for (const message of messages) {
       try {
         const entities = parseEntities(message.entities);
@@ -31,21 +32,36 @@ export class IocCandidatesService {
           types: extracted.map(ioc => ioc.type),
         });
         
-        await this.prisma.$transaction(async transaction => {
+        const createdReviewEvent = await this.prisma.$transaction(async transaction => {
+          let newPending = false;
           for (const ioc of extracted) {
+            const previous = await transaction.iocCandidate.findUnique({
+              where: { tenantId_type_normalizedValue: { tenantId: message.tenantId, type: ioc.type, normalizedValue: ioc.normalizedValue } },
+              select: { id: true },
+            });
             const candidate = await transaction.iocCandidate.upsert({
               where: { tenantId_type_normalizedValue: { tenantId: message.tenantId, type: ioc.type, normalizedValue: ioc.normalizedValue } },
               create: { tenantId: message.tenantId, intelligenceSourceId: message.intelligenceSourceId, type: ioc.type, rawValue: ioc.rawValue, normalizedValue: ioc.normalizedValue, confidence: ioc.confidence },
               update: { confidence: { set: ioc.confidence } },
             });
+            if (!previous && candidate.status === 'PENDING') newPending = true;
             await transaction.iocObservation.upsert({
               where: { tenantId_candidateId_telegramStagingMessageId_extractionMethod_spanStart_spanEnd: { tenantId: message.tenantId, candidateId: candidate.id, telegramStagingMessageId: message.id, extractionMethod: ioc.extractionMethod, spanStart: ioc.spanStart, spanEnd: ioc.spanEnd } },
               create: { tenantId: message.tenantId, candidateId: candidate.id, telegramStagingMessageId: message.id, rawValue: ioc.rawValue, extractionMethod: ioc.extractionMethod, spanStart: ioc.spanStart, spanEnd: ioc.spanEnd },
               update: { rawValue: ioc.rawValue },
             });
           }
+          if (newPending && !notifiedTenants.has(message.tenantId)) {
+            await transaction.notificationOutbox.createMany({
+              data: { id: `IOC_REVIEW:${message.tenantId}:${messages[0].id}`, tenantId: message.tenantId,
+                type: 'IOC_CANDIDATES_PENDING_REVIEW', payloadVersion: 1, payload: { stagingMessageId: message.id } },
+              skipDuplicates: true,
+            });
+          }
           await transaction.telegramStagingMessage.update({ where: { id: message.id }, data: { processingStatus: 'PROCESSED', processingError: null } });
+          return newPending;
         });
+        if (createdReviewEvent) notifiedTenants.add(message.tenantId);
         
         console.log('[telegram.ioc_candidates.message_processed]', {
           messageId: message.id,

@@ -291,6 +291,8 @@ model Tenant {
   id                         String                            @id @default(cuid())
   applications               Application[]
   appSecFindings             AppSecFinding[]
+  notifications              Notification[]
+  notificationOutbox          NotificationOutbox[]
   name                       String
   slug                       String                            @unique
   isActive                   Boolean                           @default(true)
@@ -469,7 +471,7 @@ model User {
   isActive           Boolean                 @default(true)
   deactivatedAt      DateTime?
   tenantId           String?
-  tenant             Tenant?                 @relation(fields: [tenantId], references: [id])
+  tenant             Tenant?                 @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   createdAt          DateTime                @default(now())
   updatedAt          DateTime                @updatedAt
   moduleAccess       UserModuleAccess[]
@@ -479,6 +481,8 @@ model User {
   investigationNotes CaseInvestigationNote[] @relation("CaseNoteAuthor")
   evidenceCreated    CaseEvidence[]          @relation("CaseEvidenceCreator")
   asmNotificationReads AsmNotificationRead[]
+  notificationRecipients NotificationRecipient[]
+  @@unique([id, tenantId])
 }
 
 model AuthSession {
@@ -681,7 +685,7 @@ model TelegramStagingMessage {
   @@unique([tenantId, telegramChatId, messageId])
   @@unique([tenantId, updateId])
   @@index([tenantId, processingStatus, ingestedAt])
-  @@index([tenantId, intelligenceSourceId, messageTimestamp])
+  @@index([tenantId, intelligenceSourceId, messageTimestamp], map: "TelegramStagingMessage_tenantId_intelligenceSourceId_messageTim")
 }
 
 model IocCandidate {
@@ -698,8 +702,8 @@ model IocCandidate {
   reviewedAt           DateTime?
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
-  tenant               Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  intelligenceSource   IntelligenceSource @relation(fields: [intelligenceSourceId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  tenant               Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  intelligenceSource   IntelligenceSource @relation(fields: [intelligenceSourceId, tenantId], references: [id, tenantId], onDelete: Cascade, onUpdate: NoAction)
   indicator            Indicator?         @relation(fields: [indicatorId, tenantId], references: [id, tenantId], onDelete: Restrict)
   observations         IocObservation[]
 
@@ -720,11 +724,11 @@ model IocObservation {
   spanStart                Int?
   spanEnd                  Int?
   observedAt               DateTime               @default(now())
-  tenant                   Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  candidate                IocCandidate           @relation(fields: [candidateId, tenantId], references: [id, tenantId], onDelete: Cascade)
-  telegramStagingMessage   TelegramStagingMessage @relation(fields: [telegramStagingMessageId], references: [id], onDelete: Cascade)
+  tenant                   Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  candidate                IocCandidate           @relation(fields: [candidateId, tenantId], references: [id, tenantId], onDelete: Cascade, onUpdate: NoAction)
+  telegramStagingMessage   TelegramStagingMessage @relation(fields: [telegramStagingMessageId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
-  @@unique([tenantId, candidateId, telegramStagingMessageId, extractionMethod, spanStart, spanEnd])
+  @@unique([tenantId, candidateId, telegramStagingMessageId, extractionMethod, spanStart, spanEnd], map: "IocObservation_message_span_key")
   @@index([tenantId, telegramStagingMessageId])
 }
 
@@ -904,78 +908,78 @@ model IntelligenceReportThreatActor {
   reportId      String
   threatActorId String
   tenantId      String
-  report        IntelligenceReport @relation(fields: [reportId, tenantId], references: [id, tenantId], onDelete: Cascade)
-  threatActor   ThreatActor        @relation(fields: [threatActorId, tenantId], references: [id, tenantId], onDelete: Cascade)
-  tenant        Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  report        IntelligenceReport @relation(fields: [reportId, tenantId], references: [id, tenantId], onDelete: Cascade, map: "IRTA_report_fkey")
+  threatActor   ThreatActor        @relation(fields: [threatActorId, tenantId], references: [id, tenantId], onDelete: Cascade, map: "IRTA_actor_fkey")
+  tenant        Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "IRTA_tenant_fkey")
   createdAt     DateTime           @default(now())
 
   @@id([reportId, threatActorId])
-  @@index([tenantId, threatActorId])
+  @@index([tenantId, threatActorId], map: "IRTA_tenant_actor_idx")
 }
 
 model IntelligenceReportCampaign {
   reportId   String
   campaignId String
   tenantId   String
-  report     IntelligenceReport @relation(fields: [reportId, tenantId], references: [id, tenantId], onDelete: Cascade)
-  campaign   Campaign           @relation(fields: [campaignId, tenantId], references: [id, tenantId], onDelete: Cascade)
-  tenant     Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  report     IntelligenceReport @relation(fields: [reportId, tenantId], references: [id, tenantId], onDelete: Cascade, map: "IRC_report_fkey")
+  campaign   Campaign           @relation(fields: [campaignId, tenantId], references: [id, tenantId], onDelete: Cascade, map: "IRC_campaign_fkey")
+  tenant     Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "IRC_tenant_fkey")
   createdAt  DateTime           @default(now())
 
   @@id([reportId, campaignId])
-  @@index([tenantId, campaignId])
+  @@index([tenantId, campaignId], map: "IRC_tenant_campaign_idx")
 }
 
 model IntelligenceReportIndicator {
   reportId    String
   indicatorId String
   tenantId    String
-  report      IntelligenceReport @relation(fields: [reportId, tenantId], references: [id, tenantId], onDelete: Cascade)
-  indicator   Indicator          @relation(fields: [indicatorId, tenantId], references: [id, tenantId], onDelete: Cascade)
-  tenant      Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  report      IntelligenceReport @relation(fields: [reportId, tenantId], references: [id, tenantId], onDelete: Cascade, map: "IRI_report_fkey")
+  indicator   Indicator          @relation(fields: [indicatorId, tenantId], references: [id, tenantId], onDelete: Cascade, map: "IRI_indicator_fkey")
+  tenant      Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "IRI_tenant_fkey")
   createdAt   DateTime           @default(now())
 
   @@id([reportId, indicatorId])
-  @@index([tenantId, indicatorId])
+  @@index([tenantId, indicatorId], map: "IRI_tenant_indicator_idx")
 }
 
 model IntelligenceReportMalwareTool {
   reportId      String
   malwareToolId String
   tenantId      String
-  report        IntelligenceReport @relation(fields: [reportId, tenantId], references: [id, tenantId], onDelete: Cascade)
-  malwareTool   MalwareTool        @relation(fields: [malwareToolId, tenantId], references: [id, tenantId], onDelete: Cascade)
-  tenant        Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  report        IntelligenceReport @relation(fields: [reportId, tenantId], references: [id, tenantId], onDelete: Cascade, map: "IRMT_report_fkey")
+  malwareTool   MalwareTool        @relation(fields: [malwareToolId, tenantId], references: [id, tenantId], onDelete: Cascade, map: "IRMT_malware_fkey")
+  tenant        Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "IRMT_tenant_fkey")
   createdAt     DateTime           @default(now())
 
   @@id([reportId, malwareToolId])
-  @@index([tenantId, malwareToolId])
+  @@index([tenantId, malwareToolId], map: "IRMT_tenant_malware_idx")
 }
 
 model IntelligenceReportVulnerability {
   reportId        String
   vulnerabilityId String
   tenantId        String
-  report          IntelligenceReport @relation(fields: [reportId, tenantId], references: [id, tenantId], onDelete: Cascade)
-  vulnerability   Vulnerability      @relation(fields: [vulnerabilityId, tenantId], references: [id, tenantId], onDelete: Cascade)
-  tenant          Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  report          IntelligenceReport @relation(fields: [reportId, tenantId], references: [id, tenantId], onDelete: Cascade, map: "IRV_report_fkey")
+  vulnerability   Vulnerability      @relation(fields: [vulnerabilityId, tenantId], references: [id, tenantId], onDelete: Cascade, map: "IRV_vulnerability_fkey")
+  tenant          Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "IRV_tenant_fkey")
   createdAt       DateTime           @default(now())
 
   @@id([reportId, vulnerabilityId])
-  @@index([tenantId, vulnerabilityId])
+  @@index([tenantId, vulnerabilityId], map: "IRV_tenant_vulnerability_idx")
 }
 
 model IntelligenceReportSource {
   reportId  String
   sourceId  String
   tenantId  String
-  report    IntelligenceReport @relation(fields: [reportId, tenantId], references: [id, tenantId], onDelete: Cascade)
-  source    IntelligenceSource @relation(fields: [sourceId, tenantId], references: [id, tenantId], onDelete: Cascade)
-  tenant    Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  report    IntelligenceReport @relation(fields: [reportId, tenantId], references: [id, tenantId], onDelete: Cascade, map: "IRS_report_fkey")
+  source    IntelligenceSource @relation(fields: [sourceId, tenantId], references: [id, tenantId], onDelete: Cascade, map: "IRS_source_fkey")
+  tenant    Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade, map: "IRS_tenant_fkey")
   createdAt DateTime           @default(now())
 
   @@id([reportId, sourceId])
-  @@index([tenantId, sourceId])
+  @@index([tenantId, sourceId], map: "IRS_tenant_source_idx")
 }
 
 model ThreatActorVulnerability {
@@ -1101,7 +1105,7 @@ model IntelligenceRelationship {
   target           IntelligenceEntity @relation("RelationshipTarget", fields: [targetId], references: [id], onDelete: Cascade)
   createdAt        DateTime           @default(now())
 
-  @@unique([tenantId, sourceId, targetId, relationshipType])
+  @@unique([tenantId, sourceId, targetId, relationshipType], map: "IntelligenceRelationship_tenantId_sourceId_targetId_relationshi")
   @@index([tenantId, sourceId])
   @@index([tenantId, targetId])
 }
@@ -1272,22 +1276,24 @@ model Alert {
   @@index([tenantId, status, severity])
   @@unique([tenantId, source, sourceKey])
   @@index([tenantId, assetId, status])
+  @@index([tenantId, status, resolvedAt], map: "Alert_tenantId_status_resolvedAt_idx")
 }
 
 model AsmNotificationPreference {
   tenantId String @id
   enabled Boolean @default(true)
   minimumSeverity IndicatorSeverity @default(HIGH)
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
 model AsmNotification {
   id String @id @default(cuid())
   tenantId String
   alertId String @unique
-  createdAt DateTime @default(now())
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  alert Alert @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(dbgenerated("(CURRENT_TIMESTAMP AT TIME ZONE 'UTC'::text)"))
+  utcCreatedAt DateTime? @default(dbgenerated("(CURRENT_TIMESTAMP AT TIME ZONE 'UTC'::text)"))
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  alert Alert @relation(fields: [alertId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   reads AsmNotificationRead[]
   @@index([tenantId, createdAt])
 }
@@ -1295,10 +1301,66 @@ model AsmNotification {
 model AsmNotificationRead {
   notificationId String
   userId String
-  readAt DateTime @default(now())
-  notification AsmNotification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  readAt DateTime @default(dbgenerated("(CURRENT_TIMESTAMP AT TIME ZONE 'UTC'::text)"))
+  notification AsmNotification @relation(fields: [notificationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   @@id([notificationId, userId])
+}
+
+model Notification {
+  id           String   @id @default(cuid())
+  tenantId     String
+  type         String
+  sourceModule String
+  resourceKind String
+  resourceId   String
+  priority     String?
+  preview      String
+  route        String?
+  dedupeKey    String
+  eventAt      DateTime
+  createdAt    DateTime @default(dbgenerated("(CURRENT_TIMESTAMP AT TIME ZONE 'UTC'::text)"))
+  expiresAt    DateTime?
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  recipients   NotificationRecipient[]
+
+  @@unique([tenantId, dedupeKey])
+  @@unique([id, tenantId])
+  @@index([tenantId, createdAt, id])
+}
+
+model NotificationRecipient {
+  notificationId String
+  tenantId       String
+  userId         String
+  createdAt      DateTime @default(now())
+  readAt         DateTime?
+  notification   Notification @relation(fields: [notificationId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  user           User @relation(fields: [userId, tenantId], references: [id, tenantId], onDelete: Cascade)
+
+  @@id([notificationId, userId])
+  @@index([tenantId, userId, readAt, notificationId])
+}
+
+model NotificationOutbox {
+  id          String   @id @default(cuid())
+  tenantId    String
+  type        String
+  payloadVersion Int  @default(1)
+  payload     Json
+  status      String   @default("PENDING")
+  attempts    Int      @default(0)
+  availableAt DateTime @default(now())
+  leasedUntil DateTime?
+  claimToken  String?
+  processedAt DateTime?
+  lastError   String?
+  createdAt   DateTime @default(now())
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([status, availableAt, createdAt])
+  @@index([status, leasedUntil])
+  @@index([tenantId, createdAt])
 }
 
 model AlertEntity {
@@ -1474,7 +1536,7 @@ model AssetRelationship {
   sourceAsset   Asset                 @relation("RelationshipSource", fields: [sourceAssetId, tenantId], references: [id, tenantId], onDelete: Cascade)
   targetAsset   Asset                 @relation("RelationshipTarget", fields: [targetAssetId, tenantId], references: [id, tenantId], onDelete: Cascade)
 
-  @@unique([tenantId, sourceAssetId, targetAssetId, type, source])
+  @@unique([tenantId, sourceAssetId, targetAssetId, type, source], map: "AssetRelationship_tenantId_sourceAssetId_targetAssetId_type_sou")
   @@index([tenantId, rootAssetId])
   @@index([tenantId, sourceAssetId])
   @@index([tenantId, targetAssetId])
@@ -1520,10 +1582,10 @@ model AssetVulnerabilityCorrelation {
   lastSeenAt DateTime @default(now())
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   asset Asset @relation(fields: [assetId, tenantId], references: [id, tenantId], onDelete: Cascade)
-  service AssetPortService @relation(fields: [serviceId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  service AssetPortService @relation(fields: [serviceId, tenantId], references: [id, tenantId], onDelete: Cascade, map: "AssetVulnerabilityCorrelation_serviceId_fkey")
   vulnerability Vulnerability @relation(fields: [vulnerabilityId, tenantId], references: [id, tenantId], onDelete: Cascade)
   alerts Alert[]
-  @@unique([tenantId, serviceId, vulnerabilityId])
+  @@unique([tenantId, serviceId, vulnerabilityId], map: "AssetVulnerabilityCorrelation_tenantId_serviceId_vulnerabilityI")
   @@index([tenantId, assetId])
 }
 

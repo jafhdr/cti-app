@@ -3,10 +3,11 @@ const { test } = require('node:test');
 
 function service(db) { const { IocCandidatesService } = require('../../dist/src/telegram/ioc-candidates.service.js'); return new IocCandidatesService(db); }
 function fakeDb(options = {}) {
-  const candidates = []; const observations = []; const audits = []; const jobs = []; const indicators = [...(options.indicators ?? [])];
+  const candidates = []; const observations = []; const audits = []; const jobs = []; const outbox = []; const indicators = [...(options.indicators ?? [])];
   const messages = options.messages ?? [];
   const tx = {
     iocCandidate: {
+      findUnique: async ({ where }) => { const key = where.tenantId_type_normalizedValue; return candidates.find(row => row.tenantId === key.tenantId && row.type === key.type && row.normalizedValue === key.normalizedValue) ?? null; },
       upsert: async ({ where, create, update }) => { const key = where.tenantId_type_normalizedValue; let item = candidates.find(row => row.tenantId === key.tenantId && row.type === key.type && row.normalizedValue === key.normalizedValue); if (!item) { item = { id: `candidate-${candidates.length + 1}`, status: 'PENDING', ...create }; candidates.push(item); } else if (update.confidence?.set) item.confidence = update.confidence.set; return item; },
       update: async ({ where, data }) => { const id = where.id_tenantId?.id ?? where.id; const item = candidates.find(row => row.id === id); Object.assign(item, data); return item; },
       updateMany: async ({ where, data }) => { const item = candidates.find(row => row.id === where.id && row.tenantId === where.tenantId && row.status === where.status); if (!item) return { count: 0 }; Object.assign(item, data); return { count: 1 }; },
@@ -17,6 +18,7 @@ function fakeDb(options = {}) {
     },
     iocObservation: { upsert: async ({ where, create }) => { const key = where.tenantId_candidateId_telegramStagingMessageId_extractionMethod_spanStart_spanEnd; let item = observations.find(row => row.candidateId === key.candidateId && row.telegramStagingMessageId === key.telegramStagingMessageId && row.spanStart === key.spanStart); if (!item) { item = { id: `observation-${observations.length + 1}`, ...create }; observations.push(item); } return item; } },
     telegramStagingMessage: { update: async ({ where, data }) => Object.assign(messages.find(row => row.id === where.id), data) },
+    notificationOutbox: { createMany: async ({ data }) => { if (outbox.some(row => row.id === data.id)) return { count: 0 }; outbox.push(data); return { count: 1 }; } },
     auditLog: { create: async ({ data }) => { audits.push(data); return data; } },
     indicatorEnrichmentJob: {
       createMany: async ({ data }) => {
@@ -30,18 +32,19 @@ function fakeDb(options = {}) {
     },
   };
   return {
-    candidates, observations, audits, jobs, indicators,
+    candidates, observations, audits, jobs, indicators, outbox,
     telegramStagingMessage: { findMany: async () => messages.filter(row => row.processingStatus === 'PENDING'), update: tx.telegramStagingMessage.update },
     iocCandidate: { findMany: async ({ where }) => candidates.filter(row => row.tenantId === where.tenantId && row.status === where.status), findFirst: async ({ where }) => candidates.find(row => row.id === where.id && row.tenantId === where.tenantId) ?? null },
     $transaction: async callback => {
       if (options.transactionError) throw new Error('database unavailable');
-      const snapshots = { candidates: structuredClone(candidates), indicators: structuredClone(indicators), audits: structuredClone(audits), jobs: structuredClone(jobs) };
+      const snapshots = { candidates: structuredClone(candidates), indicators: structuredClone(indicators), audits: structuredClone(audits), jobs: structuredClone(jobs), outbox: structuredClone(outbox) };
       try { return await callback(tx); }
       catch (error) {
         candidates.splice(0, candidates.length, ...snapshots.candidates);
         indicators.splice(0, indicators.length, ...snapshots.indicators);
         audits.splice(0, audits.length, ...snapshots.audits);
         jobs.splice(0, jobs.length, ...snapshots.jobs);
+        outbox.splice(0, outbox.length, ...snapshots.outbox);
         throw error;
       }
     },
@@ -53,6 +56,7 @@ test('Given duplicate IOC observations, when processed, then one candidate retai
   const db = fakeDb({ messages: [message('m1', 'tenant-a', '8.8.8.8'), message('m2', 'tenant-a', '8.8.8.8')] });
   assert.deepEqual(await service(db).processPending(), { processed: 2, failed: 0 });
   assert.equal(db.candidates.length, 1); assert.equal(db.observations.length, 2);
+  assert.equal(db.outbox.length, 1);
 });
 
 test('Given the same IOC in two tenants, when processed, then candidates remain tenant isolated', async () => {

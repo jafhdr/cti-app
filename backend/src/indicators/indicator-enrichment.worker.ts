@@ -3,6 +3,7 @@ import { SchedulerRegistry } from '@nestjs/schedule';
 import type { IndicatorEnrichmentJob } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
 import { IndicatorEnrichmentService } from './indicator-enrichment.service';
+import { enqueueIndicatorEnrichment } from '../notifications/indicator-enrichment-event';
 
 const processingLeaseMs = 60_000;
 
@@ -85,24 +86,28 @@ export class IndicatorEnrichmentWorker implements OnApplicationBootstrap {
   private async process(job: IndicatorEnrichmentJob): Promise<void> {
     const result = await this.enrichment.runVirusTotalAutomation(job.tenantId, job.indicatorId, this.config.cooldownMs);
     if (result.kind === 'success' || result.kind === 'fresh') {
-      await this.finish(job, 'SUCCESS', null, 'INDICATOR_ENRICHMENT_COMPLETED');
+      await this.finish(job, 'SUCCESS', null, 'INDICATOR_ENRICHMENT_COMPLETED', result.kind === 'fresh' ? 'CACHED' : 'NEW');
       return;
     }
     if (result.retryable && job.attempts < this.config.maxAttempts) {
       const availableAt = new Date(Date.now() + (result.retryAfterMs ?? this.backoffMs(job.attempts)));
-      await this.prisma.indicatorEnrichmentJob.update({
-        where: { id: job.id },
+      await this.prisma.indicatorEnrichmentJob.updateMany({
+        where: { id: job.id, tenantId: job.tenantId, status: 'PROCESSING', attempts: job.attempts, lockedAt: job.lockedAt },
         data: { status: 'PENDING', availableAt, lockedAt: null, lastError: result.message },
       });
       this.logger.warn('indicator.enrichment.retry_scheduled', { jobId: job.id, tenantId: job.tenantId, attempts: job.attempts, availableAt });
       return;
     }
-    await this.finish(job, 'FAILED', result.message, 'INDICATOR_ENRICHMENT_FAILED');
+    await this.finish(job, 'FAILED', result.message, 'INDICATOR_ENRICHMENT_FAILED', 'FAILED');
   }
 
-  private async finish(job: IndicatorEnrichmentJob, status: 'SUCCESS' | 'FAILED', lastError: string | null, action: string): Promise<void> {
+  private async finish(job: IndicatorEnrichmentJob, status: 'SUCCESS' | 'FAILED', lastError: string | null, action: 'INDICATOR_ENRICHMENT_COMPLETED' | 'INDICATOR_ENRICHMENT_FAILED', resultKind: 'NEW' | 'CACHED' | 'FAILED'): Promise<void> {
     await this.prisma.$transaction(async transaction => {
-      await transaction.indicatorEnrichmentJob.update({ where: { id: job.id }, data: { status, lockedAt: null, lastError } });
+      const changed = await transaction.indicatorEnrichmentJob.updateMany({
+        where: { id: job.id, tenantId: job.tenantId, status: 'PROCESSING', attempts: job.attempts, lockedAt: job.lockedAt },
+        data: { status, lockedAt: null, lastError },
+      });
+      if (changed.count !== 1) return;
       await transaction.auditLog.create({
         data: {
           userId: job.requestedById,
@@ -110,6 +115,10 @@ export class IndicatorEnrichmentWorker implements OnApplicationBootstrap {
           action,
           metadata: { indicatorId: job.indicatorId, provider: job.provider, trigger: job.trigger, status, jobId: job.id },
         },
+      });
+      await enqueueIndicatorEnrichment(transaction, {
+        tenantId: job.tenantId, jobId: job.id, indicatorId: job.indicatorId, requestedById: job.requestedById,
+        type: action, resultKind,
       });
     });
   }

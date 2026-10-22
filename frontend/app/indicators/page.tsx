@@ -80,6 +80,12 @@ export default function IndicatorsPage() {
           if (tenantRes.ok) setTenants(await tenantRes.json());
         } else await loadEntities();
         await loadIndicators();
+        const linkedId = new URLSearchParams(window.location.search).get('indicatorId');
+        if (linkedId && /^[A-Za-z0-9_-]+$/.test(linkedId)) {
+          const linked = await fetch(`${API}/indicators/${encodeURIComponent(linkedId)}`, { credentials: 'include', cache: 'no-store' });
+          if (linked.ok) setSelected(await linked.json());
+          else setError('Indicator tujuan tidak tersedia.');
+        }
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : 'Gagal memuat halaman.');
       } finally { setLoading(false); }
@@ -158,7 +164,7 @@ export default function IndicatorsPage() {
           {error && <div className="error" style={{ marginBottom: 16 }}>{error}</div>}
           {success && <div className="success" style={{ marginBottom: 16 }}>{success}</div>}
 
-          {selected && <IndicatorEnrichmentPanel indicator={selected} canManage={canManage} canAccessCases={canAccessCases} role={currentUser?.role || 'USER'} onClose={() => setSelected(null)} />}
+          {selected && <IndicatorEnrichmentPanel indicator={selected} canManage={canManage} canAccessCases={canAccessCases} role={currentUser?.role || 'USER'} onClose={() => { setSelected(null); if (new URLSearchParams(window.location.search).has('indicatorId')) router.replace('/indicators'); }} />}
 
           <FormModal open={showForm} onOpenChange={setShowForm} title={editing ? 'Edit Indicator' : 'Add Indicator'} onSubmit={submit} loading={saving} error={showForm ? error : undefined} submitLabel="Save">
               <div className="ioc-form">

@@ -6,6 +6,8 @@ import type { AuthUser } from '../users/users.types';
 import { IndicatorFeedClients } from './indicator-feed.clients';
 import { feedProviders } from './indicator-feeds.types';
 import type { FeedProvider, FeedRuntimeResult, FeedSyncResult, NormalizedIndicator } from './indicator-feeds.types';
+import { enqueueIndicatorRiskIncrease } from '../notifications/indicator-risk-event';
+import { newSyncRunId, recordSyncFailure, recordSyncSuccess } from '../notifications/ti-sync-event';
 
 const providerDetails = {
   URLHAUS: { name: 'URLhaus Feed', provider: 'URLhaus', url: 'https://urlhaus.abuse.ch/', cooldownMs: 5 * 60_000 },
@@ -113,6 +115,7 @@ export class IndicatorFeedsService {
     }
 
     const syncStartedAt = new Date();
+    const runId = newSyncRunId();
     const reservation = await this.prisma.intelligenceSource.updateMany({
       where: {
         id: source.id,
@@ -127,20 +130,14 @@ export class IndicatorFeedsService {
 
     try {
       const indicators = await this.clients.fetch(provider);
-      const counts = await this.upsertIndicators(user, tenantId, source.id, details.provider, indicators);
-      await this.prisma.auditLog.create({
-        data: {
-          userId: user.sub,
-          tenantId,
-          action: 'INDICATOR_FEED_SYNCED',
-          metadata: { provider, sourceId: source.id, ...counts } satisfies Prisma.InputJsonValue,
-        },
-      });
+      const counts = await this.upsertIndicators(user, tenantId, source.id, details.provider, indicators, runId);
       this.logger.log('indicator.feed.sync.completed', { provider, tenantId, ...counts });
       return { provider, status: 'SYNCED', ...counts };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown feed error';
       await this.prisma.intelligenceSource.update({ where: { id: source.id }, data: { lastSyncAt: source.lastSyncAt } });
+      await recordSyncFailure(this.prisma, { tenantId, userId: user.sub, workflow: 'FEED',
+        sourceKey: `FEED:${source.id}`, sourceName: details.provider });
       this.logger.error('indicator.feed.sync.failed', { provider, tenantId, error: message });
       return { provider, status: 'FAILED', created: 0, updated: 0, skipped: 0, received: 0, message };
     }
@@ -152,14 +149,25 @@ export class IndicatorFeedsService {
     sourceId: string,
     sourceName: string,
     indicators: readonly NormalizedIndicator[],
+    runId = newSyncRunId(),
   ): Promise<{ readonly created: number; readonly updated: number; readonly skipped: number; readonly received: number }> {
-    const keys = indicators.map(indicator => ({ tenantId, type: indicator.type, value: indicator.value }));
-    const existing = await this.prisma.indicator.findMany({ where: { OR: keys }, select: { type: true, value: true } });
-    const existingKeys = new Set(existing.map(indicator => `${indicator.type}:${indicator.value}`));
-
-    const indicatorIds = await this.prisma.$transaction(async transaction => {
+    const upsert = async () => this.prisma.$transaction(async transaction => {
       const ids: string[] = [];
+      let created = 0;
+      let updated = 0;
+      let skipped = 0;
       for (const indicator of indicators) {
+        const previous = await transaction.indicator.findUnique({
+          where: { tenantId_type_value: { tenantId, type: indicator.type, value: indicator.value } },
+          select: { severity: true, confidence: true, status: true, tags: true, description: true },
+        });
+        const tags = [...new Set(indicator.tags.map(tag => tag.trim().toLowerCase()).filter(Boolean))];
+        const changed = previous && (previous.severity !== indicator.severity || previous.confidence !== indicator.confidence
+          || previous.status !== IndicatorStatus.ACTIVE || previous.description !== indicator.description
+          || JSON.stringify(previous.tags) !== JSON.stringify(tags));
+        if (!previous) created += 1;
+        else if (changed) updated += 1;
+        else skipped += 1;
         const record = await transaction.indicator.upsert({
           where: { tenantId_type_value: { tenantId, type: indicator.type, value: indicator.value } },
           create: {
@@ -172,30 +180,44 @@ export class IndicatorFeedsService {
             severity: indicator.severity,
             confidence: indicator.confidence,
             status: IndicatorStatus.ACTIVE,
-            tags: [...new Set(indicator.tags.map(tag => tag.trim().toLowerCase()).filter(Boolean))],
+            tags,
             description: indicator.description,
           },
           update: {
             severity: indicator.severity,
             confidence: indicator.confidence,
             status: IndicatorStatus.ACTIVE,
-            tags: [...new Set(indicator.tags.map(tag => tag.trim().toLowerCase()).filter(Boolean))],
+            tags,
             description: indicator.description,
           },
-          select: { id: true },
+          select: { id: true, severity: true },
         });
         ids.push(record.id);
+        if (previous) await enqueueIndicatorRiskIncrease(transaction, {
+          tenantId, indicatorId: record.id, previous: previous.severity, next: record.severity, actorId: null, source: 'FEED',
+        });
         await transaction.indicatorSourceObservation.upsert({
           where: { tenantId_indicatorId_sourceKey: { tenantId, indicatorId: record.id, sourceKey: sourceId } },
           create: { tenantId, indicatorId: record.id, intelligenceSourceId: sourceId, sourceKey: sourceId, sourceName, provider: sourceName, origin: 'FEED' },
           update: { sourceName, provider: sourceName, lastSeenAt: new Date() },
         });
       }
-      return ids;
-    }, { maxWait: 10_000, timeout: 60_000 });
+      await recordSyncSuccess(transaction, { tenantId, userId: user.sub, workflow: 'FEED',
+        sourceKey: `FEED:${sourceId}`, sourceName, runId, created, updated });
+      await transaction.auditLog.create({ data: { userId: user.sub, tenantId, action: 'INDICATOR_FEED_SYNCED',
+        metadata: { provider: sourceName.toUpperCase(), sourceId, created, updated, skipped, received: indicators.length } satisfies Prisma.InputJsonValue } });
+      return { ids, counts: { created, updated, skipped, received: indicators.length } };
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, maxWait: 10_000, timeout: 60_000 });
+    let result: Awaited<ReturnType<typeof upsert>>;
+    for (let retry = 0; ; retry += 1) {
+      try { result = await upsert(); break; }
+      catch (error) {
+        if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2034' || retry >= 7) throw error;
+      }
+    }
 
     if (this.config.get<string>('VIRUSTOTAL_API_KEY')?.trim()) {
-      for (const indicatorId of new Set(indicatorIds)) {
+      for (const indicatorId of new Set(result.ids)) {
         try {
           await this.prisma.indicatorEnrichmentJob.createMany({
             data: { tenantId, indicatorId, provider: 'VIRUSTOTAL', trigger: 'FEED_SYNC', requestedById: user.sub },
@@ -209,8 +231,7 @@ export class IndicatorFeedsService {
       }
     }
 
-    const updated = indicators.filter(indicator => existingKeys.has(`${indicator.type}:${indicator.value}`)).length;
-    return { created: indicators.length - updated, updated, skipped: 0, received: indicators.length };
+    return result.counts;
   }
 
   private resolveTenant(user: AuthUser, requestedTenantId?: string): string {

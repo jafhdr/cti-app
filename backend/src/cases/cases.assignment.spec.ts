@@ -38,6 +38,7 @@ describe('CasesService - Assignment', () => {
     role: 'USER',
     isActive: true,
     passwordHash: 'unused-test-hash',
+    sessionVersion: 0,
     deactivatedAt: null,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -91,7 +92,8 @@ describe('CasesService - Assignment', () => {
             caseActivity: {
               create: jest.fn(),
             },
-            $transaction: jest.fn(),
+            notificationOutbox: { create: jest.fn() },
+            $transaction: jest.fn(async (callback: (tx: PrismaService) => Promise<unknown>) => callback(prisma)),
           },
         },
       ],

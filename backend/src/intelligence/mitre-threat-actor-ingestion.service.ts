@@ -6,6 +6,7 @@ import { MitreAttackStixClient } from './mitre-attack-stix.client';
 import { parseStixThreatActorDto } from './threat-actors.dto';
 import type { StixThreatActorDto } from './threat-actors.dto';
 import { ThreatActorsService } from './threat-actors.service';
+import { newSyncRunId, recordSyncSuccess } from '../notifications/ti-sync-event';
 
 const intrusionSetCandidateSchema = z.object({ type: z.literal('intrusion-set') }).passthrough();
 
@@ -24,8 +25,9 @@ export class MitreThreatActorIngestionService {
     private readonly prisma: PrismaService,
   ) {}
 
-  async ingest(user: AuthUser, requestedTenantId?: string): Promise<MitreThreatActorIngestionResult> {
+  async ingest(user: AuthUser, requestedTenantId?: string, scheduled = false): Promise<MitreThreatActorIngestionResult> {
     const tenantId = this.resolveTenant(user, requestedTenantId);
+    const runId = newSyncRunId();
     const bundle = await this.client.fetchEnterpriseBundle();
     const candidates = bundle.objects.filter(object => intrusionSetCandidateSchema.safeParse(object).success);
     const normalized: StixThreatActorDto[] = [];
@@ -42,7 +44,12 @@ export class MitreThreatActorIngestionService {
       ? await this.threatActors.batch(user, { threatActors: normalized }, requestedTenantId)
       : { created: 0, updated: 0 };
     const result = { total: candidates.length, created: batch.created, updated: batch.updated, failed };
-    await this.prisma.auditLog.create({ data: { userId: user.sub, tenantId, action: 'MITRE_THREAT_ACTORS_INGESTED', metadata: result } });
+    await this.prisma.$transaction(async tx => {
+      await tx.auditLog.create({ data: { userId: user.sub, tenantId, action: 'MITRE_THREAT_ACTORS_INGESTED', metadata: result } });
+      await recordSyncSuccess(tx, { tenantId, userId: user.sub, workflow: 'MITRE',
+        sourceKey: 'MITRE:ATTACK', sourceName: 'MITRE ATT&CK', runId,
+        created: scheduled ? result.created : 0, updated: 0 });
+    });
     return result;
   }
 

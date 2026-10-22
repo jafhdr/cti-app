@@ -3,6 +3,7 @@ import { IndicatorStatus, IndicatorType, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
 import { AuthUser } from '../users/users.types';
 import { IndicatorInput } from './indicators.types';
+import { enqueueIndicatorRiskIncrease } from '../notifications/indicator-risk-event';
 
 @Injectable()
 export class IndicatorsService {
@@ -31,6 +32,12 @@ export class IndicatorsService {
     return { items, page, limit, total };
   }
 
+  async get(currentUser: AuthUser, id: string) {
+    const indicator = await this.scopedIndicator(currentUser, id);
+    return this.prisma.indicator.findUniqueOrThrow({ where: { id_tenantId: { id, tenantId: indicator.tenantId } },
+      include: { tenant: { select: { id: true, name: true, slug: true } }, intelligenceEntity: { select: { id: true, name: true, type: true } } } });
+  }
+
   async create(currentUser: AuthUser, input: IndicatorInput) {
     const tenantId = currentUser.role === 'SUPER_ADMIN' ? input.tenantId : this.tenantId(currentUser);
     if (!tenantId) throw new BadRequestException('Tenant wajib dipilih');
@@ -57,7 +64,21 @@ export class IndicatorsService {
     await this.assertIntelligenceSource(indicator.tenantId, input.intelligenceSourceId);
     const data = this.validateInput(input);
     try {
-      const updated = await this.prisma.indicator.update({ where: { id }, data, include: { tenant: { select: { id: true, name: true, slug: true } }, intelligenceEntity: { select: { id: true, name: true, type: true } }, intelligenceSource: { select: { id: true, name: true, provider: true } } } });
+      let updated;
+      for (let retry = 0; ; retry += 1) {
+        try {
+          updated = await this.prisma.$transaction(async tx => {
+            const previous = await tx.indicator.findUniqueOrThrow({ where: { id_tenantId: { id, tenantId: indicator.tenantId } }, select: { severity: true } });
+            const next = await tx.indicator.update({ where: { id_tenantId: { id, tenantId: indicator.tenantId } }, data,
+              include: { tenant: { select: { id: true, name: true, slug: true } }, intelligenceEntity: { select: { id: true, name: true, type: true } }, intelligenceSource: { select: { id: true, name: true, provider: true } } } });
+            await enqueueIndicatorRiskIncrease(tx, { tenantId: indicator.tenantId, indicatorId: id, previous: previous.severity, next: next.severity, actorId: currentUser.sub, source: 'MANUAL' });
+            return next;
+          }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+          break;
+        } catch (error) {
+          if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2034' || retry >= 7) throw error;
+        }
+      }
       await this.audit(currentUser, indicator.tenantId, 'INDICATOR_UPDATED', { indicatorId: id, type: updated.type, value: updated.value });
       return updated;
     } catch (error) {

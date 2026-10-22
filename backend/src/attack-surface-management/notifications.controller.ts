@@ -1,10 +1,11 @@
-import { BadRequestException, Controller, Get, NotFoundException, Param, Patch, Put, Body, Query, Req, UseGuards } from '@nestjs/common';
+import { BadRequestException, Controller, Get, ForbiddenException, NotFoundException, Param, Patch, Put, Body, Query, Req, UseGuards } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { AuthGuard } from '../auth/auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { ModuleAccessGuard } from '../auth/module-access.guard';
 import { RequiresModule, RequiresModuleFeature } from '../auth/module-access.decorator';
+import { ModuleAccessService } from '../auth/module-access.service';
 import type { AuthUser } from '../users/users.types';
 
 @Controller('attack-surface/notifications')
@@ -12,12 +13,16 @@ import type { AuthUser } from '../users/users.types';
 @RequiresModule('attack-surface-management')
 @RequiresModuleFeature('asset-management')
 export class AsmNotificationsController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly access: ModuleAccessService) {}
 
   private async tenant(user: AuthUser, requested?: string): Promise<string> {
+    if (user.role !== 'SUPER_ADMIN' && requested && requested !== user.tenantId) throw new ForbiddenException('Tenant context tidak diizinkan');
     const id = user.role === 'SUPER_ADMIN' ? requested : user.tenantId;
     if (!id) throw new BadRequestException('Tenant wajib');
-    if (user.role === 'SUPER_ADMIN' && !await this.prisma.tenant.findUnique({ where: { id }, select: { id: true } })) throw new NotFoundException('Tenant tidak ditemukan');
+    const tenant = await this.prisma.tenant.findUnique({ where: { id }, select: { isActive: true } });
+    if (!tenant?.isActive) throw new NotFoundException('Tenant tidak ditemukan atau tidak aktif');
+    const decision = await this.access.evaluateForTenant(user, id, 'attack-surface-management', ['asset-management']);
+    if (!decision.accessible) throw new ForbiddenException(decision.reason);
     return id;
   }
 
@@ -26,7 +31,7 @@ export class AsmNotificationsController {
     const tenantId = await this.tenant(req.user, requested);
     const rows = await this.prisma.asmNotification.findMany({ where: { tenantId }, take: 100, orderBy: { createdAt: 'desc' },
       include: { alert: { select: { id: true, title: true, severity: true, source: true, assetId: true, findingId: true, vulnerabilityCorrelationId: true, caseId: true, firstSeenAt: true } }, reads: { where: { userId: req.user.sub }, select: { readAt: true } } } });
-    return rows.map(({ reads, ...row }) => ({ ...row, readAt: reads[0]?.readAt ?? null }));
+    return rows.map(({ reads, utcCreatedAt, ...row }) => ({ ...row, readAt: reads[0]?.readAt ?? null }));
   }
 
   @Patch(':id/read') @Roles('SUPER_ADMIN', 'ADMIN', 'USER')

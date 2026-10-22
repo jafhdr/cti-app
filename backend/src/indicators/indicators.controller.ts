@@ -45,6 +45,10 @@ export class IndicatorsController {
   @Roles('SUPER_ADMIN', 'ADMIN', 'USER')
   enrichments(@Req() req: { user: AuthUser }, @Param('id') id: string) { return this.enrichment.list(req.user, id); }
 
+  @Get(':id')
+  @Roles('SUPER_ADMIN', 'ADMIN', 'USER')
+  get(@Req() req: { user: AuthUser }, @Param('id') id: string) { return this.indicators.get(req.user, id); }
+
   @Post(':id/enrich')
   @Roles('SUPER_ADMIN', 'ADMIN')
   enrich(@Req() req: { user: AuthUser }, @Param('id') id: string, @Body() body: IndicatorEnrichmentInput = { provider: 'AUTO' }) { return this.enrichment.run(req.user, id, body); }

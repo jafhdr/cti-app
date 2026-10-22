@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { AppSecFindingSource, AppSecFindingStatus, Prisma } from '@prisma/client';
+import { AppSecFindingSeverity, AppSecFindingSource, AppSecFindingStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
+import { enqueueAppSecFinding } from '../notifications/appsec-finding-event';
 import type { AuthUser } from '../users/users.types';
 import { CreateFindingDto, ListFindingsDto, UpdateFindingDto } from './appsec.dto';
 import { canTransition, isTerminal } from './finding-lifecycle';
@@ -57,6 +58,9 @@ export class FindingsService {
           dueDate: input.dueDate ? new Date(input.dueDate) : null,
         } });
         await tx.auditLog.create({ data: { tenantId, userId: user.sub, action: 'APPSEC_FINDING_CREATED', metadata: { findingId: finding.id, applicationId: application.id } } });
+        if (finding.severity === AppSecFindingSeverity.HIGH || finding.severity === AppSecFindingSeverity.CRITICAL) {
+          await enqueueAppSecFinding(tx, { tenantId, findingId: finding.id, actorId: user.sub, type: 'APPSEC_FINDING_CREATED_HIGH_RISK' });
+        }
         return finding;
       });
     } catch (error) {
@@ -104,6 +108,10 @@ export class FindingsService {
           ...(input.resolution !== undefined ? { previousResolution: existing.resolution ?? '', resolution: resolution ?? '' } : {}),
         },
       } });
+      if (changed && isTerminal(existing.status) && !isTerminal(next)
+        && (updated.severity === AppSecFindingSeverity.HIGH || updated.severity === AppSecFindingSeverity.CRITICAL)) {
+        await enqueueAppSecFinding(tx, { tenantId, findingId: id, actorId: user.sub, type: 'APPSEC_FINDING_REOPENED' });
+      }
       return updated;
     });
   }

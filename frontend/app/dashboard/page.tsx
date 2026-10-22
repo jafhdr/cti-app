@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Activity, Building2, Globe2, LogOut, UserRound } from 'lucide-react';
 import Sidebar from '../../components/dashboard/Sidebar';
+import { DashboardSearch } from '../../components/dashboard/DashboardSearch';
+import { DashboardBell } from '../../components/dashboard/DashboardBell';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -169,6 +171,9 @@ export default function DashboardPage() {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [searchTenantId, setSearchTenantId] = useState('');
+  const [searchTenants, setSearchTenants] = useState<readonly { readonly id: string; readonly name: string }[]>([]);
+  const [tenantError, setTenantError] = useState('');
 
   useEffect(() => {
     (async () => {
@@ -189,6 +194,18 @@ export default function DashboardPage() {
     })();
   }, [router]);
 
+  useEffect(() => {
+    if (user?.role !== 'SUPER_ADMIN') return;
+    let cancelled = false;
+    void fetch(`${API}/users/tenants`, { credentials: 'include', cache: 'no-store' })
+      .then(async response => {
+        if (!response.ok) throw new Error('Daftar tenant tidak tersedia.');
+        return response.json() as Promise<readonly { readonly id: string; readonly name: string }[]>;
+      })
+      .then(tenants => { if (!cancelled) setSearchTenants(tenants); })
+      .catch((cause: unknown) => { if (!cancelled) setTenantError(cause instanceof Error ? cause.message : 'Gagal memuat tenant.'); });
+    return () => { cancelled = true; };
+  }, [user?.role]);
   async function logout() {
     await fetch(`${API}/auth/logout`, { method: 'POST', credentials: 'include' });
     router.replace('/login');
@@ -234,12 +251,16 @@ export default function DashboardPage() {
         <header className="topbar">
           <div className="dashboard-topbar-title"><TopbarIcon aria-hidden="true" size={18} /><span><strong>{topbarTitle}</strong><small>{subTitle}</small></span></div>
           <div className="dashboard-topbar-actions">
+            {user.role === 'SUPER_ADMIN' && <label className="dashboard-discovery-tenant"><span className="sr-only">Tenant Search dan Notifications</span><select aria-label="Tenant Search dan Notifications" value={searchTenantId} onChange={event => setSearchTenantId(event.target.value)}><option value="">Pilih tenant</option>{searchTenants.map(tenant => <option key={tenant.id} value={tenant.id}>{tenant.name}</option>)}</select></label>}
+            <DashboardBell key={`bell-${searchTenantId}`} role={user.role} tenantId={searchTenantId} />
             <span className="dashboard-profile-avatar" aria-hidden="true">{initials(user.name)}</span>
             <span className="dashboard-topbar-account"><strong>{user.name}</strong><small>{user.role.replaceAll('_', ' ')}</small></span>
             <button className="logout" onClick={logout} aria-label="Keluar dari Dashboard"><LogOut size={19} aria-hidden="true" /></button>
           </div>
         </header>
 
+        {tenantError && <p className="dashboard-discovery-tenant-error" role="alert">{tenantError}</p>}
+        <DashboardSearch key={`search-${searchTenantId}`} role={user.role} tenantId={searchTenantId} />
         <main className="content">
           <div className="header dashboard-heading">
             <div>

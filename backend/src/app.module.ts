@@ -14,6 +14,7 @@ import { CasesModule } from './cases/cases.module';
 import { AttackSurfaceManagementModule } from './attack-surface-management/attack-surface-management.module';
 import { AppSecModule } from './appsec/appsec.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     IntelligenceModule,
     SubscriptionModule,
     CasesModule,
+    NotificationsModule,
     AttackSurfaceManagementModule,
     AppSecModule,
     UsersModule,

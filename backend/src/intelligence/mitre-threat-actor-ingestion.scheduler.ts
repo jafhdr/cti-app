@@ -4,6 +4,7 @@ import { SchedulerRegistry } from '@nestjs/schedule';
 import { PrismaService } from '../prisma.service';
 import type { AuthUser } from '../users/users.types';
 import { MitreThreatActorIngestionService } from './mitre-threat-actor-ingestion.service';
+import { recordSyncFailure } from '../notifications/ti-sync-event';
 
 const schedulerName = 'mitre-attack-sync';
 const defaultIntervalMinutes = 1440;
@@ -61,11 +62,13 @@ export class MitreThreatActorIngestionScheduler implements OnApplicationBootstra
 
         const user: AuthUser = { sub: admin.id, tenantId: tenant.id, role: admin.role };
         try {
-          const result = await this.ingestion.ingest(user);
+          const result = await this.ingestion.ingest(user, undefined, true);
           this.logger.log('mitre.attack.scheduler.tenant_finished', { tenantId: tenant.id, ...result });
         } catch (error) {
           const message = error instanceof Error ? error.message : 'Unknown scheduler error';
           this.logger.error('mitre.attack.scheduler.tenant_failed', { tenantId: tenant.id, error: message });
+          await recordSyncFailure(this.prisma, { tenantId: tenant.id, userId: admin.id, workflow: 'MITRE',
+            sourceKey: 'MITRE:ATTACK', sourceName: 'MITRE ATT&CK' });
         }
       }
       this.logger.log('mitre.attack.scheduler.finished', { tenantCount: tenants.length });

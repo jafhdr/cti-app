@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, CaseStatus, CasePriority } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
+import { enqueueCaseAssignment } from '../notifications/case-assignment-event';
 import { AuthUser } from '../users/users.types';
 import { CreateCaseInput, CreateEvidenceInput, CreateInvestigationNoteInput, UpdateCaseInput, ListCaseQuery } from './cases.types';
 
@@ -495,8 +496,8 @@ export class CasesService {
 
     const caseNumber = await this.generateCaseNumber(tenantId);
 
-    try {
-      const newCase = await this.prisma.case.create({
+    return this.prisma.$transaction(async tx => {
+      const newCase = await tx.case.create({
         data: {
           tenantId,
           caseNumber,
@@ -515,17 +516,16 @@ export class CasesService {
         },
       });
 
-      await this.audit(user, tenantId, 'CASE_CREATED', {
+      await tx.auditLog.create({ data: { userId: user.sub, tenantId, action: 'CASE_CREATED', metadata: {
         caseId: newCase.id,
         caseNumber: newCase.caseNumber,
         title: newCase.title,
-      });
-      await this.activity(user, tenantId, newCase.id, 'CASE_CREATED', { caseNumber: newCase.caseNumber });
+      } } });
+      await tx.caseActivity.create({ data: { tenantId, caseId: newCase.id, actorId: user.sub, action: 'CASE_CREATED', metadata: { caseNumber: newCase.caseNumber } } });
+      if (input.assigneeId) await enqueueCaseAssignment(tx, { tenantId, caseId: newCase.id, recipientId: input.assigneeId, actorId: user.sub, type: 'CASE_ASSIGNED' });
 
       return newCase;
-    } catch (error) {
-      throw error;
-    }
+    });
   }
 
   async update(user: AuthUser, caseId: string, input: UpdateCaseInput) {
@@ -550,7 +550,7 @@ export class CasesService {
     const statusChanged = Boolean(input.status && input.status !== caseRecord.status);
     return this.prisma.$transaction(async tx => {
     const updated = await tx.case.update({
-      where: { id: caseId, status: caseRecord.status },
+      where: { id: caseId, status: caseRecord.status, assigneeId: caseRecord.assigneeId },
       data: {
         title: input.title,
         description: input.description,
@@ -579,6 +579,14 @@ export class CasesService {
       } } });
     }
 
+    if (input.assigneeId && input.assigneeId !== caseRecord.assigneeId) {
+      const action = caseRecord.assigneeId ? 'CASE_REASSIGNED' : 'CASE_ASSIGNED';
+      await tx.auditLog.create({ data: { userId: user.sub, tenantId: caseRecord.tenantId, action,
+        metadata: { caseId, previousAssigneeId: caseRecord.assigneeId, newAssigneeId: input.assigneeId } } });
+      await tx.caseActivity.create({ data: { actorId: user.sub, tenantId: caseRecord.tenantId, caseId, action,
+        metadata: { previousAssigneeId: caseRecord.assigneeId, newAssigneeId: input.assigneeId } } });
+      await enqueueCaseAssignment(tx, { tenantId: caseRecord.tenantId, caseId, recipientId: input.assigneeId, actorId: user.sub, type: action });
+    }
     return updated;
     }).catch(error => {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
@@ -621,39 +629,27 @@ export class CasesService {
       throw new ForbiddenException('Assignee harus aktif');
     }
 
-    // Check if this is a reassignment
-    const wasAssigned = caseRecord.assigneeId !== null;
-    const isReassignment = wasAssigned && caseRecord.assigneeId !== assigneeId;
-
-    // Update assignment
-    const updated = await this.prisma.case.update({
-      where: { id: caseId },
-      data: { assigneeId },
-      include: {
-        tenant: { select: { id: true, name: true, slug: true } },
-        creator: { select: { id: true, name: true, email: true } },
-        assignee: { select: { id: true, name: true, email: true } },
-      },
+    if (caseRecord.assigneeId === assigneeId) return this.prisma.case.findUniqueOrThrow({ where: { id: caseId }, include: {
+      tenant: { select: { id: true, name: true, slug: true } }, creator: { select: { id: true, name: true, email: true } }, assignee: { select: { id: true, name: true, email: true } },
+    } });
+    const action = caseRecord.assigneeId ? 'CASE_REASSIGNED' : 'CASE_ASSIGNED';
+    return this.prisma.$transaction(async tx => {
+      const updated = await tx.case.update({
+        where: { id: caseId, tenantId: caseRecord.tenantId, assigneeId: caseRecord.assigneeId }, data: { assigneeId },
+        include: { tenant: { select: { id: true, name: true, slug: true } }, creator: { select: { id: true, name: true, email: true } }, assignee: { select: { id: true, name: true, email: true } } },
+      });
+      await tx.auditLog.create({ data: { userId: user.sub, tenantId: caseRecord.tenantId, action, metadata: {
+        caseId, caseNumber: updated.caseNumber, title: updated.title, previousAssigneeId: caseRecord.assigneeId,
+        newAssigneeId: assigneeId, assigneeName: assignee.name, assigneeEmail: assignee.email,
+      } } });
+      await tx.caseActivity.create({ data: { actorId: user.sub, tenantId: caseRecord.tenantId, caseId, action,
+        metadata: { previousAssigneeId: caseRecord.assigneeId, newAssigneeId: assigneeId, assigneeName: assignee.name } } });
+      await enqueueCaseAssignment(tx, { tenantId: caseRecord.tenantId, caseId, recipientId: assigneeId, actorId: user.sub, type: action });
+      return updated;
+    }).catch(error => {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') throw new ConflictException('Assignee Case berubah; muat ulang');
+      throw error;
     });
-
-    // Audit log with specific action
-    const action = isReassignment ? 'CASE_REASSIGNED' : 'CASE_ASSIGNED';
-    await this.audit(user, caseRecord.tenantId, action, {
-      caseId: caseId,
-      caseNumber: updated.caseNumber,
-      title: updated.title,
-      previousAssigneeId: caseRecord.assigneeId,
-      newAssigneeId: assigneeId,
-      assigneeName: assignee.name,
-      assigneeEmail: assignee.email,
-    });
-    await this.activity(user, caseRecord.tenantId, caseId, action, {
-      previousAssigneeId: caseRecord.assigneeId,
-      newAssigneeId: assigneeId,
-      assigneeName: assignee.name,
-    });
-
-    return updated;
   }
 
   private async audit(user: AuthUser, tenantId: string, action: string, metadata: Prisma.InputJsonObject) {
@@ -743,6 +739,7 @@ export class CasesService {
         },
       });
 
+      if (input.assigneeId) await enqueueCaseAssignment(tx, { tenantId: indicator.tenantId, caseId: newCase.id, recipientId: input.assigneeId, actorId: user.sub, type: 'CASE_ASSIGNED' });
       return newCase;
     });
   }

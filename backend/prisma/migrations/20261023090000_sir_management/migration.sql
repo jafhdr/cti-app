@@ -57,3 +57,4 @@ ALTER TABLE "Sir" ADD CONSTRAINT "Sir_createdById_fkey" FOREIGN KEY ("createdByI
 
 -- AddForeignKey
 ALTER TABLE "Sir" ADD CONSTRAINT "Sir_updatedById_fkey" FOREIGN KEY ("updatedById") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+

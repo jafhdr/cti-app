@@ -90,3 +90,4 @@ ALTER TABLE "CollectionTaskEvidence" ADD CONSTRAINT "CollectionTaskEvidence_task
 
 -- AddForeignKey
 ALTER TABLE "CollectionTaskEvidence" ADD CONSTRAINT "CollectionTaskEvidence_evidenceId_tenantId_sirId_fkey" FOREIGN KEY ("evidenceId", "tenantId", "sirId") REFERENCES "SirEvidence"("id", "tenantId", "sirId") ON DELETE RESTRICT ON UPDATE CASCADE;
+

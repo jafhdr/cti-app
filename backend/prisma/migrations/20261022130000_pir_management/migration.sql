@@ -60,3 +60,4 @@ ALTER TABLE "Pir" ADD CONSTRAINT "Pir_createdById_fkey" FOREIGN KEY ("createdByI
 
 -- AddForeignKey
 ALTER TABLE "Pir" ADD CONSTRAINT "Pir_updatedById_fkey" FOREIGN KEY ("updatedById") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+

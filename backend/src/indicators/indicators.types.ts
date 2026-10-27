@@ -15,6 +15,7 @@ export type IndicatorInput = {
   tenantId?: string;
   intelligenceEntityId?: string | null;
   intelligenceSourceId?: string | null;
+  lifecycleReason?: string;
 };
 
 export type ThreatActorAttributionInput = {
@@ -23,4 +24,9 @@ export type ThreatActorAttributionInput = {
 
 export type LinkCaseInput = {
   readonly caseId: string;
+};
+
+export type IndicatorDecisionInput = {
+  readonly kind: 'FALSE_POSITIVE' | 'SAFELIST' | 'CLEAR';
+  readonly reason: string;
 };

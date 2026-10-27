@@ -1,6 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { IndicatorStatus, IntelligenceSourceStatus, IntelligenceSourceType, Prisma } from '@prisma/client';
+import { IntelligenceSourceStatus, IntelligenceSourceType, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
 import type { AuthUser } from '../users/users.types';
 import { IndicatorFeedClients } from './indicator-feed.clients';
@@ -8,6 +8,7 @@ import { feedProviders } from './indicator-feeds.types';
 import type { FeedProvider, FeedRuntimeResult, FeedSyncResult, NormalizedIndicator } from './indicator-feeds.types';
 import { enqueueIndicatorRiskIncrease } from '../notifications/indicator-risk-event';
 import { newSyncRunId, recordSyncFailure, recordSyncSuccess } from '../notifications/ti-sync-event';
+import { isSerializationConflict } from './indicator-eligibility';
 
 const providerDetails = {
   URLHAUS: { name: 'URLhaus Feed', provider: 'URLhaus', url: 'https://urlhaus.abuse.ch/', cooldownMs: 5 * 60_000 },
@@ -159,11 +160,11 @@ export class IndicatorFeedsService {
       for (const indicator of indicators) {
         const previous = await transaction.indicator.findUnique({
           where: { tenantId_type_value: { tenantId, type: indicator.type, value: indicator.value } },
-          select: { severity: true, confidence: true, status: true, tags: true, description: true },
+          select: { severity: true, confidence: true, tags: true, description: true },
         });
         const tags = [...new Set(indicator.tags.map(tag => tag.trim().toLowerCase()).filter(Boolean))];
         const changed = previous && (previous.severity !== indicator.severity || previous.confidence !== indicator.confidence
-          || previous.status !== IndicatorStatus.ACTIVE || previous.description !== indicator.description
+          || previous.description !== indicator.description
           || JSON.stringify(previous.tags) !== JSON.stringify(tags));
         if (!previous) created += 1;
         else if (changed) updated += 1;
@@ -179,14 +180,12 @@ export class IndicatorFeedsService {
             type: indicator.type,
             severity: indicator.severity,
             confidence: indicator.confidence,
-            status: IndicatorStatus.ACTIVE,
             tags,
             description: indicator.description,
           },
           update: {
             severity: indicator.severity,
             confidence: indicator.confidence,
-            status: IndicatorStatus.ACTIVE,
             tags,
             description: indicator.description,
           },
@@ -212,7 +211,7 @@ export class IndicatorFeedsService {
     for (let retry = 0; ; retry += 1) {
       try { result = await upsert(); break; }
       catch (error) {
-        if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2034' || retry >= 7) throw error;
+        if (!isSerializationConflict(error) || retry >= 7) throw error;
       }
     }
 

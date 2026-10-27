@@ -5,7 +5,7 @@ import { RolesGuard } from '../auth/roles.guard';
 import { ModuleAccessGuard } from '../auth/module-access.guard';
 import { RequiresModule, RequiresModuleFeature } from '../auth/module-access.decorator';
 import { AuthUser } from '../users/users.types';
-import { IndicatorInput, LinkCaseInput, ThreatActorAttributionInput } from './indicators.types';
+import { IndicatorInput, IndicatorDecisionInput, LinkCaseInput, ThreatActorAttributionInput } from './indicators.types';
 import { IndicatorsService } from './indicators.service';
 import { IndicatorFeedsService } from './indicator-feeds.service';
 import { SyncIndicatorFeedsDto } from './indicator-feeds.types';
@@ -48,6 +48,12 @@ export class IndicatorsController {
   @Get(':id')
   @Roles('SUPER_ADMIN', 'ADMIN', 'USER')
   get(@Req() req: { user: AuthUser }, @Param('id') id: string) { return this.indicators.get(req.user, id); }
+
+  @Post(':id/decision')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  decision(@Req() req: { user: AuthUser }, @Param('id') id: string, @Body() body: IndicatorDecisionInput) {
+    return this.indicators.decide(req.user, id, body);
+  }
 
   @Post(':id/enrich')
   @Roles('SUPER_ADMIN', 'ADMIN')

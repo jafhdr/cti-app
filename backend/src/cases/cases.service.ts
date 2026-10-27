@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma.service';
 import { enqueueCaseAssignment } from '../notifications/case-assignment-event';
 import { AuthUser } from '../users/users.types';
 import { CreateCaseInput, CreateEvidenceInput, CreateInvestigationNoteInput, UpdateCaseInput, ListCaseQuery } from './cases.types';
+import { operationalIndicatorWhere } from '../indicators/indicator-eligibility';
 
 @Injectable()
 export class CasesService {
@@ -258,7 +259,7 @@ export class CasesService {
     const value = search?.trim();
     return this.prisma.indicator.findMany({
       where: {
-        tenantId: caseRecord.tenantId,
+        ...operationalIndicatorWhere(caseRecord.tenantId, new Date()),
         cases: { none: { caseId } },
         ...(value ? {
           OR: [
@@ -276,7 +277,7 @@ export class CasesService {
   async linkIndicator(user: AuthUser, caseId: string, indicatorId: string) {
     const caseRecord = await this.scopedCase(user, caseId);
     const indicator = await this.prisma.indicator.findFirst({
-      where: { id: indicatorId, tenantId: caseRecord.tenantId },
+      where: { id: indicatorId, ...operationalIndicatorWhere(caseRecord.tenantId, new Date()) },
     });
     if (!indicator) throw new NotFoundException('Indicator tidak ditemukan');
     const existing = await this.prisma.caseIndicator.findUnique({
@@ -667,7 +668,7 @@ export class CasesService {
     const tenantId = user.role === 'SUPER_ADMIN' ? input.tenantId : this.tenantId(user);
     if (!tenantId) throw new BadRequestException('Tenant wajib dipilih');
     const indicator = await this.prisma.indicator.findFirst({
-      where: { id: indicatorId, tenantId },
+      where: { id: indicatorId, ...operationalIndicatorWhere(tenantId, new Date()) },
     });
     if (!indicator) throw new NotFoundException('Indicator tidak ditemukan');
 

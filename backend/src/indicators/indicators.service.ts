@@ -1,15 +1,17 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { IndicatorStatus, IndicatorType, Prisma } from '@prisma/client';
+import { IndicatorDecisionKind, IndicatorStatus, IndicatorType, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
 import { AuthUser } from '../users/users.types';
-import { IndicatorInput } from './indicators.types';
+import { IndicatorDecisionInput, IndicatorInput } from './indicators.types';
 import { enqueueIndicatorRiskIncrease } from '../notifications/indicator-risk-event';
+import { effectiveIndicatorEligibility, isSerializationConflict, operationalIndicatorWhere } from './indicator-eligibility';
 
 @Injectable()
 export class IndicatorsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async list(currentUser: AuthUser, query: Record<string, string | undefined>) {
+    const now = new Date();
     const page = Math.max(Number(query.page) || 1, 1);
     const limit = Math.min(Math.max(Number(query.limit) || 25, 1), 100);
     const where: Prisma.IndicatorWhereInput = {
@@ -17,6 +19,7 @@ export class IndicatorsService {
       ...(this.isType(query.type) ? { type: query.type } : {}),
       ...(this.isSeverity(query.severity) ? { severity: query.severity } : {}),
       ...(this.isStatus(query.status) ? { status: query.status } : {}),
+      ...(query.eligible === 'true' ? operationalIndicatorWhere(currentUser.role === 'SUPER_ADMIN' ? undefined : this.tenantId(currentUser), now) : {}),
       ...(query.search?.trim() ? {
         OR: [
           { value: { contains: query.search.trim(), mode: 'insensitive' } },
@@ -29,13 +32,38 @@ export class IndicatorsService {
       this.prisma.indicator.findMany({ where, include: { tenant: { select: { id: true, name: true, slug: true } }, intelligenceEntity: { select: { id: true, name: true, type: true } }, intelligenceSource: { select: { id: true, name: true, provider: true } }, sourceObservations: { orderBy: { firstSeenAt: 'asc' } } }, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit }),
       this.prisma.indicator.count({ where }),
     ]);
-    return { items, page, limit, total };
+    return { items: items.map(item => ({ ...item, eligibility: effectiveIndicatorEligibility(item, now) })), page, limit, total };
   }
 
   async get(currentUser: AuthUser, id: string) {
     const indicator = await this.scopedIndicator(currentUser, id);
-    return this.prisma.indicator.findUniqueOrThrow({ where: { id_tenantId: { id, tenantId: indicator.tenantId } },
-      include: { tenant: { select: { id: true, name: true, slug: true } }, intelligenceEntity: { select: { id: true, name: true, type: true } } } });
+    const item = await this.prisma.indicator.findUniqueOrThrow({ where: { id_tenantId: { id, tenantId: indicator.tenantId } },
+      include: { tenant: { select: { id: true, name: true, slug: true } }, intelligenceEntity: { select: { id: true, name: true, type: true } }, decisions: { orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 30, include: { actor: { select: { id: true, name: true } } } } } });
+    return { ...item, eligibility: effectiveIndicatorEligibility(item, new Date()) };
+  }
+
+  async decide(currentUser: AuthUser, id: string, input: IndicatorDecisionInput) {
+    const indicator = await this.scopedIndicator(currentUser, id);
+    if (!input || !['FALSE_POSITIVE', 'SAFELIST', 'CLEAR'].includes(input.kind)) throw new BadRequestException('Keputusan indikator tidak valid');
+    const reason = typeof input.reason === 'string' ? input.reason.trim() : '';
+    if (reason.length < 5 || reason.length > 500) throw new BadRequestException('Alasan harus 5 sampai 500 karakter');
+    const kind = input.kind as IndicatorDecisionKind;
+    for (let retry = 0; ; retry += 1) {
+      try {
+        await this.prisma.$transaction(async tx => {
+          await tx.$queryRaw`SELECT id FROM "Indicator" WHERE id = ${id} AND "tenantId" = ${indicator.tenantId} FOR UPDATE`;
+          const current = await tx.indicator.findUniqueOrThrow({ where: { id_tenantId: { id, tenantId: indicator.tenantId } }, select: { suppressionKind: true } });
+          if (kind === IndicatorDecisionKind.CLEAR && current.suppressionKind === null) throw new ConflictException('Indicator tidak sedang disupresi');
+          if (kind !== IndicatorDecisionKind.CLEAR && current.suppressionKind === kind) throw new ConflictException('Keputusan ini sudah aktif');
+          await tx.indicator.update({ where: { id_tenantId: { id, tenantId: indicator.tenantId } }, data: { suppressionKind: kind === IndicatorDecisionKind.CLEAR ? null : kind } });
+          await tx.indicatorDecision.create({ data: { tenantId: indicator.tenantId, indicatorId: id, kind, reason, actorId: currentUser.sub } });
+          await tx.auditLog.create({ data: { userId: currentUser.sub, tenantId: indicator.tenantId, action: 'INDICATOR_DECISION', metadata: { indicatorId: id, kind, reason } } });
+        }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+        return this.get(currentUser, id);
+      } catch (error) {
+        if (!isSerializationConflict(error) || retry >= 7) throw error;
+      }
+    }
   }
 
   async create(currentUser: AuthUser, input: IndicatorInput) {
@@ -63,23 +91,29 @@ export class IndicatorsService {
     await this.assertIntelligenceEntity(indicator.tenantId, input.intelligenceEntityId);
     await this.assertIntelligenceSource(indicator.tenantId, input.intelligenceSourceId);
     const data = this.validateInput(input);
+    const lifecycleReason = input.lifecycleReason?.trim() ?? '';
     try {
       let updated;
       for (let retry = 0; ; retry += 1) {
         try {
           updated = await this.prisma.$transaction(async tx => {
-            const previous = await tx.indicator.findUniqueOrThrow({ where: { id_tenantId: { id, tenantId: indicator.tenantId } }, select: { severity: true } });
+            await tx.$queryRaw`SELECT id FROM "Indicator" WHERE id = ${id} AND "tenantId" = ${indicator.tenantId} FOR UPDATE`;
+            const previous = await tx.indicator.findUniqueOrThrow({ where: { id_tenantId: { id, tenantId: indicator.tenantId } }, select: { severity: true, status: true, expiresAt: true, suppressionKind: true } });
+            const now = new Date();
+            if (!effectiveIndicatorEligibility(previous, now).eligible && effectiveIndicatorEligibility({ ...data, suppressionKind: previous.suppressionKind }, now).eligible && (lifecycleReason.length < 5 || lifecycleReason.length > 500)) {
+              throw new BadRequestException('Alasan pemulihan indikator wajib 5 sampai 500 karakter');
+            }
             const next = await tx.indicator.update({ where: { id_tenantId: { id, tenantId: indicator.tenantId } }, data,
               include: { tenant: { select: { id: true, name: true, slug: true } }, intelligenceEntity: { select: { id: true, name: true, type: true } }, intelligenceSource: { select: { id: true, name: true, provider: true } } } });
             await enqueueIndicatorRiskIncrease(tx, { tenantId: indicator.tenantId, indicatorId: id, previous: previous.severity, next: next.severity, actorId: currentUser.sub, source: 'MANUAL' });
+            await tx.auditLog.create({ data: { userId: currentUser.sub, tenantId: indicator.tenantId, action: 'INDICATOR_UPDATED', metadata: { indicatorId: id, type: next.type, value: next.value, lifecycleReason } } });
             return next;
           }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
           break;
         } catch (error) {
-          if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2034' || retry >= 7) throw error;
+          if (!isSerializationConflict(error) || retry >= 7) throw error;
         }
       }
-      await this.audit(currentUser, indicator.tenantId, 'INDICATOR_UPDATED', { indicatorId: id, type: updated.type, value: updated.value });
       return updated;
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') throw new ConflictException('Indicator dengan type dan value tersebut sudah ada pada tenant ini');

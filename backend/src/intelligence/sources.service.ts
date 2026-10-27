@@ -79,9 +79,25 @@ export class SourcesService {
 
   async remove(user: AuthUser, id: string, requestedTenantId?: string) {
     const source = await this.scopedSource(user, id, requestedTenantId);
-    await this.prisma.intelligenceSource.delete({ where: { id } });
-    await this.audit(user, source.tenantId, 'SOURCE_DELETED', id, { name: source.name });
-    return { deleted: true, id };
+    try {
+      await this.prisma.$transaction(async tx => {
+        const locked = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "IntelligenceSource" WHERE id = ${id} AND "tenantId" = ${source.tenantId} FOR UPDATE`;
+        if (!locked.length) throw new NotFoundException('Intelligence source tidak ditemukan');
+        if (await tx.collectionTask.count({ where: { tenantId: source.tenantId, sourceId: id } })) throw new ConflictException('Source is linked to a collection task and cannot be deleted');
+        if (await tx.intelligenceReportSource.count({ where: { tenantId: source.tenantId, sourceId: id } })) throw new ConflictException('Source is cited by an intelligence report and cannot be deleted');
+        if (await tx.telegramStagingMessage.count({ where: { tenantId: source.tenantId, intelligenceSourceId: id } })) throw new ConflictException('Source has Telegram ingestion history and cannot be deleted');
+        if (await tx.iocCandidate.count({ where: { tenantId: source.tenantId, intelligenceSourceId: id } })) throw new ConflictException('Source has IOC candidates and cannot be deleted');
+        if (await tx.telegramPollingState.count({ where: { tenantId: source.tenantId, intelligenceSourceId: id } })) throw new ConflictException('Source has Telegram polling state and cannot be deleted');
+        await tx.intelligenceSource.delete({ where: { id } });
+        await tx.auditLog.create({ data: { userId: user.sub, tenantId: source.tenantId, action: 'SOURCE_DELETED', metadata: { sourceId: id, name: source.name } } });
+      });
+      const archived = await this.prisma.$queryRaw<{ total: number }[]>`SELECT count(*)::int AS total FROM "SourceReliabilityAssessment" WHERE "tenantId" = ${source.tenantId} AND "originalSourceId" = ${id}`;
+      return { deleted: true, id, archivedAssessments: archived[0].total > 0 };
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && (error.code === 'P2003' || error.code === 'P2014')) throw new ConflictException('Source is referenced by collection, reports, ingestion, or other intelligence records');
+      if (error instanceof Prisma.PrismaClientUnknownRequestError && /code: "23001"|foreign key constraint|violates RESTRICT setting/.test(error.message)) throw new ConflictException('Source is referenced by another intelligence record and cannot be deleted');
+      throw error;
+    }
   }
 
   private resolveTenant(user: AuthUser, requestedTenantId?: string): string {

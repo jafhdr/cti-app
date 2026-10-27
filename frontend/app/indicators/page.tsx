@@ -10,6 +10,7 @@ import Link from 'next/link';
 import Sidebar from '../../components/dashboard/Sidebar';
 import type { ModuleAccess } from '../../lib/module-access';
 import { IndicatorEnrichmentPanel } from '../../components/indicators/IndicatorEnrichmentPanel';
+import { IndicatorDecisionPanel } from '../../components/indicators/IndicatorDecisionPanel';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 type Role = 'SUPER_ADMIN' | 'ADMIN' | 'USER';
@@ -18,6 +19,7 @@ type Indicator = {
   tags: string[]; source: string | null; description: string | null; expiresAt: string | null;
   tenant: { id: string; name: string };
   intelligenceEntity: { id: string; name: string; type: string } | null;
+  eligibility?: { eligible: boolean; reason: string | null };
 };
 type Tenant = { id: string; name: string };
 type IntelligenceEntity = { id: string; name: string; type: string };
@@ -28,7 +30,7 @@ type CurrentUser = {
   moduleAccess: ModuleAccess[];
 };
 
-const emptyForm = { value: '', type: 'DOMAIN', severity: 'MEDIUM', status: 'ACTIVE', confidence: '50', tags: '', source: '', description: '', expiresAt: '', tenantId: '', intelligenceEntityId: '' };
+const emptyForm = { value: '', type: 'DOMAIN', severity: 'MEDIUM', status: 'ACTIVE', confidence: '50', tags: '', source: '', description: '', expiresAt: '', tenantId: '', intelligenceEntityId: '', lifecycleReason: '' };
 
 export default function IndicatorsPage() {
   const router = useRouter();
@@ -101,7 +103,7 @@ export default function IndicatorsPage() {
   function openCreate() { setEditing(null); setForm(emptyForm); setShowForm(true); setError(''); setSuccess(''); }
   function openEdit(item: Indicator) {
     setEditing(item);
-    setForm({ value: item.value, type: item.type, severity: item.severity, status: item.status, confidence: String(item.confidence), tags: item.tags.join(', '), source: item.source || '', description: item.description || '', expiresAt: item.expiresAt ? item.expiresAt.slice(0, 10) : '', tenantId: item.tenant.id, intelligenceEntityId: item.intelligenceEntity?.id || '' });
+    setForm({ value: item.value, type: item.type, severity: item.severity, status: item.status, confidence: String(item.confidence), tags: item.tags.join(', '), source: item.source || '', description: item.description || '', expiresAt: item.expiresAt ? item.expiresAt.slice(0, 10) : '', tenantId: item.tenant.id, intelligenceEntityId: item.intelligenceEntity?.id || '', lifecycleReason: '' });
     loadEntities(item.tenant.id).catch(() => setEntities([]));
     setShowForm(true); setError(''); setSuccess('');
   }
@@ -160,11 +162,12 @@ export default function IndicatorsPage() {
           </div>
 
           <div className="editorial-section-heading"><span className="source-eyebrow">INTELLIGENCE SUMMARY</span><h2>Current results</h2></div>
-          <section className="editorial-metrics" aria-label="Indicator summary"><div><span>Indicators shown</span><strong>{items.length}</strong></div><div><span>Critical</span><strong>{items.filter(item => item.severity === "CRITICAL").length}</strong></div><div><span>High</span><strong>{items.filter(item => item.severity === "HIGH").length}</strong></div><div><span>Active</span><strong>{items.filter(item => item.status === "ACTIVE").length}</strong></div></section>
+          <section className="editorial-metrics" aria-label="Indicator summary"><div><span>Indicators shown</span><strong>{items.length}</strong></div><div><span>Critical</span><strong>{items.filter(item => item.severity === "CRITICAL").length}</strong></div><div><span>High</span><strong>{items.filter(item => item.severity === "HIGH").length}</strong></div><div><span>Eligible on this page</span><strong>{items.filter(item => item.eligibility?.eligible ?? item.status === 'ACTIVE').length}</strong></div></section>
           {error && <div className="error" style={{ marginBottom: 16 }}>{error}</div>}
           {success && <div className="success" style={{ marginBottom: 16 }}>{success}</div>}
 
           {selected && <IndicatorEnrichmentPanel indicator={selected} canManage={canManage} canAccessCases={canAccessCases} role={currentUser?.role || 'USER'} onClose={() => { setSelected(null); if (new URLSearchParams(window.location.search).has('indicatorId')) router.replace('/indicators'); }} />}
+          {selected && process.env.NEXT_PUBLIC_IOC_LIFECYCLE_ENABLED === 'true' && <IndicatorDecisionPanel indicatorId={selected.id} canManage={canManage} onChanged={loadIndicators} />}
 
           <FormModal open={showForm} onOpenChange={setShowForm} title={editing ? 'Edit Indicator' : 'Add Indicator'} onSubmit={submit} loading={saving} error={showForm ? error : undefined} submitLabel="Save">
               <div className="ioc-form">
@@ -178,6 +181,7 @@ export default function IndicatorsPage() {
                 <label>Tags (pisahkan koma)<input value={form.tags} onChange={e => setField('tags', e.target.value)} placeholder="phishing, malware" /></label>
                 <label>Source<input value={form.source} onChange={e => setField('source', e.target.value)} placeholder="MISP, analyst, feed" /></label>
                 <label>Expires at<input type="date" value={form.expiresAt} onChange={e => setField('expiresAt', e.target.value)} /></label>
+                {editing && <label className="ioc-wide">Reason for restoring eligibility, if applicable<textarea value={form.lifecycleReason} onChange={e => setField('lifecycleReason', e.target.value)} maxLength={500} /></label>}
                 <label className="ioc-wide">Description<textarea value={form.description} onChange={e => setField('description', e.target.value)} /></label>
               </div>
           </FormModal>
@@ -200,7 +204,7 @@ export default function IndicatorsPage() {
                 { id: 'type', name: 'Type', template: (item: Indicator) => item.type },
                 { id: 'severity', name: 'Severity', template: (item: Indicator) => item.severity },
                 { id: 'confidence', name: 'Confidence', template: (item: Indicator) => `${item.confidence}%` },
-                { id: 'status', name: 'Status', template: (item: Indicator) => item.status },
+                { id: 'status', name: 'Status', template: (item: Indicator) => item.eligibility ? `${item.status} · ${item.eligibility.eligible ? 'Eligible' : item.eligibility.reason?.replace('_', ' ')}` : item.status },
                 { id: 'tags', name: 'Tags', template: (item: Indicator) => item.tags.join(', ') || '-' },
                 { id: 'tenant', name: 'Tenant', template: (item: Indicator) => item.tenant.name },
                 { id: 'intelligenceEntity', name: 'Entitas CTI', template: (item: Indicator) => item.intelligenceEntity ? `${item.intelligenceEntity.name} (${item.intelligenceEntity.type})` : '-' },

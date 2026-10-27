@@ -1,5 +1,31 @@
 # CTI administration design contract
 
+## IOC lifecycle safety
+
+The existing Indicators workspace shows effective eligibility beside the persisted lifecycle status. Its detail context contains expiry, current analyst suppression, a reason-required decision control and append-only history. False positive, safelist, inactive and expired use distinct text labels. Confirmation precedes each decision, pending disables submission, and errors remain visible. The section inherits existing `--soc-*` tokens and stacks controls on mobile. It is exposed only when the local IOC lifecycle flag is enabled after schema activation.
+
+## Feedback follow-ups
+
+The Reports workspace places an accountable feedback queue and tracked actions below analysis reports. PIR and SIR details show the same bounded context, while Received Reports show only the author's follow-up status and update time. The surface reuses `--soc-*` colors, shared cards and buttons, and existing editorial type. Scoped `--follow-*` tokens set 8px copy spacing, 12px action spacing, 16px record spacing, 24px section gaps, 32px outer space, and a 720px form maximum. SIR association is named as explicit; absence means report and PIR feedback only. A labeled checkbox records a need for a new PIR or SIR without creating one. At mobile width controls stack and text wraps within the viewport. Status always has a text label.
+
+## CTI effectiveness metrics
+
+Threat Intelligence Overview includes a read-only operational metrics section below the established intelligence summary. It reuses the editorial `--soc-*` palette, display type, quiet border, and existing 18px surface radius. Four KPI cards lead into two-column workflow sections; tablet uses two KPI columns and mobile stacks cards and controls. Scoped `--effect-*` tokens set the 16px card gap, 24px section inset, 48px section separation, 40px controls, 13px labels, 12px notes, 14px status headings, 24–36px KPI scale, 7px status bars, and the #5946b9 action surface with white ink in both themes for readable button contrast. Every ratio shows its numerator and denominator, missing samples say “Not available,” and status bars retain numeric labels so color is supplementary. Stakeholder feedback patterns use compact category rows with distribution, view, response counts, and response rates, never recipient or free-text details. Restricted, loading, empty, and error states share the same surface treatment.
+
+## Intelligence traceability
+
+Read-only SIR, Collection Task, and analysis-report trace sections reuse the existing editorial card, border, text, and link palette. The `intelligence-trace` surface adds only scoped spacing and card geometry over `--soc-*` colors. Relationship labels separate analyst-selected citations and frozen report content from current task associations. Restricted report details display a text state with no report metadata. Lists wrap at mobile width and use the existing pagination control.
+The scoped trace spacing tokens are 8px copy, 12px list gap, 20px pager, and 24px section separation; list cards use 12px vertical and 16px horizontal padding with a 12px radius. When synchronized lists have different lengths, later pages say that the shorter list has no items on this page rather than implying its relationships do not exist.
+
+## Requirement coverage
+
+PIR and SIR workspaces use a read-only coverage section within the existing editorial surface. It derives workflow facts and named operational gaps from persisted records; counts never imply analytical quality. The section reuses `--soc-*` colors, with scoped 12px gaps, 24px section spacing, 16px card padding, 12px radius, and 13px signal labels. At mobile width filters stack, cards wrap, and links remain visible. Restricted report and feedback context appears as text without counts or metadata.
+
+## Analyst assessments
+
+The existing source detail and SIR evidence cards display separate source reliability and information credibility assessments. An unassessed state remains explicit. Assessment cards reuse `--soc-*` colors, a 12px radius, 16px inset padding, 12px form gaps, native labeled inputs, and shared Button controls. Mobile headings stack above actions. Historical registry grades are labeled as legacy facts rather than treated as authored assessments; current assessments show rationale, assessor, and time. Report confidence remains a separate concept.
+When an assessed source is deleted or assessed evidence is detached, the relevant workspace displays the archived assessment in place with immutable original IDs and captured factual context. Historical cards do not offer a new assessment action or a broken link to the deleted operational record. History uses the existing ten-record page limit and shared button styling.
+
 ## UI consistency (ui.md)
 
 Paired landing actions place secondary Explore Platform before primary Get Started. Sidebar theme preference uses three labeled icon buttons for Dark, Light, and System while retaining `cti-theme`. Single-choice selects reserve 36px for text and render a themed chevron 15px from the right edge; multiple selects keep their native list behavior. Secondary operational labels use a readable 12–13px scale, with compact landing preview labels at 9–11px on mobile. Existing heading sizes and responsive layout remain the baseline.
@@ -151,3 +177,16 @@ The Dashboard alone adds a right-aligned white search pill below its floating to
 ## Unified Dashboard Bell (db16)
 The Dashboard Bell displays ASM, Case, AppSec and TI with text source labels, optional priority, safe preview, timestamp and per-user read state. It retains the db11 surface, radius, spacing, focus and responsive tokens. Source labels use --db-blue; preview uses --db-muted at 12px with 1.5 line height. Tenant sessions clear data by remounting, abort requests and reset counts. Opening refreshes access, Escape restores trigger focus, Tab stays within the popover, and navigation revalidates the destination through the authorized read endpoint. Errors remove stale counts; no new page or source filter is introduced.
 Pagination reuses a server snapshotAt boundary while the popover remains open; reopening starts page one with a fresh snapshot. Compact timestamps use day/month/hour/minute at mobile sizes, with full time preserved in title and datetime attributes.
+
+## 14. PIR Management V1
+
+The PIR workspace follows the existing Threat Intelligence editorial shell. It uses `--soc-*` semantic colors, shared Button and FormModal primitives, a compact requirements directory, a profile detail card, and text-backed priority/status indicators. Lifecycle actions appear only for permitted next states and are available only to authorized editors. Filters wrap on tablet and stack on mobile; profile facts and the edit form collapse to one column below 700px. Focus and reduced-motion behavior inherit the shell. Stakeholder links connect the two governance workspaces without changing the shell or creating a new top-level module.
+
+## SIR Management V1
+- Reuses the PIR editorial workspace, cards, priority chips, form modal, and responsive two-column detail grid.
+- The PIR detail shows linked SIRs, exact status counts, and an Add SIR deep link. The dedicated SIR workspace offers parent, priority, status, search, sort, and pagination controls.
+- Analyst answers use a separate modal. Answered status is unavailable until a nonblank answer is recorded. USER sees a read-only workspace.
+
+## Collection Planning V1
+
+The Collection workspace extends the Threat Intelligence editorial shell. Its scoped `--collection-*` variables alias the shared `--soc-*` palette and govern card surface, border, focus, ink, radius, and spacing. The task list, filter controls, detail facts, and form reuse the established PIR layout primitives; collection cards add a visible selected state and an `aria-expanded` relationship to the detail. Shared Button and FormModal controls remain the action primitives. The SIR collection section reuses the bounded evidence-section layout. At 700px the filters, cards, detail facts, and form stack into one column.

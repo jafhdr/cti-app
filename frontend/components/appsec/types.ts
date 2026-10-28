@@ -43,7 +43,12 @@ export type FindingSeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 export type Finding = {
   readonly id: string; readonly applicationId: string; readonly application?: { readonly id: string; readonly name: string };
   readonly title: string; readonly description: string | null; readonly severity: FindingSeverity;
-  readonly status: FindingStatus; readonly source: string; readonly category: string | null;
+  readonly status: FindingStatus; readonly workflowVersion: number; readonly revision: number;
+  readonly validationState: 'PENDING' | 'VALID' | 'REJECTED' | null;
+  readonly verificationState: 'NONE' | 'REQUESTED' | 'REJECTED' | 'APPROVED' | null;
+  readonly lifecycleCycle: number;
+  readonly priority: FindingSeverity | null; readonly priorityRationale: string | null;
+  readonly assigneeId: string | null; readonly assigneeName?: string | null; readonly source: string; readonly category: string | null;
   readonly cweId: string | null; readonly location: string | null; readonly remediationNote: string | null;
   readonly dueDate: string | null; readonly resolution: string | null; readonly resolvedAt: string | null;
   readonly firstSeenAt: string; readonly lastSeenAt: string; readonly createdAt: string; readonly updatedAt: string;

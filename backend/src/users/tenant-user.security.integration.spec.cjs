@@ -86,7 +86,7 @@ test('tenant status and admin password reset revoke access on live HTTP and Post
       const url = new URL(route.request().url());
       return route.continue({ url: api + url.pathname + url.search });
     });
-    await page.goto('http://localhost:3000/login');
+    await page.goto(`${process.env.TENANT_SECURITY_FRONTEND_URL || 'http://localhost:3000'}/login`);
     await page.getByLabel('Email address').fill(adminA.email);
     await page.getByLabel('Password', { exact: true }).fill(oldPassword);
     await page.getByRole('button', { name: 'Sign In' }).click();

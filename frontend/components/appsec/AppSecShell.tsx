@@ -8,10 +8,10 @@ import Sidebar from '@/components/dashboard/Sidebar';
 import type { ModuleAccess } from '@/lib/module-access';
 import { API, type Role } from './types';
 
-type CurrentUser = { readonly name?: string; readonly email: string; readonly role: Role; readonly moduleAccess: readonly ModuleAccess[] };
+type CurrentUser = { readonly id: string; readonly name?: string; readonly email: string; readonly role: Role; readonly moduleAccess: readonly (ModuleAccess & { readonly features?: readonly string[] })[] };
 type Tenant = { readonly id: string; readonly name: string };
 type TenantPolicy = { readonly slug: string; readonly subscriptionActive: boolean; readonly subscriptionIncluded: boolean; readonly isActive: boolean; readonly tenantEnabled: boolean; readonly features: readonly { readonly key: string }[] };
-type Workspace = { readonly role: Role; readonly tenantId: string; readonly canManage: boolean; readonly canViewAssets: boolean; readonly canViewApplications: boolean; readonly canViewTi: boolean; readonly canViewCase: boolean };
+type Workspace = { readonly role: Role; readonly userId: string; readonly tenantId: string; readonly canManage: boolean; readonly canSubmitRemediation: boolean; readonly canReviewFinding: boolean; readonly canViewAssets: boolean; readonly canViewApplications: boolean; readonly canViewTi: boolean; readonly canViewCase: boolean };
 const AppSecContext = createContext<Workspace | null>(null);
 export function useAppSec(): Workspace {
   const value = useContext(AppSecContext);
@@ -98,7 +98,13 @@ export function AppSecShell({ children }: { readonly children: ReactNode }) {
       return { ...module, accessible, featureKeys: accessible ? policy.features.map(feature => feature.key) : [] };
     })
     : user?.moduleAccess ?? [];
-  const workspace: Workspace | null = user ? { role: user.role, tenantId, canManage: user.role !== 'USER', canViewAssets: user.role === 'SUPER_ADMIN' ? tenantCanUse('attack-surface-management', 'asset-management') : asm, canViewApplications, canViewTi: user.role === 'SUPER_ADMIN' ? tenantCanUse('threat-intelligence', 'intelligence-hub') : ti, canViewCase: user.role === 'SUPER_ADMIN' ? tenantCanUse('case-management', 'case-workflow') : cases } : null;
+  const canSubmitRemediation = user?.role === 'SUPER_ADMIN'
+    ? tenantCanUse('appsec-posture', 'finding-remediation-submit')
+    : access?.features?.includes('finding-remediation-submit') ?? false;
+  const canReviewFinding = user?.role === 'SUPER_ADMIN'
+    ? tenantCanUse('appsec-posture', 'finding-review')
+    : access?.features?.includes('finding-review') ?? false;
+  const workspace: Workspace | null = user ? { role: user.role, userId: user.id, tenantId, canManage: user.role !== 'USER', canSubmitRemediation, canReviewFinding, canViewAssets: user.role === 'SUPER_ADMIN' ? tenantCanUse('attack-surface-management', 'asset-management') : asm, canViewApplications, canViewTi: user.role === 'SUPER_ADMIN' ? tenantCanUse('threat-intelligence', 'intelligence-hub') : ti, canViewCase: user.role === 'SUPER_ADMIN' ? tenantCanUse('case-management', 'case-workflow') : cases } : null;
   const displayName = user?.name || user?.email || '';
   const initials = displayName.split(/[\s@]+/).filter(Boolean).map(part => part[0]).join('').slice(0, 2).toUpperCase();
   return <div className="app appsec-shell"><Sidebar role={user?.role} moduleAccess={scopedModuleAccess} onLogout={user ? logout : undefined} dashboardPresentation /><section className="main">

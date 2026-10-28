@@ -6,6 +6,9 @@ import { ApplicationsController } from './applications.controller';
 import { ApplicationsService } from './applications.service';
 import { FindingsController } from './findings.controller';
 import { FindingsService } from './findings.service';
+import { FindingActionsService } from './finding-actions.service';
+import { FindingVerificationService } from './finding-verification.service';
+import { FindingReportingService } from './finding-reporting.service';
 import { ApplicationAssetsController } from './application-assets.controller';
 import { ApplicationAssetsService } from './application-assets.service';
 import { PostureController } from './posture.controller';
@@ -18,6 +21,6 @@ import { ModuleAccessService } from '../auth/module-access.service';
 @Module({
   imports: [AuthModule],
   controllers: [ApplicationsController, ApplicationAssetsController, FindingsController, FindingIntegrationsController, PostureController],
-  providers: [PrismaService, ModuleAccessService, AppSecTenantContext, ApplicationsService, ApplicationAssetsService, FindingsService, FindingIntegrationsService, FindingCaseService, PostureService],
+  providers: [PrismaService, ModuleAccessService, AppSecTenantContext, ApplicationsService, ApplicationAssetsService, FindingsService, FindingActionsService, FindingVerificationService, FindingReportingService, FindingIntegrationsService, FindingCaseService, PostureService],
 })
 export class AppSecModule {}

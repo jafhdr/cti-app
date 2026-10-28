@@ -219,3 +219,54 @@ body:has(.appsec-shell) .cti-overlay .soc-button-primary:hover:not(:disabled) { 
   .appsec-shell .appsec-findings-list .cti-table .ioc-severity,
   .appsec-shell .appsec-findings-list .cti-table .cti-status { justify-self: start; width: max-content; }
 }
+
+.appsec-shell .appsec-triage { margin-top: var(--as-space-lg); padding: var(--as-card-pad) !important; }
+.appsec-shell .appsec-triage .appsec-remediation { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--as-space-md); }
+.appsec-shell .appsec-triage .appsec-remediation > div { min-width: 0; }
+.appsec-shell .appsec-triage-controls { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: var(--as-space-sm); margin-top: var(--as-space-lg); }
+.appsec-shell .appsec-triage-controls label { display: grid; min-width: 0; gap: var(--as-space-xs); color: var(--as-muted); font-size: var(--as-text-sm); }
+.appsec-shell .appsec-triage-controls select, .appsec-shell .appsec-triage-controls textarea { width: 100%; min-width: 0; border: 1px solid var(--as-line); border-radius: var(--as-control-radius); background: var(--as-soft); color: var(--as-ink); padding: var(--as-space-sm); }
+.appsec-shell .appsec-triage-controls select { min-height: var(--as-control-height); }
+.appsec-shell .appsec-triage-reason { grid-column: 1 / -1; }
+.appsec-shell .appsec-triage-history { margin-top: var(--as-space-lg); border-top: 1px solid var(--as-line); padding-top: var(--as-space-lg); }
+.appsec-shell .appsec-triage-history ol { padding-left: var(--as-space-xl); }
+.appsec-shell .appsec-triage-history li { margin-block: var(--as-space-sm); padding-left: var(--as-space-xs); }
+.appsec-shell .appsec-triage-history li p { margin: var(--as-space-xs) 0 0; color: var(--as-muted); }
+.appsec-shell .appsec-remediation-work { margin-top: var(--as-space-lg); padding: var(--as-card-pad) !important; }
+.appsec-shell .appsec-remediation-work .appsec-remediation { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--as-space-md); }
+.appsec-shell .appsec-remediation-work p { color: var(--as-muted); }
+.appsec-shell .appsec-remediation-form { display: grid; gap: var(--as-space-sm); margin-top: var(--as-space-lg); }
+.appsec-shell .appsec-remediation-form label { display: grid; gap: var(--as-space-xs); color: var(--as-muted); font-size: var(--as-text-sm); }
+.appsec-shell .appsec-remediation-form textarea, .appsec-shell .appsec-remediation-form input { width: 100%; min-width: 0; border: 1px solid var(--as-line); border-radius: var(--as-control-radius); background: var(--as-soft); color: var(--as-ink); padding: var(--as-space-sm); }
+.appsec-shell .appsec-remediation-form textarea { min-height: 110px; resize: vertical; }
+.appsec-shell .appsec-evidence-history a { color: var(--as-accent); overflow-wrap: anywhere; }
+.appsec-shell .appsec-verification { margin-top: var(--as-space-lg); padding: var(--as-card-pad) !important; }
+.appsec-shell .appsec-verification .appsec-remediation { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--as-space-md); }
+.appsec-shell .appsec-verification p { color: var(--as-muted); }
+.appsec-shell .appsec-review-context { margin-top: var(--as-space-lg); border-top: 1px solid var(--as-line); padding-top: var(--as-space-md); }
+.appsec-shell .appsec-review-form { display: grid; gap: var(--as-space-sm); margin-top: var(--as-space-lg); }
+.appsec-shell .appsec-review-form label { display: grid; gap: var(--as-space-xs); color: var(--as-muted); font-size: var(--as-text-sm); }
+.appsec-shell .appsec-review-form textarea { width: 100%; min-height: 110px; border: 1px solid var(--as-line); border-radius: var(--as-control-radius); background: var(--as-soft); color: var(--as-ink); padding: var(--as-space-sm); }
+.appsec-shell .appsec-review-form > div, .appsec-shell .appsec-review-actions { display: flex; flex-wrap: wrap; gap: var(--as-space-sm); margin-block: var(--as-space-md); }
+@media (max-width: 640px) { .appsec-shell .appsec-triage { padding: var(--as-space-md) !important; } .appsec-shell .appsec-triage .appsec-remediation, .appsec-shell .appsec-triage-controls { grid-template-columns: minmax(0, 1fr); } .appsec-shell .appsec-triage-reason { grid-column: 1; } }
+@media (max-width: 640px) { .appsec-shell .appsec-remediation-work { padding: var(--as-space-md) !important; } .appsec-shell .appsec-remediation-work .appsec-remediation { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 640px) { .appsec-shell .appsec-verification { padding: var(--as-space-md) !important; } .appsec-shell .appsec-verification .appsec-remediation { grid-template-columns: minmax(0, 1fr); } }
+.appsec-shell .appsec-operations { min-width: 0; }
+.appsec-shell .appsec-operations .appsec-card { padding: var(--as-card-pad) !important; }
+.appsec-shell .appsec-operation-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: var(--as-space-md); }
+.appsec-shell .appsec-operation-filters label { display: grid; gap: var(--as-space-xs); color: var(--as-muted); font-size: var(--as-text-sm); }
+.appsec-shell .appsec-operation-filters input, .appsec-shell .appsec-operation-filters select { width: 100%; min-width: 0; min-height: var(--as-control-height); padding: var(--as-space-sm); border: 1px solid var(--as-line); border-radius: var(--as-control-radius); background: var(--as-soft); color: var(--as-ink); }
+.appsec-shell .appsec-operation-note { color: var(--as-muted); margin-block: var(--as-space-md); overflow-wrap: anywhere; }
+.appsec-shell .appsec-operation-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--as-space-md); margin-block: var(--as-space-lg); }
+.appsec-shell .appsec-operation-metrics .appsec-card { display: grid; gap: var(--as-space-sm); min-width: 0; }
+.appsec-shell .appsec-operation-metrics span { color: var(--as-muted); }
+.appsec-shell .appsec-operation-metrics strong { font-size: var(--as-text-xl); color: var(--as-ink); }
+.appsec-shell .appsec-operation-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--as-space-md); margin-bottom: var(--as-space-lg); }
+.appsec-shell .appsec-operation-columns h2, .appsec-shell .appsec-operations .appsec-card h2 { margin-top: 0; }
+.appsec-shell .appsec-operation-columns ul, .appsec-shell .appsec-operation-queue { list-style: none; margin: var(--as-space-md) 0 0; padding: 0; }
+.appsec-shell .appsec-operation-columns li { display: flex; justify-content: space-between; flex-wrap: wrap; gap: var(--as-space-sm); padding-block: var(--as-space-sm); border-bottom: 1px solid var(--as-line); }
+.appsec-shell .appsec-operation-queue li { display: grid; gap: var(--as-space-xs); padding-block: var(--as-space-md); border-bottom: 1px solid var(--as-line); min-width: 0; }
+.appsec-shell .appsec-operation-queue a { color: var(--as-accent); overflow-wrap: anywhere; }
+.appsec-shell .appsec-operation-queue span { color: var(--as-muted); overflow-wrap: anywhere; }
+@media (max-width: 800px) { .appsec-shell .appsec-operation-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } .appsec-shell .appsec-operation-columns { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 640px) { .appsec-shell .appsec-operation-metrics { grid-template-columns: minmax(0, 1fr); } .appsec-shell .appsec-operations .appsec-card { padding: var(--as-space-md) !important; } }

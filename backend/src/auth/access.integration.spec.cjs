@@ -217,13 +217,13 @@ test('real database, authenticated HTTP and browser access hierarchy', { timeout
       const context = await browser.newContext();
       const login = await context.request.post(api + '/auth/login', { data: { email: admin.email, password } }); assert.equal(login.status(), 201);
       const page = await context.newPage(); const errors = []; page.on('pageerror', e => errors.push(e.message));
-      await page.route('http://localhost:3001/**', route => route.continue({ url: api + new URL(route.request().url()).pathname + new URL(route.request().url()).search }));
+      await page.route(`${process.env.ACCESS_API_URL || 'http://localhost:3001'}/**`, route => route.continue({ url: api + new URL(route.request().url()).pathname + new URL(route.request().url()).search }));
       page.on('dialog', dialog => dialog.accept());
       const evidence = require('node:path').resolve('../.omo/evidence/3menu2');
       for (const width of [375, 768, 1280]) {
         await page.setViewportSize({ width, height: 900 });
-        for (const [path, ready] of [['/subscription', 'Subscription'], ['/modules', 'Control your security platform.'], ['/module-access', 'Access at every layer.']]) {
-          await page.goto('http://localhost:3000' + path);
+        for (const [path, ready] of [['/subscription', 'Subscription'], ['/modules', 'Module Management'], ['/module-access', 'Access at every layer.']]) {
+          await page.goto((process.env.ACCESS_FRONTEND_URL || 'http://localhost:3000') + path);
           await expect(page.getByRole('heading', { name: ready, exact: true })).toBeVisible({ timeout: 30000 });
           if (path === '/modules') await expect(page.locator('.module-card').first()).toBeVisible();
           assert.ok(await page.locator('.sidebar-navigation a, .sidebar-navigation button').evaluateAll(elements => elements.every(element => { const rect = element.getBoundingClientRect(); return rect.left >= 0 && rect.right <= window.innerWidth; })), `${path} navigation clipping ${width}`);
@@ -236,12 +236,12 @@ test('real database, authenticated HTTP and browser access hierarchy', { timeout
         await page.locator('.access-panel').screenshot({ path: `${evidence}/assignment-panel-${width}.png` });
       }
       await page.getByRole('button', { name: 'Simpan Akses Modul' }).click(); await expect(page.getByRole('status')).toContainText('berhasil');
-      await page.goto('http://localhost:3000/attack-surface/assets');
+      await page.goto((process.env.ACCESS_FRONTEND_URL || 'http://localhost:3000') + '/attack-surface/assets');
       await expect(page.getByRole('button', { name: 'Attack Surface Management', exact: true })).toBeVisible({ timeout: 30000 });
       await expect(page.getByRole('heading', { name: 'Know what is exposed.' })).toBeVisible({ timeout: 30000 });
       await page.screenshot({ path: evidence + '/asm-positive.png', fullPage: true });
       await prisma.tenantSubscription.update({ where: { tenantId }, data: { renewalAt: new Date('2000-01-01T00:00:00.000Z') } });
-      await page.goto('http://localhost:3000/subscription');
+      await page.goto((process.env.ACCESS_FRONTEND_URL || 'http://localhost:3000') + '/subscription');
       await expect(page.getByLabel('Subscription saat ini').locator('.subscription-state')).toHaveText('EXPIRED');
       await expect(page.getByLabel('Usage and entitlements').getByText('0')).toBeVisible();
       await expect(page.getByLabel('Platform capabilities').getByText('Unavailable').first()).toBeVisible();
@@ -258,12 +258,12 @@ test('real database, authenticated HTTP and browser access hierarchy', { timeout
       assert.equal(revoked.assigned, false);
       assert.equal(revoked.accessible, false);
       assert.equal((await request(admin, '/attack-surface/assets')).status, 403);
-      await page.goto('http://localhost:3000/attack-surface/assets');
+      await page.goto((process.env.ACCESS_FRONTEND_URL || 'http://localhost:3000') + '/attack-surface/assets');
       await page.reload();
       await expect(page.getByText('Access denied', { exact: true })).toBeVisible();
       await expect(page.getByRole('button', { name: 'Attack Surface Management', exact: true })).toHaveCount(0);
       await page.screenshot({ path: evidence + '/asm-negative.png', fullPage: true });
-      await page.goto('http://localhost:3000/attack-surface/assets');
+      await page.goto((process.env.ACCESS_FRONTEND_URL || 'http://localhost:3000') + '/attack-surface/assets');
       await expect(page.getByText('Access denied', { exact: true })).toBeVisible();
       assert.equal(errors.length, 0, errors.join('\n'));
       await context.close();

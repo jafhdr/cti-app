@@ -1,5 +1,9 @@
 # CTI administration design contract
 
+## AppSec operational reporting
+
+The AppSec Finding workspace adds a read-only operational view using the existing editorial heading, outlined cards, shared buttons, and `--soc-*` colors. A reporting period and UTC as-of time precede the metrics. Status totals are separate from overlapping workload counts. Owner groups use safe display names, with a distinct Unassigned label. The queue shares the period and owner scope with the metrics; status, priority, verification and overdue filters refine only the queue. Labels and counts remain textual. Cards use existing 8/12/16/24px spacing rhythms and stack from desktop columns to one column on mobile. Loading clears stale totals, empty results remain distinct from errors, and tenant changes reset report state.
+
 ## IOC lifecycle safety
 
 The existing Indicators workspace shows effective eligibility beside the persisted lifecycle status. Its detail context contains expiry, current analyst suppression, a reason-required decision control and append-only history. False positive, safelist, inactive and expired use distinct text labels. Confirmation precedes each decision, pending disables submission, and errors remain visible. The section inherits existing `--soc-*` tokens and stacks controls on mobile. It is exposed only when the local IOC lifecycle flag is enabled after schema activation.

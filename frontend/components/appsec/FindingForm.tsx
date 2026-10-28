@@ -39,7 +39,7 @@ export function FindingForm({ open, finding, onClose, onSaved }: Props) {
     event.preventDefault(); setSaving(true); setError('');
     const path = finding ? `/appsec/findings/${finding.id}` : '/appsec/findings';
     const { applicationId, ...fields } = form;
-    const payload = { ...fields, cweId: form.cweId || null, dueDate: form.dueDate ? new Date(`${form.dueDate}T00:00:00.000Z`).toISOString() : finding ? null : undefined, ...(finding ? {} : { applicationId }) };
+    const payload = { ...fields, cweId: form.cweId || null, dueDate: form.dueDate ? new Date(`${form.dueDate}T00:00:00.000Z`).toISOString() : finding ? null : undefined, ...(finding ? { ...(finding.workflowVersion === 2 ? { expectedRevision: finding.revision } : {}) } : { applicationId }) };
     try {
       const response = await fetch(appsecUrl(path, role, tenantId), { method: finding ? 'PATCH' : 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       const body: Finding & { readonly message?: string | readonly string[] } = await response.json();

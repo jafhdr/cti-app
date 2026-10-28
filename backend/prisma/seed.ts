@@ -49,6 +49,8 @@ async function main() {
       { key: 'advanced-chart', name: 'Advanced Charts (Legacy)', description: 'Legacy catalog only; tidak dapat diberikan sebagai fitur baru.' },
       { key: 'application-inventory', name: 'Application Inventory', description: 'Kelola inventaris aplikasi.' },
       { key: 'finding-management', name: 'Finding Management', description: 'Kelola temuan keamanan aplikasi.' },
+      { key: 'finding-remediation-submit', name: 'Finding Remediation Submit', description: 'Mulai remediasi dan catat evidence untuk Finding yang ditugaskan.' },
+      { key: 'finding-review', name: 'Finding Review', description: 'Verifikasi independen dan keputusan terminal Finding V2.' },
     ],
     'case-management': [
       { key: 'case-workflow', name: 'Case Workflow', description: 'Kelola siklus investigasi insiden.' },

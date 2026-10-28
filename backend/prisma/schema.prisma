@@ -93,6 +93,26 @@ enum AppSecFindingStatus {
   FALSE_POSITIVE
 }
 
+enum AppSecValidationState {
+  PENDING
+  VALID
+  REJECTED
+}
+
+enum AppSecVerificationState {
+  NONE
+  REQUESTED
+  REJECTED
+  APPROVED
+}
+
+enum AppSecFindingPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
 enum AppSecFindingSource {
   MANUAL
   SAST
@@ -585,6 +605,8 @@ model User {
   createdFeedbackFollowUps FeedbackFollowUp[] @relation("FeedbackFollowUpCreator")
   updatedFeedbackFollowUps FeedbackFollowUp[] @relation("FeedbackFollowUpUpdater")
   indicatorDecisions IndicatorDecision[] @relation("IndicatorDecisionActor")
+  assignedAppSecFindings AppSecFinding[] @relation("AppSecFindingAssignee")
+  appSecFindingActions AppSecFindingActionEvent[] @relation("AppSecFindingActionActor")
 
   @@unique([id, tenantId])
 }
@@ -1983,6 +2005,16 @@ model AppSecFinding {
   description       String?
   severity          AppSecFindingSeverity
   status            AppSecFindingStatus         @default(OPEN)
+  workflowVersion   Int                         @default(1)
+  revision          Int                         @default(0)
+  lifecycleCycle    Int                         @default(0)
+  validationState   AppSecValidationState?
+  verificationState AppSecVerificationState?
+  priority          AppSecFindingPriority?
+  priorityRationale String?
+  assigneeId        String?
+  assignee          User?                       @relation("AppSecFindingAssignee", fields: [assigneeId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  actionEvents      AppSecFindingActionEvent[]
   source            AppSecFindingSource         @default(MANUAL)
   sourceKey         String?
   category          String?
@@ -2005,6 +2037,32 @@ model AppSecFinding {
   @@unique([tenantId, applicationId, source, sourceKey])
   @@index([tenantId, applicationId, status])
   @@index([tenantId, status, severity])
+  @@index([tenantId, workflowVersion, status])
+  @@index([tenantId, verificationState, status])
+  @@index([tenantId, assigneeId, status, dueDate])
+}
+
+model AppSecFindingActionEvent {
+  id          String        @id @default(cuid())
+  tenantId    String
+  findingId   String
+  cycle       Int
+  kind        String
+  actorId     String
+  reason      String?
+  before      Json?
+  after       Json?
+  revision    Int
+  requestKey  String?
+  requestHash String?
+  responseSnapshot String?
+  createdAt   DateTime      @default(now())
+  finding     AppSecFinding @relation(fields: [findingId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  actor       User          @relation("AppSecFindingActionActor", fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@unique([tenantId, findingId, requestKey])
+  @@index([tenantId, findingId, cycle, createdAt, id])
+  @@index([tenantId, actorId, createdAt])
 }
 
 model AppSecFindingVulnerability {

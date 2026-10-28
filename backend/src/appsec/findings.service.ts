@@ -35,9 +35,16 @@ export class FindingsService {
 
   async get(user: AuthUser, id: string, requested?: string) {
     const tenantId = await this.context.resolve(user, requested);
-    const finding = await this.prisma.appSecFinding.findFirst({ where: { id, tenantId }, include: { application: { select: { id: true, name: true } } } });
+    const finding = await this.prisma.appSecFinding.findFirst({
+      where: { id, tenantId },
+      include: {
+        application: { select: { id: true, name: true } },
+        assignee: { select: { name: true, isActive: true } },
+      },
+    });
     if (!finding) throw new NotFoundException('Finding tidak ditemukan');
-    return finding;
+    const { assignee, ...record } = finding;
+    return { ...record, assigneeName: assignee?.isActive && assignee.name.trim() ? assignee.name.trim() : null };
   }
 
   async create(user: AuthUser, input: CreateFindingDto, requested?: string) {
@@ -77,6 +84,16 @@ export class FindingsService {
     return this.prisma.$transaction(async tx => {
       const existing = await tx.appSecFinding.findFirst({ where: { id, tenantId } });
       if (!existing) throw new NotFoundException('Finding tidak ditemukan');
+      if (existing.workflowVersion === 2) {
+        const protectedFields = ['status', 'resolution', 'resolvedAt', 'validationState', 'verificationState', 'priority', 'priorityRationale', 'assigneeId', 'workflowVersion', 'revision', 'lifecycleCycle'] as const;
+        if (protectedFields.some(field => Object.prototype.hasOwnProperty.call(input, field)))
+          throw new ConflictException('Gunakan aksi lifecycle untuk mengubah workflow V2');
+        if (input.expectedRevision === undefined || input.expectedRevision !== existing.revision)
+          throw new ConflictException('Finding berubah; muat ulang');
+      }
+      if (process.env.APPSEC_V2_VERIFICATION_ENABLED === 'true' && existing.workflowVersion === 1
+        && isTerminal(existing.status) && input.status === AppSecFindingStatus.OPEN)
+        throw new ConflictException('Gunakan aksi reopen untuk mempertahankan riwayat keputusan');
       const next = input.status ?? existing.status;
       const changed = next !== existing.status;
       if (changed && !canTransition(existing.status, next)) throw new BadRequestException('Transisi status tidak diizinkan');
@@ -94,7 +111,7 @@ export class FindingsService {
         ...(changed ? { status: next, resolvedAt: isTerminal(next) ? new Date() : null, resolution: isTerminal(next) ? resolution : null } :
           input.resolution !== undefined ? { resolution: resolution || null } : {}),
       };
-      const result = await tx.appSecFinding.updateMany({ where: { id, tenantId, status: existing.status }, data });
+      const result = await tx.appSecFinding.updateMany({ where: { id, tenantId, status: existing.status, ...(existing.workflowVersion === 2 ? { revision: existing.revision } : {}) }, data: { ...data, ...(existing.workflowVersion === 2 ? { revision: { increment: 1 } } : {}) } });
       if (result.count !== 1) throw new ConflictException('Finding berubah; muat ulang dan coba lagi');
       const updated = await tx.appSecFinding.findFirstOrThrow({ where: { id, tenantId } });
       await tx.auditLog.create({ data: { tenantId, userId: user.sub,

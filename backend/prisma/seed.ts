@@ -59,6 +59,7 @@ async function main() {
     'attack-surface-management': [
       { key: 'asset-management', name: 'Asset Management', description: 'Kelola aset dan detail inventaris.' },
       { key: 'asset-discovery', name: 'Asset Discovery', description: 'Temukan dan monitor aset baru.' },
+      { key: 'asset-correlation-review', name: 'Asset Correlation Review', description: 'Tinjau dan putuskan relevansi korelasi aset dan CVE.' },
     ],
   };
   await Promise.all(modules.flatMap((module) => (featuresBySlug[module.slug] ?? []).map((feature) =>

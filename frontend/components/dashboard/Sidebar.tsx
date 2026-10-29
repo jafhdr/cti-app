@@ -71,6 +71,8 @@ const caseManagementItems: readonly NavigationItem[] = [
 
 const attackSurfaceItems: readonly NavigationItem[] = [
   { label: 'Assets', href: '/attack-surface/assets', icon: Radar, matchDescendants: true },
+  ...(process.env.NEXT_PUBLIC_ASM_V2_REVIEW_ENABLED === 'true' ? [{ label: 'Correlation Review', href: '/attack-surface/review', icon: ClipboardList }] : []),
+  ...(process.env.NEXT_PUBLIC_ASM_V2_OPERATIONS_ENABLED === 'true' ? [{ label: 'Operations', href: '/attack-surface/operations', icon: Radar }] : []),
   { label: 'Reports', href: '/attack-surface/reports', icon: ClipboardList },
 ];
 

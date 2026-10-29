@@ -2,3 +2,5 @@ backend/prisma/migrations/20261023150000_analysis_reporting/migration.sql -text
 backend/prisma/migrations/20261028120000_appsec_v2_p1a_triage/migration.sql -text
 backend/prisma/migrations/20261029100000_appsec_v2_p1b_remediation_feature/migration.sql -text
 backend/prisma/migrations/20261030100000_appsec_v2_p1c_verification/migration.sql -text
+backend/prisma/migrations/20261031100000_asm_v2_p1a_evidence/migration.sql -text
+backend/prisma/migrations/20261101100000_asm_v2_p1b_review/migration.sql -text

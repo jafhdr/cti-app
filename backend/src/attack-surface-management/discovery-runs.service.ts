@@ -127,7 +127,7 @@ export class DiscoveryRunsService {
           if (!summary.failed && !summary.timeout) {
             const closedKeys = summary.results.filter(result => result.status === 'closed').map(result => `${result.protocol}:${result.port}`);
             if (closedKeys.length) await this.prisma.assetFinding.updateMany({ where: { tenantId: asset.tenantId, assetId: ipId, source: 'PORT_DISCOVERY', sourceKey: { in: closedKeys }, status: { in: ['OPEN', 'IN_PROGRESS'] } }, data: { status: 'RESOLVED' } });
-            await this.correlations.refresh(user, ipId, requested);
+            await this.correlations.refresh(user, ipId, requested, run.id);
             const hits = await this.prisma.assetVulnerabilityCorrelation.findMany({ where: { tenantId: asset.tenantId, assetId: ipId, confidence: 'HIGH', status: 'ACTIVE' }, include: { vulnerability: { select: { cveId: true } } } });
             observed = { ...observed, vulnerabilities: [...observed.vulnerabilities, ...hits.map(item => ({ assetId: ipId, serviceId: item.serviceId, vulnerabilityId: item.vulnerabilityId, cveId: item.vulnerability.cveId }))] };
           }

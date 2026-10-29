@@ -132,7 +132,37 @@ html.light select:not([multiple]){
 
 /* ASM vulnerability evidence uses its own labels in the mobile record layout. */
 .asm-port-scroll .asm-vulnerability-table{min-width:860px}
-@media(max-width:640px){
+.asm-port-scroll .asm-review-table{min-width:760px}
+.asm-review-hash{overflow-wrap:anywhere}
+.asm-operations{--asm-ops-space-xs:8px;--asm-ops-space-sm:12px;--asm-ops-space-md:16px;--asm-ops-space-lg:24px;--asm-ops-radius:12px;--asm-ops-control-radius:8px;--asm-ops-control-height:40px;--asm-ops-label-size:11px;--asm-ops-metric-size:clamp(24px,3vw,36px);--asm-ops-copy-width:60ch;display:grid;grid-template-columns:minmax(0,1fr);gap:var(--asm-ops-space-lg);min-width:0}
+.asm-operations>*{min-width:0;max-width:100%}.asm-operations-head{display:flex;align-items:start;justify-content:space-between;gap:var(--asm-ops-space-lg)}.asm-operations-head>div,.asm-operations .asm-intelligence-section{min-width:0;max-width:100%;box-sizing:border-box}.asm-operations-head h1{margin:var(--asm-ops-space-xs) 0 var(--asm-ops-space-sm)}.asm-operations h1,.asm-operations h2{white-space:normal;overflow-wrap:anywhere}.asm-operations-head p{max-width:var(--asm-ops-copy-width);color:var(--soc-body)}
+.asm-operations-head button,.asm-operations-filters button,.asm-operations-pager button{min-height:var(--asm-ops-control-height);padding:var(--asm-ops-space-xs) var(--asm-ops-space-sm);border:1px solid var(--soc-border);border-radius:var(--asm-ops-control-radius);background:var(--soc-surface);color:var(--soc-ink);font:inherit;cursor:pointer}.asm-operations button:disabled{opacity:.55;cursor:not-allowed}
+.asm-operations-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--asm-ops-space-sm)}.asm-operations-grid>div{display:grid;gap:var(--asm-ops-space-xs);min-width:0;padding:var(--asm-ops-space-md);border:1px solid var(--soc-border);border-radius:var(--asm-ops-radius);background:var(--soc-surface)}.asm-operations-grid span,.asm-operations-grid small{color:var(--soc-muted)}.asm-operations-grid strong{font-size:var(--asm-ops-metric-size);line-height:1.1;color:var(--soc-ink)}
+.asm-operations-links,.asm-operations-pager{display:flex;flex-wrap:wrap;align-items:center;gap:var(--asm-ops-space-sm)}.asm-operations-links a{padding:var(--asm-ops-space-xs) var(--asm-ops-space-sm);border:1px solid var(--soc-border);border-radius:var(--asm-ops-control-radius)}.asm-operations-filters{display:flex;flex-wrap:wrap;align-items:end;gap:var(--asm-ops-space-sm);margin:var(--asm-ops-space-md) 0}.asm-operations-filters label{display:grid;gap:var(--asm-ops-space-xs);min-width:180px;color:var(--soc-body)}.asm-operations-filters input,.asm-operations-filters select{min-height:var(--asm-ops-control-height);width:100%;min-width:0;padding:var(--asm-ops-space-xs) var(--asm-ops-space-sm);border:1px solid var(--soc-border);border-radius:var(--asm-ops-control-radius);background:var(--soc-surface);color:var(--soc-ink);font:inherit}
+.asm-operations-table{width:100%;border-collapse:collapse}.asm-operations-table th,.asm-operations-table td{padding:var(--asm-ops-space-sm);border-bottom:1px solid var(--soc-border);text-align:left;vertical-align:top;overflow-wrap:anywhere}.asm-operations-table small{color:var(--soc-muted)}.asm-operations-cell-label{display:none}.asm-operations-pager{margin-top:var(--asm-ops-space-md)}.asm-operations details{margin-top:var(--asm-ops-space-md);overflow-wrap:anywhere}.asm-operations details dl>div{margin:var(--asm-ops-space-sm) 0}.asm-operations details dt{font-weight:700}.asm-operations details dd{margin:var(--asm-ops-space-xs) 0;color:var(--soc-body)}
+@media(max-width:900px){.asm-operations-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.asm-operations-table thead{display:none}.asm-operations-table tbody{display:grid;gap:var(--asm-ops-space-sm)}.asm-operations-table tbody tr{display:grid;padding:var(--asm-ops-space-sm);border:1px solid var(--soc-border);border-radius:var(--asm-ops-radius);background:var(--soc-surface)}.asm-operations-table tbody td{display:block;min-width:0;padding:var(--asm-ops-space-xs) 0;border:0;white-space:normal;overflow-wrap:anywhere}.asm-operations-cell-label{display:block;margin-bottom:var(--asm-ops-space-xs);color:var(--soc-muted);font-size:var(--asm-ops-label-size);font-weight:700;text-transform:uppercase}}
+@media(max-width:640px){.asm-operations-head{flex-direction:column}.asm-operations-grid{grid-template-columns:1fr}.asm-operations-filters{display:grid}.asm-operations-filters label{min-width:0}}
+.asm-review-filters{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin:12px 0}
+.asm-review-filters label{display:grid;gap:6px;color:var(--soc-body)}
+.asm-review-actions{display:grid;gap:12px;max-width:560px;margin:18px 0}
+.asm-review-actions label{display:grid;gap:6px;color:var(--soc-body)}
+.asm-review-actions label:has(input[type=checkbox]){display:flex;align-items:center;gap:8px}
+.asm-review-actions textarea,.asm-review-actions select{width:100%;min-height:40px;padding:9px 12px;border:1px solid var(--soc-border);border-radius:8px;background:var(--soc-surface);color:var(--soc-ink);font:inherit}
+.asm-review-actions textarea{min-height:88px;resize:vertical}
+@media(max-width:900px){
+  .asm-port-scroll .asm-review-table{min-width:0}
+  .asm-review-table thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+  .asm-review-table tbody{display:grid;gap:10px}
+  .asm-review-table tbody tr{display:grid;padding:12px;border:1px solid var(--soc-border);border-radius:12px;background:var(--soc-surface)}
+  .asm-review-table tbody td{display:grid;grid-template-columns:90px minmax(0,1fr);gap:8px;min-width:0;white-space:normal;overflow-wrap:anywhere}
+  .asm-review-table tbody td:before{color:var(--soc-muted);font-size:10px;font-weight:700;text-transform:uppercase}
+  .asm-review-table tbody td:nth-child(1):before{content:"Asset"}
+  .asm-review-table tbody td:nth-child(2):before{content:"CVE"}
+  .asm-review-table tbody td:nth-child(3):before{content:"Fingerprint"}
+  .asm-review-table tbody td:nth-child(4):before{content:"Machine confidence"}
+  .asm-review-table tbody td:nth-child(5):before{content:"Observation"}
+  .asm-review-table tbody td:nth-child(6):before{content:"Review"}
+  .asm-review-table tbody td:nth-child(7):before{content:"Revision"}
   .asm-port-scroll .asm-vulnerability-table{min-width:0}
   .asm-vulnerability-table thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
   .asm-vulnerability-table tbody{display:grid;gap:10px}
@@ -144,8 +174,8 @@ html.light select:not([multiple]){
   .asm-vulnerability-table tbody td:nth-child(3):before{content:"Product / version"}
   .asm-vulnerability-table tbody td:nth-child(4):before{content:"Severity / CVSS"}
   .asm-vulnerability-table tbody td:nth-child(5):before{content:"Confidence"}
-  .asm-vulnerability-table tbody td:nth-child(6):before{content:"Evidence"}
-  .asm-vulnerability-table tbody td:nth-child(7):before{content:"Source"}
+  .asm-vulnerability-table tbody td:nth-child(6):before{content:"Observation / review"}
+  .asm-vulnerability-table tbody td:nth-child(7):before{content:"Evidence"}
 }
 
 .asm-schedule-controls{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin:18px 0 24px}

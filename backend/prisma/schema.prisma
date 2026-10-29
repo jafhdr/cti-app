@@ -420,6 +420,9 @@ model Tenant {
   campaignMalwareTools           CampaignMalwareTool[]
   vulnerabilities                Vulnerability[]
   assetVulnerabilityCorrelations AssetVulnerabilityCorrelation[]
+  asmV2Enrollment                AsmV2Enrollment?
+  asmCorrelationObservations     AsmCorrelationObservation[]
+  asmCorrelationDecisions        AsmCorrelationDecision[]
   intelligenceReports            IntelligenceReport[]
   reportThreatActors             IntelligenceReportThreatActor[]
   reportCampaigns                IntelligenceReportCampaign[]
@@ -607,6 +610,7 @@ model User {
   indicatorDecisions IndicatorDecision[] @relation("IndicatorDecisionActor")
   assignedAppSecFindings AppSecFinding[] @relation("AppSecFindingAssignee")
   appSecFindingActions AppSecFindingActionEvent[] @relation("AppSecFindingActionActor")
+  asmCorrelationDecisions AsmCorrelationDecision[] @relation("AsmCorrelationDecisionActor")
 
   @@unique([id, tenantId])
 }
@@ -1253,6 +1257,7 @@ model Vulnerability {
   affectedVersionExact String?
   source               String?
   correlations         AssetVulnerabilityCorrelation[]
+  asmCorrelationObservations AsmCorrelationObservation[]
   threatActors         ThreatActorVulnerability[]
   campaigns            CampaignVulnerability[]
   malwareTools         MalwareToolVulnerability[]
@@ -1948,6 +1953,7 @@ model Asset {
   alerts                    Alert[]
   riskSnapshots             AsmRiskSnapshot[]
   vulnerabilityCorrelations AssetVulnerabilityCorrelation[]
+  asmCorrelationObservations AsmCorrelationObservation[]
   discoverySchedule         AsmDiscoverySchedule?
   discoveryRuns             AsmDiscoveryRun[]
   exposureChanges           AsmExposureChange[]
@@ -2123,6 +2129,7 @@ model AssetPortService {
   banner       String?
   source       String?
   correlations AssetVulnerabilityCorrelation[]
+  asmCorrelationObservations AsmCorrelationObservation[]
   status       PortDiscoveryStatus             @default(UNKNOWN)
   firstSeenAt  DateTime                        @default(now())
   lastSeenAt   DateTime                        @default(now())
@@ -2145,6 +2152,12 @@ model AssetVulnerabilityCorrelation {
   vulnerabilityId String
   confidence      String
   status          String           @default("ACTIVE")
+  workflowVersion Int              @default(1)
+  revision        Int              @default(0)
+  reviewStatus    String?
+  evidenceHash    String?
+  reviewedEvidenceHash String?
+  reviewedAt      DateTime?
   matchReason     String
   evidence        Json
   firstSeenAt     DateTime         @default(now())
@@ -2154,9 +2167,71 @@ model AssetVulnerabilityCorrelation {
   service         AssetPortService @relation(fields: [serviceId, tenantId], references: [id, tenantId], onDelete: Cascade, map: "AssetVulnerabilityCorrelation_serviceId_fkey")
   vulnerability   Vulnerability    @relation(fields: [vulnerabilityId, tenantId], references: [id, tenantId], onDelete: Cascade)
   alerts          Alert[]
+  observations    AsmCorrelationObservation[]
+  decisions       AsmCorrelationDecision[]
 
   @@unique([tenantId, serviceId, vulnerabilityId], map: "AssetVulnerabilityCorrelation_tenantId_serviceId_vulnerabilityI")
+  @@unique([id, tenantId])
   @@index([tenantId, assetId])
+  @@index([tenantId, assetId, workflowVersion, reviewStatus, status], map: "AssetVulnerabilityCorrelation_v2_queue_idx")
+}
+
+model AsmV2Enrollment {
+  tenantId  String   @id
+  enabled   Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model AsmCorrelationObservation {
+  id                String   @id @default(cuid())
+  tenantId          String
+  assetId           String
+  serviceId         String
+  vulnerabilityId   String
+  correlationId     String
+  discoveryRunId    String?
+  observedAt        DateTime @default(now())
+  kind              String
+  confidence        String?
+  matchReason       String?
+  matcherVersion    String
+  evidenceHash      String
+  serviceSnapshot   Json
+  tiSnapshot        Json
+  fingerprintSource String?
+  tenant            Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  asset             Asset    @relation(fields: [assetId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  service           AssetPortService @relation(fields: [serviceId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  vulnerability     Vulnerability @relation(fields: [vulnerabilityId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  correlation       AssetVulnerabilityCorrelation @relation(fields: [correlationId, tenantId], references: [id, tenantId], onDelete: Cascade)
+
+  @@index([tenantId, assetId, observedAt, id], map: "AsmCorrelationObservation_asset_history_idx")
+  @@index([tenantId, correlationId, observedAt, id], map: "AsmCorrelationObservation_correlation_history_idx")
+}
+
+model AsmCorrelationDecision {
+  id                   String   @id @default(cuid())
+  tenantId             String
+  correlationId        String
+  actorId              String
+  kind                 String
+  previousReviewStatus String
+  reviewStatus         String
+  reason               String
+  evidenceHash         String
+  expectedRevision     Int
+  resultingRevision    Int
+  requestKey           String
+  inspectedEvidence    Boolean
+  overrideReason       String?
+  createdAt            DateTime @default(now())
+  tenant               Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  correlation          AssetVulnerabilityCorrelation @relation(fields: [correlationId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  actor                User @relation("AsmCorrelationDecisionActor", fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@unique([tenantId, correlationId, actorId, requestKey], map: "AsmCorrelationDecision_request_key")
+  @@index([tenantId, correlationId, createdAt, id], map: "AsmCorrelationDecision_history_idx")
 }
 
 model AssetFinding {

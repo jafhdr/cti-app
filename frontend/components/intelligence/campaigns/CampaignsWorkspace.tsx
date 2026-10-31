@@ -242,7 +242,7 @@ export function CampaignsWorkspace({ role }: { readonly role: Role }) {
     <div className="ti-phase2a">
       <div className="source-heading ti-workspace-heading">
         <div>
-          <span className="source-eyebrow">CAMPAIGNS / INTELLIGENCE WORKSPACE</span>
+          <span className="source-eyebrow">CAMPAIGNS</span>
           <h1>Track coordinated threat activity.</h1>
           <p>
             Track operations and database-backed relationships to threat actors
@@ -366,9 +366,12 @@ export function CampaignsWorkspace({ role }: { readonly role: Role }) {
         {loading ? (
           <div className="source-state">Loading campaigns...</div>
         ) : error ? null : items.length === 0 ? (
-          <div className="source-state">
-            <strong>No campaigns found</strong>
-            <span>Adjust filters or add the first campaign.</span>
+          <div className="ux-campaign-empty">
+            <div className="ux-campaign-empty-header" aria-hidden="true"><span>Campaign</span><span>Threat actor</span><span>Indicators</span><span>Status</span><span>Severity</span><span>Confidence</span><span>Timeline</span><span>Actions</span></div>
+            <div className="source-state">
+              <strong>No campaigns found</strong>
+              <span>Adjust filters or add the first campaign.</span>
+            </div>
           </div>
         ) : (
           <Table

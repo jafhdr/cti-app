@@ -1,5 +1,11 @@
 # CTI administration design contract
 
+## Five workspace reference screens (ux.md)
+
+The Cases, Threat Intelligence Overview, IOC Candidates, Threat Actors, and Campaigns routes follow the supplied Figma references. The scoped `ux-reference` shell uses a pale blue canvas, floating navigation and topbar, serif headings, rounded metric and content cards, muted table headers, and compact status chips. `app/reference-ux.css` contains the surface tokens and responsive rules. Existing navigation keeps its access, theme, and expansion behavior; API responses remain the source for metrics and rows. Dark mode retains the same layout with semantic dark colors. Tablet metrics use two columns; mobile headings and actions stack while wide tables scroll within their panel.
+
+The topbar reuses the functional notification bell with the current role and tenant. Overview cards show concise excerpts from API descriptions and preserve the full text in accessible context; effectiveness metrics remain in a disclosure. Recent Case status colors follow each record's status. IOC Candidates retains API actions and count, and Threat Actors retains the precision refinements. The reference presentation applies only to these five routes.
+
 ## Case V2 operational reporting
 
 The Case Management page adds a read-only reporting section within the existing editorial hierarchy. It uses the existing `--soc-*` palette, KPI strip, Case table, native labeled filters, outlined buttons, and Case detail links. Scoped `case-report` layout uses 16px gaps and a two-column information grid that becomes one column below 900px. Tables scroll within their own surface; controls stack on mobile. Status, origin, review, and missing historical data always use text labels. An unavailable entitlement hides the reporting panel; loading, empty, and error states are explicit. No new motion or runtime dependency is introduced.

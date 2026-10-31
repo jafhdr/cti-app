@@ -3,8 +3,9 @@
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Sidebar from '../../components/dashboard/Sidebar';
+import { ReferenceAccount } from '../../components/ReferenceAccount';
 import type { ModuleAccess } from '../../lib/module-access';
 import { CaseMutationAccessContext, CaseTenantContext } from './case-access';
 
@@ -21,6 +22,7 @@ type Tenant = { readonly id: string; readonly name: string };
 
 export default function CasesLayout({ children }: { readonly children: ReactNode }) {
   const router = useRouter();
+  const referencePage = usePathname() === '/cases';
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [tenants, setTenants] = useState<readonly Tenant[]>([]);
@@ -75,12 +77,12 @@ export default function CasesLayout({ children }: { readonly children: ReactNode
   const canAccessCases = user.moduleAccess.some(module => module.accessible === true && module.moduleSlug === 'case-management' && module.featureKeys.includes('case-workflow'));
 
   return (
-    <div className="app">
-      <Sidebar role={user.role} moduleAccess={user.moduleAccess} onLogout={logout} />
+    <div className={referencePage ? 'app dashboard-page ux-reference' : 'app'}>
+      <Sidebar dashboardPresentation={referencePage} role={user.role} moduleAccess={user.moduleAccess} onLogout={logout} />
       <section className="main">
         <header className="topbar">
-          <strong>Case Management</strong>
-          <span>{user.role === 'SUPER_ADMIN' && <select aria-label="Tenant Case Management" value={tenantId} onChange={event => { const selected = event.target.value; setTenantId(selected); sessionStorage.setItem('case-workspace-tenant', selected); }}><option value="">Pilih tenant</option>{tenants.map(tenant => <option key={tenant.id} value={tenant.id}>{tenant.name}</option>)}</select>}{user.email} · {user.role}</span>
+          {!referencePage && <strong>Case Management</strong>}
+          {referencePage ? <ReferenceAccount email={user.email} role={user.role} tenantId={tenantId} onLogout={logout} tenantSelector={user.role === 'SUPER_ADMIN' && <select aria-label="Tenant Case Management" value={tenantId} onChange={event => { const selected = event.target.value; setTenantId(selected); sessionStorage.setItem('case-workspace-tenant', selected); }}><option value="">Pilih tenant</option>{tenants.map(tenant => <option key={tenant.id} value={tenant.id}>{tenant.name}</option>)}</select>} /> : <span>{user.role === 'SUPER_ADMIN' && <select aria-label="Tenant Case Management" value={tenantId} onChange={event => { const selected = event.target.value; setTenantId(selected); sessionStorage.setItem('case-workspace-tenant', selected); }}><option value="">Pilih tenant</option>{tenants.map(tenant => <option key={tenant.id} value={tenant.id}>{tenant.name}</option>)}</select>}{user.email} · {user.role}</span>}
         </header>
         {canAccessCases ? (
           <CaseTenantContext.Provider key={tenantId} value={{ tenantId, ready: user.role !== 'SUPER_ADMIN' || Boolean(tenantId), role: user.role }}>

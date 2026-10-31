@@ -1,5 +1,9 @@
 # CTI administration design contract
 
+## Case V2 operational reporting
+
+The Case Management page adds a read-only reporting section within the existing editorial hierarchy. It uses the existing `--soc-*` palette, KPI strip, Case table, native labeled filters, outlined buttons, and Case detail links. Scoped `case-report` layout uses 16px gaps and a two-column information grid that becomes one column below 900px. Tables scroll within their own surface; controls stack on mobile. Status, origin, review, and missing historical data always use text labels. An unavailable entitlement hides the reporting panel; loading, empty, and error states are explicit. No new motion or runtime dependency is introduced.
+
 ## ASM V2 operational reporting
 
 The operations route uses the existing ASM shell and semantic `--soc-*` surfaces. Its scoped `--asm-ops-*` tokens define an 8/12/16/24px spacing rhythm, 8/12px control and card radii, 40px control height, 11px record labels, bounded copy width, and responsive metric type. Review and observation counts remain separate labeled dimensions; the P1-C priority appears separately from V1 Risk Posture. Metric cards wrap from three desktop columns to two tablet columns and one mobile column. The asset table becomes labeled records at 900px and below, with DOM labels matching each field. Native filter controls, visible loading/denial/empty states, cursor pagination and guarded links lead to the existing review queue and asset detail. No chart or new decision workflow is introduced. Text states distinguish NOT_ASSESSED from LOW and explain that an observed OPEN service is not proven public reachability.

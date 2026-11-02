@@ -34,7 +34,10 @@ test('ASM V2 P1-A evidence, V1 preservation and disabled fallback', { timeout: 9
     assert.deepEqual(await v2.setEnrollment(actor, true), { enrolled: true });
     const candidateAsset = await prisma.asset.create({ data: { tenantId: ownId, name: 'Candidate', type: 'IP_ADDRESS', value: '192.0.2.61' } });
     const service = await prisma.assetPortService.create({ data: { tenantId: ownId, assetId: candidateAsset.id, port: 22, protocol: 'TCP', product: 'OpenSSH', version: '8.4', status: 'OPEN', source: 'PROBE' } });
-    const [candidate] = await correlations.refresh(actor, candidateAsset.id);
+    const observedAt = new Date();
+    const run = await prisma.asmDiscoveryRun.create({ data: { tenantId: ownId, assetId: candidateAsset.id, source: 'QA_VERIFIED_FIXTURE', status: 'COMPLETED', startedAt: new Date(observedAt.getTime() - 1000), completedAt: new Date(observedAt.getTime() + 1000) } });
+    await prisma.asmServiceFingerprintObservation.create({ data: { tenantId: ownId, assetId: candidateAsset.id, serviceId: service.id, discoveryRunId: run.id, product: 'OpenSSH', version: '8.4', source: 'PROBE', bannerHash: 'synthetic-fixture', observedAt } });
+    const [candidate] = await correlations.refresh(actor, candidateAsset.id, undefined, run.id);
     assert.equal(candidate.workflowVersion, 2);
     assert.equal(candidate.reviewStatus, 'PENDING');
     assert.equal(candidate.confidence, 'HIGH');
@@ -47,9 +50,9 @@ test('ASM V2 P1-A evidence, V1 preservation and disabled fallback', { timeout: 9
     await prisma.assetPortService.update({ where: { id: service.id }, data: { version: null } });
     await correlations.refresh(actor, candidateAsset.id);
     const changed = await prisma.assetVulnerabilityCorrelation.findUniqueOrThrow({ where: { id: candidate.id } });
-    assert.equal(changed.confidence, 'LOW');
-    assert.equal(changed.revision, 2);
-    assert.equal(await prisma.asmCorrelationObservation.count({ where: { tenantId: ownId, correlationId: candidate.id } }), 2);
+    assert.equal(changed.confidence, 'HIGH');
+    assert.equal(changed.revision, 1);
+    assert.equal(await prisma.asmCorrelationObservation.count({ where: { tenantId: ownId, correlationId: candidate.id } }), 1);
     assert.equal(await prisma.assetFinding.count({ where: { tenantId: ownId, assetId: candidateAsset.id } }), 0);
 
     const activated = await v2.activate(actor, legacyAsset.id, legacy.id);
@@ -57,18 +60,17 @@ test('ASM V2 P1-A evidence, V1 preservation and disabled fallback', { timeout: 9
     assert.equal((await prisma.assetFinding.findUniqueOrThrow({ where: { id: legacyFinding.id } })).status, 'OPEN');
     const audit = await prisma.auditLog.findFirst({ where: { tenantId: ownId, action: 'ASM_V2_CORRELATION_ACTIVATED' } });
     assert.equal(audit?.userId, user.id);
-    const run = await prisma.asmDiscoveryRun.create({ data: { tenantId: ownId, assetId: candidateAsset.id, source: 'QA_COMPLETE', status: 'COMPLETED' } });
     await prisma.assetPortService.update({ where: { id: service.id }, data: { status: 'CLOSED', lastSeenAt: new Date() } });
     await correlations.refresh(actor, candidateAsset.id);
     assert.equal((await prisma.assetVulnerabilityCorrelation.findUniqueOrThrow({ where: { id: candidate.id } })).status, 'ACTIVE');
     await correlations.refresh(actor, candidateAsset.id, undefined, run.id);
-    assert.equal((await prisma.assetVulnerabilityCorrelation.findUniqueOrThrow({ where: { id: candidate.id } })).status, 'STALE');
-    assert.equal((await prisma.asmCorrelationObservation.findFirstOrThrow({ where: { correlationId: candidate.id }, orderBy: { observedAt: 'desc' } })).kind, 'NOT_OBSERVED');
+    assert.equal((await prisma.assetVulnerabilityCorrelation.findUniqueOrThrow({ where: { id: candidate.id } })).status, 'ACTIVE');
+    assert.equal(await prisma.asmCorrelationObservation.count({ where: { correlationId: candidate.id, kind: 'NOT_OBSERVED' } }), 0);
 
     process.env.ASM_V2_EVIDENCE_ENABLED = 'false';
     await prisma.assetPortService.update({ where: { id: service.id }, data: { status: 'OPEN', version: '8.4' } });
     await correlations.refresh(actor, candidateAsset.id);
-    assert.equal((await prisma.assetVulnerabilityCorrelation.findUniqueOrThrow({ where: { id: candidate.id } })).status, 'STALE');
+    assert.equal((await prisma.assetVulnerabilityCorrelation.findUniqueOrThrow({ where: { id: candidate.id } })).status, 'ACTIVE');
     assert.equal(await prisma.assetFinding.count({ where: { tenantId: ownId, assetId: candidateAsset.id } }), 0);
     await assert.rejects(() => v2.setEnrollment(actor, false), { status: 403 });
     await assert.rejects(() => v2.list({ ...actor, tenantId: foreignId }, candidateAsset.id), { status: 404 });

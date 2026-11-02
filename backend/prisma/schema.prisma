@@ -474,6 +474,7 @@ model Tenant {
   assets                         Asset[]
   assetRelationships             AssetRelationship[]
   assetPortServices              AssetPortService[]
+  asmServiceFingerprintObservations AsmServiceFingerprintObservation[]
   assetFindings                  AssetFinding[]
   asmSchedules                   AsmDiscoverySchedule[]
   asmRuns                        AsmDiscoveryRun[]
@@ -2183,6 +2184,7 @@ model Asset {
   updatedAt                 DateTime                        @updatedAt
   tenant                    Tenant                          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   portServices              AssetPortService[]
+  fingerprintObservations   AsmServiceFingerprintObservation[]
   findings                  AssetFinding[]
   applications              ApplicationAsset[]
   alerts                    Alert[]
@@ -2365,6 +2367,7 @@ model AssetPortService {
   source       String?
   correlations AssetVulnerabilityCorrelation[]
   asmCorrelationObservations AsmCorrelationObservation[]
+  fingerprintObservations AsmServiceFingerprintObservation[]
   status       PortDiscoveryStatus             @default(UNKNOWN)
   firstSeenAt  DateTime                        @default(now())
   lastSeenAt   DateTime                        @default(now())
@@ -2443,6 +2446,26 @@ model AsmCorrelationObservation {
 
   @@index([tenantId, assetId, observedAt, id], map: "AsmCorrelationObservation_asset_history_idx")
   @@index([tenantId, correlationId, observedAt, id], map: "AsmCorrelationObservation_correlation_history_idx")
+}
+
+model AsmServiceFingerprintObservation {
+  id             String   @id @default(cuid())
+  tenantId       String
+  assetId        String
+  serviceId      String
+  discoveryRunId String
+  product        String
+  version        String
+  source         String
+  bannerHash     String
+  observedAt     DateTime
+  tenant         Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  asset          Asset @relation(fields: [assetId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  service        AssetPortService @relation(fields: [serviceId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  discoveryRun   AsmDiscoveryRun @relation(fields: [discoveryRunId, tenantId], references: [id, tenantId], onDelete: Cascade)
+
+  @@unique([discoveryRunId, serviceId])
+  @@index([tenantId, assetId, discoveryRunId])
 }
 
 model AsmCorrelationDecision {
@@ -2528,8 +2551,10 @@ model AsmDiscoveryRun {
   asset         Asset                 @relation(fields: [assetId, tenantId], references: [id, tenantId], onDelete: Cascade)
   changes       AsmExposureChange[]
   riskSnapshots AsmRiskSnapshot[]
+  fingerprintObservations AsmServiceFingerprintObservation[]
 
   @@index([tenantId, assetId, startedAt])
+  @@unique([id, tenantId])
 }
 
 model AsmRiskSnapshot {

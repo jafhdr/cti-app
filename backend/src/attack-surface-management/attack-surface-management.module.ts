@@ -29,6 +29,7 @@ import { DiscoveryService } from './discovery.service';
 import { PortServicesController } from './port-services.controller';
 import { PortDiscoveryClient } from './port-discovery.client';
 import { PortDiscoveryService } from './port-discovery.service';
+import { SshFingerprintClient } from './ssh-fingerprint.client';
 import { PortServicesService } from './port-services.service';
 
 @Module({
@@ -51,6 +52,7 @@ import { PortServicesService } from './port-services.service';
     DiscoveryClient,
     PortDiscoveryService,
     PortDiscoveryClient,
+    SshFingerprintClient,
     PortServicesService,
     PrismaService,
   ],

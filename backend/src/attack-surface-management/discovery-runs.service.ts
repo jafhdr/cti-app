@@ -9,6 +9,7 @@ import { PortDiscoveryService, type PortDiscoverySummary } from './port-discover
 import { VulnerabilityCorrelationsService } from './vulnerability-correlations.service';
 import { RiskPostureService } from './risk-posture.service';
 import { SshFingerprintClient } from './ssh-fingerprint.client';
+import { latestFingerprint, lockFingerprintService } from './fingerprint-order';
 
 const snapshotSchema = z.object({
   assets: z.array(z.object({ id: z.string(), type: z.enum(['SUBDOMAIN', 'IP_ADDRESS']), value: z.string() })),
@@ -138,14 +139,17 @@ export class DiscoveryRunsService {
               const fingerprint = fingerprints[offset];
               if (!service || !fingerprint || fingerprint.kind !== 'VERIFIED') continue;
               await this.prisma.$transaction(async tx => {
-                const updated = await tx.assetPortService.updateMany({ where: { id: service.id, tenantId: asset.tenantId, assetId: ipId, status: 'OPEN', lastSeenAt: service.lastSeenAt }, data: {
-                  product: fingerprint.product, version: fingerprint.version, source: fingerprint.source,
-                } });
-                if (updated.count !== 1) return;
-                await tx.asmServiceFingerprintObservation.create({ data: {
+                await lockFingerprintService(tx, asset.tenantId, service.id);
+                const current = await tx.assetPortService.findFirst({ where: { id: service.id, tenantId: asset.tenantId, assetId: ipId, status: 'OPEN' } });
+                if (!current) return;
+                const observation = await tx.asmServiceFingerprintObservation.create({ data: {
                   tenantId: asset.tenantId, assetId: ipId, serviceId: service.id, discoveryRunId: run.id,
                   product: fingerprint.product, version: fingerprint.version, source: fingerprint.source,
                   bannerHash: fingerprint.bannerHash, observedAt: fingerprint.observedAt,
+                } });
+                if ((await latestFingerprint(tx, asset.tenantId, service.id))?.id !== observation.id) return;
+                await tx.assetPortService.update({ where: { id: service.id }, data: {
+                  product: fingerprint.product, version: fingerprint.version, source: fingerprint.source,
                 } });
               });
             }

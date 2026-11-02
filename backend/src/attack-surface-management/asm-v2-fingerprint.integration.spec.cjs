@@ -14,7 +14,7 @@ const { SshFingerprintClient } = require('../../dist/src/attack-surface-manageme
 
 test('completed discovery retires only a correlation with a newly observed SSH fingerprint', { timeout: 120000 }, async () => {
   const database = new URL(process.env.DATABASE_URL || 'postgresql://invalid/cti').pathname.slice(1);
-  assert.match(database, /^cti_asm62_qa_case18_[0-9a-f]{8}$/);
+  assert.match(database, /^cti_asm62_qa_case(?:18|20)_[0-9a-f]{8}$/);
   const prisma = new PrismaClient();
   const marker = randomUUID();
   const oldFlag = process.env.ASM_V2_EVIDENCE_ENABLED;

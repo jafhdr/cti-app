@@ -54,7 +54,7 @@ export class SshFingerprintClient {
           finish(UNKNOWN);
           return;
         }
-        const version = `${Number(major)}.${Number(minor)}${patch === undefined ? '' : `.${Number(patch)}`}`;
+        const version = `${Number(major)}.${Number(minor)}${patch === undefined ? '' : `p${Number(patch)}`}`;
         finish({ kind: 'VERIFIED', product: 'OpenSSH', version, source: 'SSH_BANNER', bannerHash: createHash('sha256').update(bytes).digest('hex'), observedAt: new Date() });
       });
       socket.once('timeout', () => finish(UNKNOWN));

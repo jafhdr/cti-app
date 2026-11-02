@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma.service';
 import type { AuthUser } from '../users/users.types';
 import { correlationEvidence, MATCHER_VERSION } from './correlation-evidence';
 import { matchVersion, type Match } from './version-match';
+import { latestFingerprint, lockFingerprintService } from './fingerprint-order';
 
 const rollout = (): boolean => process.env.ASM_V2_EVIDENCE_ENABLED === 'true';
 
@@ -85,11 +86,11 @@ export class AsmV2EvidenceService {
 
   async observe(tenantId: string, assetId: string, service: AssetPortService, vulnerability: Vulnerability, match: Match, runId?: string, transaction?: Prisma.TransactionClient) {
     if (!rollout() || !runId) return;
-    const evidence = correlationEvidence(service, vulnerability, match);
     const execute = async (tx: Prisma.TransactionClient) => {
+      await lockFingerprintService(tx, tenantId, service.id);
       await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${tenantId + ':' + service.id + ':' + vulnerability.id}, 0)) IS NULL AS locked`;
       const [scopedService, scopedVulnerability] = await Promise.all([
-        tx.assetPortService.findFirst({ where: { id: service.id, tenantId, assetId }, select: { id: true } }),
+        tx.assetPortService.findFirst({ where: { id: service.id, tenantId, assetId, status: 'OPEN' } }),
         tx.vulnerability.findFirst({ where: { id: vulnerability.id, tenantId }, select: { id: true } }),
       ]);
       if (!scopedService || !scopedVulnerability) throw new NotFoundException('Correlation source tidak ditemukan');
@@ -103,14 +104,18 @@ export class AsmV2EvidenceService {
         targetAssetId: assetId, lastSeenAt: { gte: run.startedAt, lte: run.completedAt } }, select: { id: true } }))) return;
       const fingerprint = await tx.asmServiceFingerprintObservation.findFirst({ where: { tenantId, assetId,
         serviceId: service.id, discoveryRunId: runId, observedAt: { gte: run.startedAt, lte: run.completedAt } } });
-      if (!fingerprint || fingerprint.product !== service.product || fingerprint.version !== service.version ||
-        fingerprint.source !== service.source) return;
+      if (!fingerprint || (await latestFingerprint(tx, tenantId, service.id))?.id !== fingerprint.id ||
+        fingerprint.product !== scopedService.product || fingerprint.version !== scopedService.version ||
+        fingerprint.source !== scopedService.source) return;
+      const currentMatch = matchVersion(scopedService, vulnerability);
+      if (!currentMatch) return;
+      const evidence = correlationEvidence(scopedService, vulnerability, currentMatch);
       const material = !prior || prior.evidenceHash !== evidence.evidenceHash || prior.status !== 'ACTIVE';
       const current = await tx.assetVulnerabilityCorrelation.upsert({ where: key,
         create: { tenantId, assetId, serviceId: service.id, vulnerabilityId: vulnerability.id, workflowVersion: 2,
-          revision: 1, reviewStatus: 'PENDING', confidence: match.confidence, status: 'ACTIVE', matchReason: match.reason,
+          revision: 1, reviewStatus: 'PENDING', confidence: currentMatch.confidence, status: 'ACTIVE', matchReason: currentMatch.reason,
           evidenceHash: evidence.evidenceHash, evidence: { ...evidence.serviceSnapshot, vulnerabilityId: vulnerability.id }, firstSeenAt: new Date(), lastSeenAt: new Date() },
-        update: { confidence: match.confidence, status: 'ACTIVE', matchReason: match.reason, evidenceHash: evidence.evidenceHash,
+        update: { confidence: currentMatch.confidence, status: 'ACTIVE', matchReason: currentMatch.reason, evidenceHash: evidence.evidenceHash,
           evidence: { ...evidence.serviceSnapshot, vulnerabilityId: vulnerability.id }, lastSeenAt: new Date(),
           ...(prior?.evidenceHash !== evidence.evidenceHash && prior?.reviewStatus && prior.reviewStatus !== 'PENDING'
             ? { reviewStatus: 'REVIEW_REQUIRED' } : {}),
@@ -118,9 +123,9 @@ export class AsmV2EvidenceService {
       });
       if (material) await tx.asmCorrelationObservation.create({ data: {
         tenantId, assetId, serviceId: service.id, vulnerabilityId: vulnerability.id, correlationId: current.id,
-        discoveryRunId: runId, kind: 'MATCHED', confidence: match.confidence, matchReason: match.reason,
+        discoveryRunId: runId, kind: 'MATCHED', confidence: currentMatch.confidence, matchReason: currentMatch.reason,
         matcherVersion: MATCHER_VERSION, evidenceHash: evidence.evidenceHash,
-        serviceSnapshot: evidence.serviceSnapshot, tiSnapshot: evidence.tiSnapshot, fingerprintSource: service.source,
+        serviceSnapshot: evidence.serviceSnapshot, tiSnapshot: evidence.tiSnapshot, fingerprintSource: scopedService.source,
       } });
     };
     if (transaction) await execute(transaction);
@@ -132,6 +137,7 @@ export class AsmV2EvidenceService {
     const execute = async (tx: Prisma.TransactionClient): Promise<boolean> => {
       const identity = await tx.assetVulnerabilityCorrelation.findFirst({ where: { id: correlationId, tenantId, assetId }, select: { serviceId: true, vulnerabilityId: true } });
       if (!identity) return false;
+      await lockFingerprintService(tx, tenantId, identity.serviceId);
       await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${tenantId + ':' + identity.serviceId + ':' + identity.vulnerabilityId}, 0)) IS NULL AS locked`;
       const current = await tx.assetVulnerabilityCorrelation.findFirst({ where: { id: correlationId, tenantId, assetId, workflowVersion: 2 }, include: { service: true, vulnerability: true } });
       if (!current || current.status !== 'ACTIVE' || current.service.assetId !== assetId || current.service.tenantId !== tenantId ||
@@ -145,7 +151,8 @@ export class AsmV2EvidenceService {
         discoveryRunId: runId, tenantId, assetId, serviceId: current.serviceId,
         observedAt: { gte: run.startedAt, lte: run.completedAt },
       } });
-      if (!fingerprint || fingerprint.product !== current.service.product || fingerprint.version !== current.service.version ||
+      if (!fingerprint || (await latestFingerprint(tx, tenantId, identity.serviceId))?.id !== fingerprint.id ||
+        fingerprint.product !== current.service.product || fingerprint.version !== current.service.version ||
         fingerprint.source !== current.service.source || matchVersion(current.service, current.vulnerability)) return false;
       const latest = await tx.asmCorrelationObservation.findFirst({ where: { tenantId, correlationId }, orderBy: [{ observedAt: 'desc' }, { id: 'desc' }] });
       const hash = createHash('sha256').update(JSON.stringify([runId, fingerprint.id, fingerprint.bannerHash,

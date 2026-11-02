@@ -18,7 +18,7 @@ describe('SshFingerprintClient', () => {
     socket.emit('data', Buffer.from('SSH-2.0-Open'));
     socket.emit('data', Buffer.from('SSH_9.6p1 Ubuntu-3\r\n'));
     await expect(pending).resolves.toEqual({
-      kind: 'VERIFIED', product: 'OpenSSH', version: '9.6.1', source: 'SSH_BANNER',
+      kind: 'VERIFIED', product: 'OpenSSH', version: '9.6p1', source: 'SSH_BANNER',
       bannerHash: createHash('sha256').update('SSH-2.0-OpenSSH_9.6p1 Ubuntu-3\r\n').digest('hex'), observedAt: expect.any(Date),
     });
     expect(socket.destroy).toHaveBeenCalledTimes(1);

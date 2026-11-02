@@ -92,7 +92,7 @@ describe('ASM V2 verified retirement', () => {
       { confidence: 'HIGH', reason: 'Exact product and version match' }, 'run', tx as never);
 
     expect(transaction).not.toHaveBeenCalled();
-    expect(tx.$queryRaw).toHaveBeenCalledTimes(1);
+    expect(tx.$queryRaw).toHaveBeenCalledTimes(2);
     expect(tx.asmDiscoveryRun.findFirst).toHaveBeenCalledTimes(1);
   });
 });

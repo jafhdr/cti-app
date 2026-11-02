@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { createContext, useContext, useEffect, useState } from 'react';
 import Sidebar from '../dashboard/Sidebar';
+import { ReferenceAccount } from '../ReferenceAccount';
 import type { ModuleAccess } from '../../lib/module-access';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -51,5 +52,6 @@ export function ThreatIntelligenceShell({ children, title }: { readonly children
   if (!user?.moduleAccess.some(module => module.moduleSlug === 'threat-intelligence' && module.accessible === true && module.featureKeys.includes(requiredFeature))) {
     return <div className="app"><Sidebar role={user?.role} moduleAccess={user?.moduleAccess ?? []} onLogout={logout} /><main className="content"><h1>Akses modul dibatasi</h1><div className="error" role="alert">Anda tidak memiliki akses ke modul Threat Intelligence.</div><Link href="/dashboard">Kembali ke Dashboard</Link></main></div>;
   }
-  return <TenantContext.Provider value={{ tenantId, ready }}><div className="app"><Sidebar role={user?.role} moduleAccess={user?.moduleAccess ?? []} onLogout={logout} /><section className="main"><header className="topbar"><strong>Threat Intelligence / {title}</strong><span>{user?.role === 'SUPER_ADMIN' && <select aria-label="Tenant Threat Intelligence" value={tenantId} onChange={event => setTenantId(event.target.value)}>{tenants.map(tenant => <option key={tenant.id} value={tenant.id}>{tenant.name}</option>)}</select>}{user?.email}</span></header><main className="content">{children}</main></section></div></TenantContext.Provider>;
+  const referencePage = ['Overview', 'IOC Candidates', 'Threat Actors', 'Campaigns'].includes(title);
+  return <TenantContext.Provider value={{ tenantId, ready }}><div className={referencePage ? 'app dashboard-page ux-reference' : 'app'}><Sidebar dashboardPresentation={referencePage} role={user?.role} moduleAccess={user?.moduleAccess ?? []} onLogout={logout} /><section className="main"><header className="topbar">{!referencePage && <strong>Threat Intelligence / {title}</strong>}{referencePage ? <ReferenceAccount email={user.email} role={user.role} tenantId={tenantId} onLogout={logout} tenantSelector={user.role === 'SUPER_ADMIN' && <select aria-label="Tenant Threat Intelligence" value={tenantId} onChange={event => setTenantId(event.target.value)}>{tenants.map(tenant => <option key={tenant.id} value={tenant.id}>{tenant.name}</option>)}</select>} /> : <span>{user.role === 'SUPER_ADMIN' && <select aria-label="Tenant Threat Intelligence" value={tenantId} onChange={event => setTenantId(event.target.value)}>{tenants.map(tenant => <option key={tenant.id} value={tenant.id}>{tenant.name}</option>)}</select>}{user.email}</span>}</header><main className="content">{children}</main></section></div></TenantContext.Provider>;
 }

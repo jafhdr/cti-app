@@ -1,6 +1,7 @@
 import './globals.css';
 import './soc-theme.css';
 import './editorial.css';
+import './reference-ux.css';
 import './dashboard-visual.css';
 import { ThemeProvider } from '../components/ThemeProvider';
 import '../components/ui/overlay.css';

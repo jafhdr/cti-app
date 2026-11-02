@@ -8,6 +8,8 @@ import { DiscoveryService, type DiscoverySummary } from './discovery.service';
 import { PortDiscoveryService, type PortDiscoverySummary } from './port-discovery.service';
 import { VulnerabilityCorrelationsService } from './vulnerability-correlations.service';
 import { RiskPostureService } from './risk-posture.service';
+import { SshFingerprintClient } from './ssh-fingerprint.client';
+import { latestFingerprint, lockFingerprintService } from './fingerprint-order';
 
 const snapshotSchema = z.object({
   assets: z.array(z.object({ id: z.string(), type: z.enum(['SUBDOMAIN', 'IP_ADDRESS']), value: z.string() })),
@@ -27,6 +29,7 @@ export class DiscoveryRunsService {
     private readonly ports: PortDiscoveryService,
     private readonly correlations: VulnerabilityCorrelationsService,
     private readonly riskPosture: RiskPostureService,
+    private readonly fingerprints: SshFingerprintClient = new SshFingerprintClient(),
   ) {}
 
   private async asset(user: AuthUser, assetId: string, requested?: string) {
@@ -72,9 +75,11 @@ export class DiscoveryRunsService {
     return this.prisma.asmExposureChange.findMany({ where: { tenantId: asset.tenantId, assetId }, include: { run: { select: { source: true, status: true, startedAt: true } } }, orderBy: { detectedAt: 'desc' }, take: 100 });
   }
 
-  async run(user: AuthUser, assetId: string, requested?: string, source = 'MANUAL', scanPorts = true) {
+  async run(user: AuthUser, assetId: string, requested?: string, source = 'MANUAL', scanPorts = true, ports?: readonly number[]) {
     const asset = await this.asset(user, assetId, requested);
     if (asset.type !== AssetType.DOMAIN && asset.type !== AssetType.SUBDOMAIN && asset.type !== AssetType.IP_ADDRESS) throw new BadRequestException('Jenis asset tidak dapat ditemukan');
+    const collectFingerprints = process.env.ASM_V2_EVIDENCE_ENABLED === 'true' &&
+      (await this.prisma.asmV2Enrollment.findUnique({ where: { tenantId: asset.tenantId }, select: { enabled: true } }))?.enabled === true;
     const now = new Date();
     await this.prisma.asmDiscoverySchedule.upsert({ where: { assetId }, create: { tenantId: asset.tenantId, assetId }, update: {} });
     const leaseUntil = new Date(now.getTime() + LOCK_MINUTES * 60_000);
@@ -118,12 +123,39 @@ export class DiscoveryRunsService {
       if (scanPorts) for (const ipId of ipIds) {
         const scanStartedAt = new Date();
         try {
-          const summary = await this.ports.discover(user, ipId, requested);
+          const summary = await this.ports.discover(user, ipId, requested, ports);
           if (asset.type === AssetType.IP_ADDRESS) legacySummary = summary;
           providers.add('TCP_CONNECT'); discovered += summary.scanned; failed += summary.failed + summary.timeout;
           if (summary.failed || summary.timeout) errors.push(`Port scan partial for ${ipId}`);
           const open = await this.prisma.assetPortService.findMany({ where: { tenantId: asset.tenantId, assetId: ipId, status: PortDiscoveryStatus.OPEN, lastSeenAt: { gte: scanStartedAt } } });
-          observed = { ...observed, ports: [...observed.ports, ...open.map(item => ({ assetId: ipId, protocol: item.protocol, port: item.port, service: item.service, product: item.product, version: item.version }))] };
+          const ip = await this.prisma.asset.findFirstOrThrow({ where: { id: ipId, tenantId: asset.tenantId }, select: { value: true } });
+          const scannedOpen = new Set(summary.results.filter(result => result.status === 'open').map(result => result.port));
+          const probeCandidates = collectFingerprints ? open.filter(item => item.protocol === 'TCP' && scannedOpen.has(item.port)) : [];
+          for (let index = 0; index < probeCandidates.length; index += 5) {
+            const batch = probeCandidates.slice(index, index + 5);
+            const fingerprints = await Promise.all(batch.map(service => this.fingerprints.probe(ip.value, service.port)));
+            for (let offset = 0; offset < batch.length; offset++) {
+              const service = batch[offset];
+              const fingerprint = fingerprints[offset];
+              if (!service || !fingerprint || fingerprint.kind !== 'VERIFIED') continue;
+              await this.prisma.$transaction(async tx => {
+                await lockFingerprintService(tx, asset.tenantId, service.id);
+                const current = await tx.assetPortService.findFirst({ where: { id: service.id, tenantId: asset.tenantId, assetId: ipId, status: 'OPEN' } });
+                if (!current) return;
+                const observation = await tx.asmServiceFingerprintObservation.create({ data: {
+                  tenantId: asset.tenantId, assetId: ipId, serviceId: service.id, discoveryRunId: run.id,
+                  product: fingerprint.product, version: fingerprint.version, source: fingerprint.source,
+                  bannerHash: fingerprint.bannerHash, observedAt: fingerprint.observedAt,
+                } });
+                if ((await latestFingerprint(tx, asset.tenantId, service.id))?.id !== observation.id) return;
+                await tx.assetPortService.update({ where: { id: service.id }, data: {
+                  product: fingerprint.product, version: fingerprint.version, source: fingerprint.source,
+                } });
+              });
+            }
+          }
+          const refreshedOpen = await this.prisma.assetPortService.findMany({ where: { id: { in: open.map(item => item.id) }, tenantId: asset.tenantId, assetId: ipId, status: 'OPEN' } });
+          observed = { ...observed, ports: [...observed.ports, ...refreshedOpen.map(item => ({ assetId: ipId, protocol: item.protocol, port: item.port, service: item.service, product: item.product, version: item.version }))] };
           if (!summary.failed && !summary.timeout) {
             const closedKeys = summary.results.filter(result => result.status === 'closed').map(result => `${result.protocol}:${result.port}`);
             if (closedKeys.length) await this.prisma.assetFinding.updateMany({ where: { tenantId: asset.tenantId, assetId: ipId, source: 'PORT_DISCOVERY', sourceKey: { in: closedKeys }, status: { in: ['OPEN', 'IN_PROGRESS'] } }, data: { status: 'RESOLVED' } });
@@ -136,29 +168,35 @@ export class DiscoveryRunsService {
         }
       }
       const complete = failed === 0 && scanPorts;
-      const changes = detectChanges(before, observed, complete);
-      const merged = complete || !before ? observed : {
-        assets: [...new Map([...before.assets, ...observed.assets].map(item => [item.id, item])).values()],
-        dns: [...new Map([...before.dns, ...observed.dns].map(item => [`${item.source}:${item.target}`, item])).values()],
-        ports: [...new Map([...before.ports, ...observed.ports].map(item => [`${item.assetId}:${item.protocol}:${item.port}`, item])).values()],
-        vulnerabilities: [...new Map([...before.vulnerabilities, ...observed.vulnerabilities].map(item => [`${item.serviceId}:${item.vulnerabilityId}`, item])).values()],
-      };
       await this.prisma.$transaction(async tx => {
+        await tx.asmDiscoveryRun.update({ where: { id: run.id }, data: { status: complete ? 'COMPLETED' : 'PARTIAL', completedAt: new Date(), discovered, created, updated, failed, error: errors.join('; ') || null, providers: [...providers] } });
+        if (complete) {
+          for (const ipId of ipIds) await this.correlations.finalizeVerifiedRun(tx, asset.tenantId, ipId, run.id);
+          const hits = await tx.assetVulnerabilityCorrelation.findMany({ where: { tenantId: asset.tenantId, assetId: { in: ipIds }, confidence: 'HIGH', status: 'ACTIVE' }, include: { vulnerability: { select: { cveId: true } } } });
+          observed = { ...observed, vulnerabilities: hits.map(item => ({ assetId: item.assetId, serviceId: item.serviceId, vulnerabilityId: item.vulnerabilityId, cveId: item.vulnerability.cveId })) };
+        }
+        const changes = detectChanges(before, observed, complete);
+        const merged = complete || !before ? observed : {
+          assets: [...new Map([...before.assets, ...observed.assets].map(item => [item.id, item])).values()],
+          dns: [...new Map([...before.dns, ...observed.dns].map(item => [`${item.source}:${item.target}`, item])).values()],
+          ports: [...new Map([...before.ports, ...observed.ports].map(item => [`${item.assetId}:${item.protocol}:${item.port}`, item])).values()],
+          vulnerabilities: [...new Map([...before.vulnerabilities, ...observed.vulnerabilities].map(item => [`${item.serviceId}:${item.vulnerabilityId}`, item])).values()],
+        };
         await tx.asmExposureChange.createMany({ data: changes.map(change => ({ tenantId: asset.tenantId, assetId, runId: run.id, ...change })), skipDuplicates: true });
-        await tx.asmDiscoveryRun.update({ where: { id: run.id }, data: { status: complete ? 'COMPLETED' : 'PARTIAL', completedAt: new Date(), discovered, created, updated, failed, error: errors.join('; ') || null, providers: [...providers], snapshot: JSON.parse(JSON.stringify(merged)) } });
+        await tx.asmDiscoveryRun.update({ where: { id: run.id }, data: { snapshot: JSON.parse(JSON.stringify(merged)) } });
         const evaluatedAt = new Date();
         for (const postureAssetId of new Set([asset.id, ...ipIds])) {
           await this.riskPosture.capture(tx, asset.tenantId, postureAssetId, run.id, evaluatedAt);
         }
-      }, { timeout: 30_000 });
-      const actionableChanges = await this.prisma.asmExposureChange.findMany({ where: { runId: run.id, tenantId: asset.tenantId, type: { in: [AsmChangeType.PORT_OPENED, AsmChangeType.VULNERABILITY_CONFIRMED] } } });
-      for (const change of actionableChanges) {
-        const sourceKey = change.type === AsmChangeType.PORT_OPENED ? `port:${change.entityKey}` : `vulnerability:${change.entityKey}`;
-        await this.prisma.alert.updateMany({ where: { tenantId: asset.tenantId, source: 'ASM', sourceKey, changeEventId: null }, data: { changeEventId: change.id } });
-      }
+        const actionableChanges = await tx.asmExposureChange.findMany({ where: { runId: run.id, tenantId: asset.tenantId, type: { in: [AsmChangeType.PORT_OPENED, AsmChangeType.VULNERABILITY_CONFIRMED] } } });
+        for (const change of actionableChanges) {
+          const sourceKey = change.type === AsmChangeType.PORT_OPENED ? `port:${change.entityKey}` : `vulnerability:${change.entityKey}`;
+          await tx.alert.updateMany({ where: { tenantId: asset.tenantId, source: 'ASM', sourceKey, changeEventId: null }, data: { changeEventId: change.id } });
+        }
+      }, { timeout: 120_000 });
       return { ...await this.detail(user, assetId, run.id, requested), legacySummary };
     } catch (error) {
-      if (runId) await this.prisma.asmDiscoveryRun.update({ where: { id: runId }, data: { status: 'FAILED', completedAt: new Date(), error: error instanceof Error ? error.message : String(error) } });
+      if (runId) await this.prisma.asmDiscoveryRun.updateMany({ where: { id: runId, status: 'RUNNING' }, data: { status: 'FAILED', completedAt: new Date(), error: error instanceof Error ? error.message : String(error) } });
       throw error;
     } finally {
       const schedule = await this.prisma.asmDiscoverySchedule.findUnique({ where: { assetId } });

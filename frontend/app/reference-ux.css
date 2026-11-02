@@ -1,0 +1,368 @@
+/* Five reference screens share one scoped visual contract. */
+.ux-reference {
+  --db-canvas: #e7f0ff;
+  --db-blue: #2865ec;
+  --db-blue-tint: #edf2ff;
+  --db-border: #dfe7f4;
+  --db-muted: #69788e;
+  --soc-canvas: var(--db-canvas);
+  --soc-nav: #fff;
+  --soc-surface: #fff;
+  --soc-elevated: #f5f8fc;
+  --soc-hover: #eef3fa;
+  --soc-border: var(--db-border);
+  --soc-border-muted: #e7edf6;
+  --soc-ink: #151d31;
+  --soc-body: #58677d;
+  --soc-muted: #8290a5;
+  --soc-blue: var(--db-blue);
+  --soc-blue-strong: var(--db-blue);
+  --soc-blue-tint: var(--db-blue-tint);
+  --cti-display: Inter, "Segoe UI", Arial, sans-serif;
+  grid-template-columns: minmax(250px, 24%) minmax(0, 1fr);
+  gap: 8px;
+  padding: 24px 28px;
+  background: var(--db-canvas);
+}
+html.dark .ux-reference {
+  --soc-canvas: var(--db-canvas);
+  --soc-nav: var(--db-surface);
+  --soc-surface: var(--db-surface);
+  --soc-elevated: #1b2941;
+  --soc-hover: #243550;
+  --soc-border: var(--db-border);
+  --soc-border-muted: var(--db-border);
+  --soc-ink: var(--db-ink);
+  --soc-body: #c4cee1;
+  --soc-muted: var(--db-muted);
+  --soc-blue: var(--db-blue);
+  --soc-blue-strong: var(--db-blue);
+  --soc-blue-tint: var(--db-blue-tint);
+}
+.ux-reference .sidebar { top: 24px; min-height: calc(100vh - 48px); max-height: calc(100vh - 48px); border-radius: 26px; }
+.ux-reference .main { overflow: visible; border: 0; border-radius: 0; background: transparent; }
+.ux-reference .topbar { min-height: 92px; justify-content: flex-end; margin-bottom: 18px; padding: 16px 32px; border: 0; border-radius: 18px; background: var(--soc-surface); box-shadow: var(--db-shadow); }
+.ux-reference .content { padding: 0 28px 32px; }
+.ux-reference .source-eyebrow { color: var(--db-blue); font: 750 12px/1.3 var(--cti-display); letter-spacing: .09em; }
+.ux-reference .header { margin: 0 0 14px; }
+.ux-reference .header h1,
+.ux-reference .editorial-heading h1,
+.ux-reference .source-heading h1,
+.ux-reference .ti-workspace-heading h1 { max-width: 900px; margin: 8px 0 5px; font: 700 clamp(29px, 2.5vw, 38px)/1.12 Georgia, "Times New Roman", serif; letter-spacing: -.035em; }
+.ux-reference .header h1,
+.ux-reference .editorial-heading h1 { color: var(--soc-ink); }
+.ux-reference .header p,
+.ux-reference .editorial-heading p,
+.ux-reference .source-heading p,
+.ux-reference .ti-workspace-heading p { max-width: 700px; margin: 0; color: var(--soc-muted); font-size: 15px; line-height: 1.45; }
+.ux-reference .editorial-section-heading { margin-bottom: 16px; }
+.ux-reference .editorial-section-heading h2 { margin: 3px 0; font-size: 23px; line-height: 1.25; letter-spacing: -.025em; }
+.ux-reference .editorial-section-heading p { margin: 4px 0 0; font-size: 14px; }
+.ux-reference .editorial-metrics,
+.ux-reference .ti-phase2a .editorial-metrics { gap: 18px; margin: 18px 0 22px; border: 0; }
+.ux-reference .editorial-metrics > div { min-height: 124px; padding: 24px 25px; border: 1px solid var(--soc-border); border-radius: 17px; background: var(--soc-surface); box-shadow: var(--db-shadow); }
+.ux-reference .editorial-metrics > div:first-child,
+.ux-reference .editorial-metrics > div:nth-child(3) { padding-left: 25px; }
+.ux-reference .editorial-metrics span { color: var(--soc-body); font-size: 13px; }
+.ux-reference .editorial-metrics strong { margin-top: 15px; font-size: 39px; letter-spacing: -.04em; }
+.ux-reference .editorial-metrics .editorial-text-metric { font-size: 27px; }
+.ux-reference .editorial-feature { min-height: 150px; margin: 0 0 18px; padding: 26px 30px; border-radius: 17px; background: var(--soc-surface); box-shadow: var(--db-shadow); }
+.ux-reference .editorial-feature h2 { margin: 8px 0; font: 700 26px/1.2 var(--cti-display); letter-spacing: -.025em; }
+.ux-reference .editorial-feature p { margin: 0; font-size: 13px; line-height: 1.4; }
+.ux-reference .editorial-type-map { display: flex; justify-content: flex-end; }
+.ux-reference .editorial-type-map > div { min-width: 190px; background: var(--soc-surface); }
+.ux-reference .ti-entity-list { gap: 16px; }
+.ux-reference .ti-entity-card { min-height: 174px; padding: 24px !important; border-radius: 17px !important; box-shadow: var(--db-shadow) !important; }
+.ux-reference .ti-entity-card header strong { font-size: 18px; letter-spacing: -.02em; }
+.ux-reference .ti-entity-card p { min-height: 45px; color: var(--soc-muted); font-size: 13px; line-height: 1.35; }
+.ux-reference .ti-entity-meta { padding-top: 12px; border-top: 1px solid var(--soc-border-muted); font-size: 11px; }
+.ux-reference .ti-workflow-heading { margin-top: 20px; }
+.ux-reference .ti-workflows a { padding: 20px 24px; border-radius: 15px; }
+.ux-reference .source-heading { display: flex; justify-content: space-between; align-items: center; gap: 20px; margin-bottom: 20px; }
+.ux-reference .ti-workspace-heading { margin-bottom: 18px; }
+.ux-reference .source-table-card,
+.ux-reference .case-inventory { padding: 0 !important; overflow: hidden !important; border-radius: 17px !important; box-shadow: var(--db-shadow) !important; }
+.ux-reference .ioc-filters,
+.ux-reference .case-filters { margin: 0 !important; padding: 20px 25px; border-bottom: 1px solid var(--soc-border); }
+.ux-reference .ioc-filters input,
+.ux-reference .ioc-filters select,
+.ux-reference .case-filters input,
+.ux-reference .case-filters select { min-height: 44px; border-radius: 10px !important; background: var(--soc-elevated) !important; }
+.ux-reference .cti-table-wrap,
+.ux-reference .ti-phase2a .cti-table-wrap { overflow-x: auto; border: 0; border-radius: 0; }
+.ux-reference .cti-table th,
+.ux-reference .case-table th { background: var(--soc-elevated) !important; color: #96a6bd !important; font: 700 11px var(--cti-display) !important; letter-spacing: .08em; }
+.ux-reference .cti-table td,
+.ux-reference .case-table td { color: var(--soc-body); font-size: 13px; }
+.ux-reference .source-pagination,
+.ux-reference .case-pagination { margin: 0; padding: 18px 25px; background: var(--soc-elevated); }
+.ux-reference .case-heading-row { align-items: center; }
+.ux-reference .case-heading-row .editorial-heading { margin-bottom: 0; }
+.ux-reference .case-action,
+.ux-reference .ti-workspace-heading button[role="button"] { background: var(--db-blue); color: #fff; }
+.ux-reference .case-metrics { margin-bottom: 20px; }
+.ux-reference .case-activity { display: block; margin-bottom: 18px; padding: 28px 30px; border-radius: 17px; background: var(--soc-surface); box-shadow: var(--db-shadow); }
+.ux-reference .case-activity h2 { margin: 4px 0; font: 700 23px var(--cti-display); letter-spacing: -.025em; }
+.ux-reference .case-activity p { margin: 0 0 16px; font-size: 14px; }
+.ux-reference .case-activity-items a { grid-template-columns: 130px minmax(0, 1fr) auto; background: var(--soc-elevated); }
+.ux-reference .case-activity-items small,
+.ux-reference .case-badge,
+.ux-reference .ioc-severity,
+.ux-reference .cti-status { border-radius: 999px; }
+.ux-reference .case-inventory .case-table-wrap { overflow-x: auto; }
+.ux-reference .ti-phase2a { max-width: none; }
+.ux-reference .ti-phase2a .source-table-card { padding: 0 !important; }
+.ux-reference .ti-phase2a .ioc-filters { margin: 0 !important; }
+.ux-reference .candidate-type { border-radius: 8px; }
+@media (max-width: 1000px) {
+  .ux-reference { grid-template-columns: 220px minmax(0, 1fr); padding: 14px; }
+  .ux-reference .content { padding: 0 16px 24px; }
+  .ux-reference .editorial-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 900px) {
+  .ux-reference { display: block; }
+  .ux-reference .sidebar { position: relative; top: 0; min-height: 0; max-height: none; margin-bottom: 12px; }
+  .ux-reference .topbar { min-height: 60px; }
+}
+@media (max-width: 600px) {
+  .ux-reference { padding: 8px; }
+  .ux-reference .content { padding: 0 10px 24px; }
+  .ux-reference .source-heading,
+  .ux-reference .case-heading-row { align-items: flex-start; flex-direction: column; }
+  .ux-reference .editorial-metrics { gap: 8px; }
+  .ux-reference .editorial-metrics > div { min-height: 100px; padding: 16px !important; }
+  .ux-reference .editorial-metrics strong { font-size: 30px; }
+  .ux-reference .editorial-feature { grid-template-columns: 1fr; }
+  .ux-reference .ti-entity-list,
+  .ux-reference .ti-workflows { grid-template-columns: 1fr; }
+  .ux-reference .case-activity-items a { grid-template-columns: 1fr auto; }
+  .ux-reference .case-activity-items a span { grid-column: 1 / -1; }
+}
+
+/* Overview and candidate composition from the reference packet. */
+.ux-reference .ti-entity-card header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ux-reference .ti-entity-card header span { flex: none; padding: 4px 11px; border-radius: 999px; background: #fff1bf; color: #ba6509; font: 650 12px var(--cti-display); text-transform: capitalize; }
+.ux-reference .ti-entity-card p { margin: 14px 0 12px; }
+.ux-reference .ti-entity-list .ti-entity-card p { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 36px; }
+.ux-reference .ti-entity-meta { gap: 8px; }
+.ux-reference .ti-entity-meta span:first-child { color: var(--db-blue); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.ux-reference .ti-entity-meta span + span::before { content: '·'; margin-right: 8px; color: var(--soc-muted); }
+.ux-reference .ti-workflows a { display: grid; grid-template-columns: 1fr 34px; gap: 0 12px; align-items: center; padding: 18px 22px; }
+.ux-reference .ti-workflows a strong { grid-column: 1; color: var(--soc-ink); font-size: 15px; }
+.ux-reference .ti-workflows a small { grid-column: 1; margin-top: 2px; color: var(--soc-muted); font-size: 13px; font-weight: 400; }
+.ux-reference .ti-workflows a > span { grid-column: 2; grid-row: 1 / 3; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--db-blue-tint); color: var(--db-blue); font-size: 19px; }
+.ux-effectiveness-disclosure { max-width: 1560px; margin: 24px auto 0; color: var(--soc-body); }
+.ux-effectiveness-disclosure > summary { display: inline-flex; align-items: center; min-height: 36px; padding: 6px 12px; border: 1px solid var(--soc-border); border-radius: 9px; background: var(--soc-surface); color: var(--soc-body); font-size: 12px; cursor: pointer; }
+.ux-effectiveness-disclosure[open] > summary { margin-bottom: 20px; }
+.ux-reference:has(.candidate-value) .cti-table-wrap { border: 1px solid var(--soc-border); border-radius: 18px; background: var(--soc-surface); }
+.ux-reference:has(.candidate-value) .cti-table { min-width: 870px; }
+.ux-reference:has(.candidate-value) .cti-table th,
+.ux-reference:has(.candidate-value) .cti-table td { padding: 18px 20px !important; }
+.ux-reference:has(.candidate-value) .cti-table td:first-child { min-width: 290px; }
+.ux-reference:has(.candidate-value) .ioc-actions { display: flex; flex-wrap: nowrap; gap: 8px; white-space: nowrap; }
+.ux-reference:has(.candidate-value) .ioc-actions svg { display: none; }
+.ux-reference:has(.candidate-value) .ioc-actions button { min-height: 36px; padding: 7px 14px; border-radius: 8px; font-size: 13px; }
+.ux-reference:has(.candidate-value) .candidate-value { font: 650 13px var(--cti-display); }
+.ux-reference:has(.candidate-value) .candidate-confidence { border: 0; background: transparent; color: var(--soc-ink); }
+.ux-reference:has(.candidate-value) .ioc-actions .soc-button-destructive { background: #ffe1e1; color: #cf3030; }
+.ux-candidate-count { padding: 16px 20px; border-top: 1px solid var(--soc-border-muted); background: var(--soc-elevated); color: var(--soc-body); font-size: 13px; }
+html.dark .ux-reference .ti-entity-card header span { background: #664d1d; color: #ffe5a3; }
+html.dark .ux-reference:has(.candidate-value) .ioc-actions .soc-button-destructive { background: #5d2d35; color: #ffb8bd; }
+
+/* Refinements measured against the five desktop captures. */
+.ux-reference .sidebar .brand { justify-content: flex-start; padding-left: 8px; font-size: 16px; }
+.ux-reference .sidebar-navigation { gap: 8px; }
+.ux-reference .sidebar-link,
+.ux-reference .sidebar-module-toggle,
+.ux-reference .sidebar-submenu a { font: 500 14px/1.35 var(--cti-display); }
+.ux-reference .sidebar-module.active > .sidebar-module-toggle { background: #f0f4f9; color: var(--soc-ink); }
+.ux-reference .sidebar-submenu { padding-left: 14px; }
+.ux-reference .sidebar-submenu .sidebar-link > svg { display: none; }
+.ux-reference .sidebar-submenu .sidebar-link { padding-left: 15px; }
+.ux-reference .sidebar-footer .theme-options { display: flex; justify-content: center; }
+.ux-reference .sidebar-footer .theme-options button:first-child { order: 2; }
+.ux-reference .sidebar-footer .theme-options button:nth-child(2) { order: 1; }
+.ux-reference .sidebar-footer .theme-options button:first-child { font-size: 0; }
+.ux-reference .sidebar-footer .theme-options button:first-child::after { content: 'Dark'; font-size: 13px; }
+.ux-reference .sidebar-footer .theme-options button:nth-child(2) { font-size: 0; }
+.ux-reference .sidebar-footer .theme-options button:nth-child(2)::after { content: 'Light'; font-size: 13px; }
+.ux-reference .sidebar-footer .theme-options button svg { flex: none; }
+.ux-reference .topbar { min-height: 88px; }
+.ux-account-area { display: flex; align-items: center; gap: 14px; }
+.ux-account-area > select { max-width: 210px; }
+.ux-account-divider { width: 1px; height: 28px; background: var(--soc-border); }
+.ux-account { position: relative; color: var(--soc-ink); }
+.ux-account summary { display: flex; align-items: center; gap: 10px; list-style: none; cursor: pointer; }
+.ux-account summary::-webkit-details-marker { display: none; }
+.ux-avatar { display: grid; place-items: center; width: 40px; height: 40px; flex: none; border-radius: 50%; background: #ff7415; color: #fff; font-weight: 750; }
+.ux-account-copy { display: grid; gap: 0; min-width: 130px; }
+.ux-account-copy strong { color: var(--soc-ink); font-size: 14px; line-height: 1.25; }
+.ux-account-copy small { color: var(--soc-muted); font-size: 12px; line-height: 1.25; }
+.ux-account-menu { position: absolute; z-index: 20; top: calc(100% + 10px); right: 0; min-width: 165px; padding: 7px; border: 1px solid var(--soc-border); border-radius: 12px; background: var(--soc-surface); box-shadow: var(--db-shadow); }
+.ux-account-menu button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 9px; border: 0; border-radius: 7px; background: transparent; color: var(--soc-ink); text-align: left; cursor: pointer; }
+.ux-account-menu button:hover { background: var(--soc-elevated); }
+.ux-reference .editorial-section-heading h2,
+.ux-reference .case-activity h2 { font-weight: 700; }
+.ux-reference .case-activity-items small { padding: 4px 9px; border-radius: 999px; background: #dceaff; color: #2865ec; font-size: 12px; font-weight: 650; text-transform: none; }
+.ux-reference .case-activity-items small.case-status-in_progress { background: #fff1bf; color: #a75b03; }
+.ux-reference .case-badge,
+.ux-reference .ioc-severity,
+.ux-reference .cti-status { padding: 4px 10px; border: 0; font: 650 12px/1.25 var(--cti-display); text-transform: capitalize; }
+.ux-reference .case-status-open,
+.ux-reference .case-priority-low { background: #dceaff; color: #2865ec; }
+.ux-reference .case-status-in_progress,
+.ux-reference .case-priority-medium,
+.ux-reference .ioc-severity.severity-medium { background: #fff1bf; color: #ba6509; }
+.ux-reference .cti-status.is-active { background: #d8fae5 !important; color: #15964a !important; }
+.ux-reference .ioc-filters select,
+.ux-reference .case-filters select { padding-right: 36px !important; background-color: var(--soc-surface) !important; background-position: right 14px center !important; background-repeat: no-repeat !important; background-size: 14px 14px !important; }
+.ux-reference .ioc-filters input,
+.ux-reference .case-filters input { font: 500 13px var(--cti-display); }
+.ux-reference .source-table-card .ioc-actions { display: flex; flex-wrap: nowrap; gap: 5px; white-space: nowrap; }
+.ux-reference .source-table-card .ioc-actions button { padding-inline: 8px; }
+.ux-reference .source-table-card .ioc-actions .soc-button-destructive,
+.ux-reference .source-table-card .ioc-actions .soc-button-flat-danger { background: #ffe1e1; border-color: #ffc6c6; color: #d62e30; }
+.ux-reference .source-table-card .ioc-actions .soc-button-destructive:hover { background: #ffd0d0; }
+.ux-reference .source-table-card .cti-table th,
+.ux-reference .source-table-card .cti-table td { padding: 15px 12px !important; }
+.ux-reference .source-table-card .cti-table td { line-height: 1.35; }
+.ux-reference .source-heading .soc-button-primary,
+.ux-reference .ti-workspace-heading .soc-button-primary { min-height: 44px; padding-inline: 22px; border-radius: 999px; background: var(--db-blue); color: #fff; box-shadow: 0 6px 13px rgba(40, 101, 236, .2); }
+.ux-reference .source-heading .soc-button-outline { min-height: 44px; padding-inline: 20px; border-radius: 999px; background: var(--soc-surface); }
+.ux-reference .ti-workspace-heading h1 { font-size: clamp(29px, 2.25vw, 34px); }
+.ux-reference .header h1 { max-width: 570px; }
+.ux-reference .candidate-type { padding: 5px 10px; background: #f0f5fb; color: var(--soc-body); font: 650 12px var(--cti-display); }
+html.dark .ux-reference .candidate-type { background: var(--soc-elevated); color: var(--soc-body); }
+.ux-reference .candidate-confidence { font: 600 13px var(--cti-display); }
+.ux-reference .candidate-review .ioc-actions .soc-button-primary,
+.ux-reference .cti-table .ioc-actions .soc-button-primary { background: #d9fae6; border-color: #b7f2cc; color: #168d43; }
+@media (max-width: 900px) {
+  .ux-reference .sidebar-submenu { padding-left: 0; }
+  .ux-reference .sidebar-submenu .sidebar-link { padding-left: 12px; }
+  .ux-reference .source-table-card .cti-table { min-width: 850px; }
+}
+@media (max-width: 600px) {
+  .ux-account-copy { min-width: 0; }
+  .ux-account-copy strong { font-size: 12px; }
+  .ux-account-copy small { max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
+  .ux-reference .topbar { min-height: 65px; padding: 12px; }
+}
+
+/* UX6: final spacing and table refinements against the supplied references. */
+@media (min-width: 901px) {
+  .ux-reference .sidebar { display: flex; flex-direction: column; overflow: hidden; }
+  .ux-reference .sidebar-navigation { min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; scrollbar-color: var(--soc-border) transparent; }
+  .ux-reference .sidebar-footer { flex: none; margin-top: 12px; }
+}
+.ux-reference .sidebar-link,
+.ux-reference .sidebar-module-toggle,
+.ux-reference .sidebar-submenu a { font-weight: 450; }
+.ux-reference .content { padding-top: 2px; }
+.ux-reference .case-heading-row .editorial-heading h1 { font-size: clamp(29px, 2.3vw, 35px); font-weight: 600; }
+.ux-reference .case-metrics { margin-top: 16px; }
+.ux-reference .case-inventory .case-pagination { border-top: 1px solid var(--soc-border-muted); }
+.ux-reference .ti-entity-card { min-height: 168px; padding: 22px 24px !important; }
+.ux-reference .ti-entity-card header strong { font-weight: 650; }
+.ux-reference .ti-entity-card p { margin: 12px 0; line-height: 1.4; }
+.ux-reference .ti-entity-list .ti-entity-card p { -webkit-line-clamp: 3; }
+.ux-reference:has(.candidate-value) .cti-table th,
+.ux-reference:has(.candidate-value) .cti-table td { padding: 13px 16px !important; }
+.ux-reference:has(.candidate-value) .candidate-value { font-weight: 600; }
+.ux-reference .ux-campaign-empty-header { display: grid; grid-template-columns: 13% 14% 10% 12% 12% 12% 15% 12%; gap: 0; padding: 15px 12px; background: var(--soc-elevated); color: #96a6bd; font: 700 11px var(--cti-display); letter-spacing: .08em; text-transform: uppercase; }
+.ux-reference .ux-campaign-empty-header span { padding-inline: 8px; }
+.ux-reference .ux-campaign-empty .source-state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 135px; padding: 24px; border-top: 1px solid var(--soc-border); text-align: center; }
+.ux-reference .ux-campaign-empty .source-state strong { font-size: 15px; }
+.ux-reference .ux-campaign-empty .source-state span { font-size: 13px; }
+@media (min-width: 1100px) {
+  .ux-reference:has(.candidate-value) .cti-table { table-layout: fixed; }
+  .ux-reference:has(.candidate-value) .cti-table th:nth-child(1) { width: 33%; }
+  .ux-reference:has(.candidate-value) .cti-table th:nth-child(2) { width: 11%; }
+  .ux-reference:has(.candidate-value) .cti-table th:nth-child(3) { width: 12%; }
+  .ux-reference:has(.candidate-value) .cti-table th:nth-child(4) { width: 15%; }
+  .ux-reference:has(.candidate-value) .cti-table th:nth-child(5) { width: 10%; }
+  .ux-reference:has(.candidate-value) .cti-table th:nth-child(6) { width: 19%; }
+  .ux-reference:has(.candidate-value) .cti-table td:first-child { min-width: 0; }
+}
+@media (max-width: 900px) {
+  .ux-reference .ux-campaign-empty-header { display: none; }
+}
+
+/* Threat Actors directory: one column contract for header and body. */
+.ux-reference .ux-actor-directory .actor-filters { display: grid; align-items: center; gap: 12px; }
+.ux-reference .ux-actor-directory .actor-filters > * { width: 100%; min-width: 0; }
+.ux-reference .ux-actor-directory .cti-table { width: 100%; table-layout: fixed; }
+.ux-reference .ux-actor-directory .cti-table th,
+.ux-reference .ux-actor-directory .cti-table td { padding: 15px 8px !important; vertical-align: middle; }
+.ux-reference .ux-actor-directory .cti-table th:first-child,
+.ux-reference .ux-actor-directory .cti-table td:first-child { padding-left: 24px !important; }
+.ux-reference .ux-actor-directory .cti-table th { height: 50px; font-size: 11px !important; letter-spacing: .045em; white-space: nowrap; overflow-wrap: normal; }
+.ux-reference .ux-actor-directory .cti-table td { font-size: 13px; line-height: 1.3; overflow-wrap: normal; }
+.ux-reference .ux-actor-directory .cti-table td:first-child .source-name { color: var(--db-blue); font-size: 13px; font-weight: 650; line-height: 1.25; text-align: left; white-space: normal; }
+.ux-reference .ux-actor-directory .ux-actor-aliases { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; font-size: 12px; line-height: 1.25; }
+.ux-reference .ux-actor-directory .ioc-severity,
+.ux-reference .ux-actor-directory .cti-status { padding: 5px 10px; font-size: 12px; line-height: 1; white-space: nowrap; overflow-wrap: normal; }
+.ux-reference .ux-actor-directory .ioc-actions { justify-content: flex-end; gap: 7px; }
+.ux-reference .ux-actor-directory .ioc-actions button { min-height: 34px; padding-inline: 7px; font-size: 13px; font-weight: 600; }
+.ux-reference .ux-actor-directory .ioc-actions .soc-button-destructive { min-width: 57px; }
+.ux-reference .ux-actor-directory .cti-table th:last-child { text-align: right; padding-right: 24px !important; }
+.ux-reference .ux-actor-directory .cti-table td:last-child { padding-right: 24px !important; }
+.ux-reference .ux-actor-directory .source-pagination { border-top: 1px solid var(--soc-border-muted); }
+@media (min-width: 901px) {
+  .ux-reference:has(.ux-actor-workspace) .sidebar { height: calc(100vh - 48px); min-height: 0; }
+  .ux-reference:has(.ux-actor-workspace) .sidebar-navigation { flex: 1 1 auto; }
+  .ux-reference:has(.ux-actor-workspace) .sidebar-footer { margin-top: auto; }
+  .ux-reference .ux-actor-workspace .editorial-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
+  .ux-reference .ux-actor-workspace .editorial-metrics > div { min-width: 0; min-height: 130px; padding: 23px 24px; }
+  .ux-reference .ux-actor-workspace .editorial-metrics span { display: block; font-size: 13px; white-space: nowrap; }
+  .ux-reference .ux-actor-workspace .editorial-metrics strong { margin-top: 13px; }
+  .ux-reference .ux-actor-directory .actor-filters select { white-space: nowrap; text-overflow: clip; }
+  .ux-reference .ux-actor-directory .cti-table td { height: 65px; }
+}
+@media (min-width: 1250px) {
+  .ux-reference .ux-actor-directory .actor-filters { grid-template-columns: 2.2fr 1fr 1fr .95fr .95fr 1.5fr; }
+  .ux-reference .ux-actor-directory .cti-table { min-width: 0; }
+  .ux-reference .ux-actor-directory .cti-table th:nth-child(1) { width: 12%; }
+  .ux-reference .ux-actor-directory .cti-table th:nth-child(2) { width: 16%; }
+  .ux-reference .ux-actor-directory .cti-table th:nth-child(3) { width: 8%; }
+  .ux-reference .ux-actor-directory .cti-table th:nth-child(4) { width: 8%; }
+  .ux-reference .ux-actor-directory .cti-table th:nth-child(5) { width: 11%; }
+  .ux-reference .ux-actor-directory .cti-table th:nth-child(6) { width: 9%; }
+  .ux-reference .ux-actor-directory .cti-table th:nth-child(7) { width: 9%; }
+  .ux-reference .ux-actor-directory .cti-table th:nth-child(8) { width: 8%; }
+  .ux-reference .ux-actor-directory .cti-table th:nth-child(9) { width: 19%; }
+}
+@media (min-width: 901px) and (max-width: 1249px) {
+  .ux-reference .ux-actor-directory .actor-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ux-reference .ux-actor-directory .cti-table { min-width: 980px; }
+}
+@media (min-width: 901px) {
+  .ux-reference:has(.ux-actor-workspace) .sidebar-navigation { gap: 5px; }
+  .ux-reference:has(.ux-actor-workspace) .sidebar-link,
+  .ux-reference:has(.ux-actor-workspace) .sidebar-module-toggle,
+  .ux-reference:has(.ux-actor-workspace) .sidebar-submenu a { min-height: 38px; padding-block: 8px; }
+}
+@media (max-width: 900px) {
+  .ux-reference .ux-actor-directory .actor-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ux-reference .ux-actor-directory .cti-table { table-layout: auto; min-width: 0 !important; }
+  .ux-reference .ux-actor-directory .cti-table td { padding: 8px 0 !important; }
+  .ux-reference .ux-actor-directory .cti-table td:first-child { padding-left: 0 !important; }
+  .ux-reference .ux-actor-directory .cti-table td:nth-child(4)::before { content: 'Country'; }
+  .ux-reference .ux-actor-directory .cti-table td:last-child { padding-right: 0 !important; }
+  .ux-reference .ux-actor-directory .ioc-actions { justify-content: flex-start; }
+}
+@media (max-width: 600px) {
+  .ux-reference .ux-actor-directory .actor-filters { grid-template-columns: 1fr; }
+}
+
+/* At tablet width, use the existing labeled record layout for actionable tables. */
+@media (max-width: 900px) {
+  .ux-reference:has(.candidate-value) .cti-table-wrap,
+  .ux-reference .ti-phase2a .source-table-card .cti-table-wrap { overflow: visible; }
+  .ux-reference:has(.candidate-value) .cti-table,
+  .ux-reference .ti-phase2a .source-table-card .cti-table { width: 100%; min-width: 0; }
+  .ux-reference:has(.candidate-value) .cti-table td:first-child { min-width: 0; }
+  .ux-reference:has(.candidate-value) .cti-table td { padding: var(--cti-ti-space-xs) 0 !important; }
+  .ux-reference:has(.candidate-value) .ioc-actions,
+  .ux-reference .ti-phase2a .source-table-card .ioc-actions { flex-wrap: wrap; white-space: normal; }
+  .ux-reference .ti-phase2a .source-table-card .cti-table td { padding: 10px 0 !important; }
+}

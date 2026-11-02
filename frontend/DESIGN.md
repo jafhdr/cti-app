@@ -1,5 +1,23 @@
 # CTI administration design contract
 
+## Five workspace reference screens (ux.md)
+
+The Cases, Threat Intelligence Overview, IOC Candidates, Threat Actors, and Campaigns routes follow the supplied Figma references. The scoped `ux-reference` shell uses a pale blue canvas, floating navigation and topbar, serif headings, rounded metric and content cards, muted table headers, and compact status chips. `app/reference-ux.css` contains the surface tokens and responsive rules. Existing navigation keeps its access, theme, and expansion behavior; API responses remain the source for metrics and rows. Dark mode retains the same layout with semantic dark colors. Tablet metrics use two columns; mobile headings and actions stack while wide tables scroll within their panel.
+
+The topbar reuses the functional notification bell with the current role and tenant. Overview cards show concise excerpts from API descriptions and preserve the full text in accessible context; effectiveness metrics remain in a disclosure. Recent Case status colors follow each record's status. IOC Candidates retains API actions and count, and Threat Actors retains the precision refinements. The reference presentation applies only to these five routes.
+
+## Case V2 operational reporting
+
+The Case Management page adds a read-only reporting section within the existing editorial hierarchy. It uses the existing `--soc-*` palette, KPI strip, Case table, native labeled filters, outlined buttons, and Case detail links. Scoped `case-report` layout uses 16px gaps and a two-column information grid that becomes one column below 900px. Tables scroll within their own surface; controls stack on mobile. Status, origin, review, and missing historical data always use text labels. An unavailable entitlement hides the reporting panel; loading, empty, and error states are explicit. No new motion or runtime dependency is introduced.
+
+## ASM V2 operational reporting
+
+The operations route uses the existing ASM shell and semantic `--soc-*` surfaces. Its scoped `--asm-ops-*` tokens define an 8/12/16/24px spacing rhythm, 8/12px control and card radii, 40px control height, 11px record labels, bounded copy width, and responsive metric type. Review and observation counts remain separate labeled dimensions; the P1-C priority appears separately from V1 Risk Posture. Metric cards wrap from three desktop columns to two tablet columns and one mobile column. The asset table becomes labeled records at 900px and below, with DOM labels matching each field. Native filter controls, visible loading/denial/empty states, cursor pagination and guarded links lead to the existing review queue and asset detail. No chart or new decision workflow is introduced. Text states distinguish NOT_ASSESSED from LOW and explain that an observed OPEN service is not proven public reachability.
+
+## ASM V2 correlation review
+
+The Asset Detail vulnerability section keeps machine confidence, observation state and analyst review as separate text labels. Its review panel uses the existing editorial section heading, semantic `--soc-*` surface and border tokens, and shared Button. Reason and evidence-inspection controls are labeled; a confirmation precedes mutation. The queue uses existing ASM navigation and a row link to the exact asset/correlation. At widths up to 900px, queue and vulnerability tables become labeled record cards with labels matching their data columns. The decision form stacks and evidence hashes wrap. Disabled rollout and missing reviewer grant leave the evidence readable while hiding mutation controls. Decisions display actor, timestamp, reason and resulting revision.
+
 ## AppSec operational reporting
 
 The AppSec Finding workspace adds a read-only operational view using the existing editorial heading, outlined cards, shared buttons, and `--soc-*` colors. A reporting period and UTC as-of time precede the metrics. Status totals are separate from overlapping workload counts. Owner groups use safe display names, with a distinct Unassigned label. The queue shares the period and owner scope with the metrics; status, priority, verification and overdue filters refine only the queue. Labels and counts remain textual. Cards use existing 8/12/16/24px spacing rhythms and stack from desktop columns to one column on mobile. Loading clears stale totals, empty results remain distinct from errors, and tenant changes reset report state.

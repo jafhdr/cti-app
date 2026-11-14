@@ -185,6 +185,9 @@ test('Given an authorized tenant admin, when a case is created, updated, and del
   let currentCase = { ...baseCase, title: 'Initial', priority: 'MEDIUM', status: 'OPEN', severity: 'MEDIUM' };
   const prisma = {
     tenant: { findUnique: async () => ({ id: actor.tenantId }) },
+    caseOrigin: { findUnique: async () => null },
+    caseEvidenceRevision: { count: async () => 0 },
+    caseReviewRequest: { count: async () => 0 },
     case: {
       count: async () => 0,
       findFirst: async () => currentCase,

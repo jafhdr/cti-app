@@ -55,8 +55,8 @@ export class DashboardNotificationsService {
         route: Prisma.sql`'/cases/' || n."resourceId" || ${context}`, resource: Prisma.sql`EXISTS (SELECT 1 FROM "Case" c WHERE c.id = n."resourceId" AND c."tenantId" = n."tenantId")` },
       { enabled: p.appsec, module: 'APPSEC', label: 'AppSec', kind: 'APPSEC_FINDING', title: 'Finding notification', types: ['APPSEC_FINDING_CREATED_HIGH_RISK','APPSEC_FINDING_REOPENED'],
         route: Prisma.sql`'/appsec/findings/' || n."resourceId" || ${context}`, resource: Prisma.sql`EXISTS (SELECT 1 FROM "AppSecFinding" f WHERE f.id = n."resourceId" AND f."tenantId" = n."tenantId")` },
-      { enabled: p.ti, module: 'THREAT_INTELLIGENCE', label: 'TI', kind: 'INDICATOR', title: 'Enrichment notification', types: ['INDICATOR_ENRICHMENT_COMPLETED','INDICATOR_ENRICHMENT_FAILED','INDICATOR_RISK_CHANGED'],
-        route: Prisma.sql`CASE WHEN n.type = 'INDICATOR_RISK_CHANGED' THEN '/indicators?indicatorId=' || n."resourceId" ELSE '/indicators' END`,
+      { enabled: p.ti, module: 'THREAT_INTELLIGENCE', label: 'TI', kind: 'INDICATOR', title: 'Threat intelligence notification', types: ['INDICATOR_ENRICHMENT_COMPLETED','INDICATOR_ENRICHMENT_FAILED','INDICATOR_RISK_CHANGED','THREAT_CORRELATION_DETECTED'],
+        route: Prisma.sql`CASE WHEN n.type = 'THREAT_CORRELATION_DETECTED' THEN '/threat-intelligence/correlations' WHEN n.type = 'INDICATOR_RISK_CHANGED' THEN '/indicators?indicatorId=' || n."resourceId" ELSE '/indicators' END`,
         resource: Prisma.sql`EXISTS (SELECT 1 FROM "Indicator" i WHERE i.id = n."resourceId" AND i."tenantId" = n."tenantId")` },
       { enabled: p.ti, module: 'THREAT_INTELLIGENCE', label: 'TI', kind: 'TENANT', title: 'Synchronization notification', types: ['TI_SYNC_COMPLETED','TI_SYNC_FAILED'],
         route: Prisma.sql`CASE WHEN n.route = '/threat-intelligence/mitre-attack' THEN '/threat-intelligence/mitre-attack' ELSE '/threat-intelligence/feeds' END`,
@@ -66,7 +66,7 @@ export class DashboardNotificationsService {
         resource: Prisma.sql`EXISTS (SELECT 1 FROM "Tenant" t WHERE t.id = n."resourceId" AND t.id = n."tenantId" AND t."isActive" = true)` },
     ];
     for (const source of shared) if (source.enabled) sources.push(Prisma.sql`
-      SELECT 'shared:' || n.id AS id, CASE WHEN n.type = 'INDICATOR_RISK_CHANGED' THEN 'Indicator Risk Increased'
+      SELECT 'shared:' || n.id AS id, CASE WHEN n.type = 'THREAT_CORRELATION_DETECTED' THEN 'Threat Correlation Detected' WHEN n.type = 'INDICATOR_RISK_CHANGED' THEN 'Indicator Risk Increased'
         WHEN n.type = 'TI_SYNC_COMPLETED' THEN 'Threat Intelligence Synced'
         WHEN n.type = 'TI_SYNC_FAILED' THEN 'Threat Intelligence Sync Needs Attention' ELSE ${source.title} END::text AS title, n.preview, n.priority AS severity,
         ${source.label}::text AS "sourceModule", n.type, n."eventAt" AT TIME ZONE 'UTC' AS "createdAt", n."eventAt" AT TIME ZONE 'UTC' AS "eventAt", 'UTC_VERIFIED'::text AS "timestampProvenance", r."readAt" AT TIME ZONE 'UTC' AS "readAt", ${source.route} AS route

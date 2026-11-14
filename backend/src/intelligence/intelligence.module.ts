@@ -46,11 +46,20 @@ import { MitreThreatActorIngestionScheduler } from './mitre-threat-actor-ingesti
 import { TelegramWorker } from '../telegram/telegram.worker';
 import { IocCandidatesController } from '../telegram/ioc-candidates.controller';
 import { IocCandidatesService } from '../telegram/ioc-candidates.service';
+import { TtpObservationsController } from './ttp-observations.controller';
+import { TtpObservationsService } from './ttp-observations.service';
+import { NextStepController } from './next-step.controller';
+import { NextStepService } from './next-step.service';
+import { CasesModule } from '../cases/cases.module';
+import { MonitoringController } from './monitoring.controller';
+import { MonitoringService } from './monitoring.service';
+import { MonitoringLinksService } from './monitoring-links.service';
+import { MonitoringCollectorService } from './monitoring-collector.service';
 
 @Module({
-  imports: [AuthModule],
-  controllers: [FeedbackFollowUpsController, AssessmentsController, EffectivenessMetricsController, RequirementCoverageController, TraceabilityController, CollectionTasksController, SirsController, PirsController, StakeholdersController, IntelligenceController, SourcesController, ThreatActorsController, CampaignsController, MitreTechniquesController, MalwareToolsController, VulnerabilitiesController, AnalysisReportsController, ReportDisseminationController, ReportsController, IocCandidatesController],
-  providers: [FeedbackFollowUpsService, AssessmentsService, EffectivenessMetricsService, RequirementCoverageService, TraceabilityService, CollectionTasksService, SirEvidenceService, SirsService, PirsService, StakeholdersService, IntelligenceService, SourcesService, ThreatActorsService, CampaignsService, MitreTechniquesService, MalwareToolsService, VulnerabilitiesService, ReportsService, AnalysisReportsService, ReportDisseminationService, MitreAttackStixClient, MitreThreatActorIngestionService, MitreThreatActorIngestionScheduler, IocCandidatesService, TelegramWorker, PrismaService],
+  imports: [AuthModule, CasesModule],
+  controllers: [MonitoringController, NextStepController, TtpObservationsController, FeedbackFollowUpsController, AssessmentsController, EffectivenessMetricsController, RequirementCoverageController, TraceabilityController, CollectionTasksController, SirsController, PirsController, StakeholdersController, IntelligenceController, SourcesController, ThreatActorsController, CampaignsController, MitreTechniquesController, MalwareToolsController, VulnerabilitiesController, AnalysisReportsController, ReportDisseminationController, ReportsController, IocCandidatesController],
+  providers: [MonitoringService, MonitoringLinksService, MonitoringCollectorService, NextStepService, TtpObservationsService, FeedbackFollowUpsService, AssessmentsService, EffectivenessMetricsService, RequirementCoverageService, TraceabilityService, CollectionTasksService, SirEvidenceService, SirsService, PirsService, StakeholdersService, IntelligenceService, SourcesService, ThreatActorsService, CampaignsService, MitreTechniquesService, MalwareToolsService, VulnerabilitiesService, ReportsService, AnalysisReportsService, ReportDisseminationService, MitreAttackStixClient, MitreThreatActorIngestionService, MitreThreatActorIngestionScheduler, IocCandidatesService, TelegramWorker, PrismaService],
   exports: [MitreAttackStixClient],
 })
 export class IntelligenceModule {}

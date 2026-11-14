@@ -196,6 +196,42 @@ enum TlpLevel {
   RED
 }
 
+enum TtpObservationStatus {
+  CANDIDATE
+  CONFIRMED
+  DISPUTED
+  REJECTED
+}
+
+enum TtpTimePrecision {
+  INSTANT
+  HOUR
+  DAY
+  INTERVAL
+}
+
+enum NextStepRunStatus {
+  GENERATED
+  ABSTAINED
+}
+
+enum NextStepReviewKind {
+  DISPOSITION
+  OUTCOME
+}
+
+enum NextStepDisposition {
+  ACCEPT_FOR_INVESTIGATION
+  DISMISSED
+  ALREADY_OBSERVED
+}
+
+enum NextStepOutcome {
+  VERIFIED
+  UNCERTAIN
+  UNOBSERVABLE
+}
+
 enum IntelligenceSourceStatus {
   ACTIVE
   INACTIVE
@@ -286,6 +322,26 @@ enum CaseStatus {
   IN_PROGRESS
   RESOLVED
   CLOSED
+}
+
+enum CaseOriginKind {
+  MANUAL
+  INDICATOR
+  ASM_ALERT
+  ASM_FINDING
+  APPSEC_FINDING
+}
+
+enum CaseTaskState {
+  TODO
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
+enum CaseReviewDecisionKind {
+  APPROVED
+  REJECTED
 }
 
 enum AssetType {
@@ -381,6 +437,27 @@ enum SubscriptionStatus {
 
 model Tenant {
   id                             String                            @id @default(cuid())
+  monitoringWatchlists           MonitoringWatchlist[]
+  monitoringSources              MonitoringSource[]
+  monitoringObservations         MonitoringObservation[]
+  monitoringFindings             MonitoringFinding[]
+  monitoringReviews              MonitoringReview[]
+  monitoringCollectionJobs       MonitoringCollectionJob[]
+  threatEvents                   ThreatEvent[]
+  threatCorrelations             ThreatCorrelation[]
+  ttpObservations                TtpObservation[]
+  ttpObservationReviews          TtpObservationReview[]
+  nextStepRuns                   NextStepRun[]
+  nextStepCandidates             NextStepCandidate[]
+  nextStepReviews                NextStepReview[]
+  playbookDefinitions            PlaybookDefinition[]
+  playbookRuns                   PlaybookRun[]
+  playbookSteps                  PlaybookStep[]
+  playbookDecisions              PlaybookDecision[]
+  playbookReceipts               PlaybookReceipt[]
+  sandboxJobs                    SandboxConnectorJob[]
+  sandboxEvents                  SandboxConnectorEvent[]
+  correlationConnectorCredentials CorrelationConnectorCredential[]
   applications                   Application[]
   appSecFindings                 AppSecFinding[]
   notifications                  Notification[]
@@ -420,6 +497,9 @@ model Tenant {
   campaignMalwareTools           CampaignMalwareTool[]
   vulnerabilities                Vulnerability[]
   assetVulnerabilityCorrelations AssetVulnerabilityCorrelation[]
+  asmV2Enrollment                AsmV2Enrollment?
+  asmCorrelationObservations     AsmCorrelationObservation[]
+  asmCorrelationDecisions        AsmCorrelationDecision[]
   intelligenceReports            IntelligenceReport[]
   reportThreatActors             IntelligenceReportThreatActor[]
   reportCampaigns                IntelligenceReportCampaign[]
@@ -433,6 +513,15 @@ model Tenant {
   intelligenceEntities           IntelligenceEntity[]
   intelligenceRelationships      IntelligenceRelationship[]
   intelligenceCases              Case[]
+  caseOrigins                    CaseOrigin[]
+  caseCreateRequests             CaseCreateRequest[]
+  caseTasks                      CaseTask[]
+  caseHandoffs                   CaseHandoff[]
+  caseEvidenceRevisions          CaseEvidenceRevision[]
+  caseReviewRequests             CaseReviewRequest[]
+  caseReviewDecisions            CaseReviewDecision[]
+  caseClosures                   CaseClosure[]
+  caseReopens                    CaseReopen[]
   caseInvestigationNotes         CaseInvestigationNote[]
   caseEvidence                   CaseEvidence[]
   caseActivities                 CaseActivity[]
@@ -442,6 +531,7 @@ model Tenant {
   assets                         Asset[]
   assetRelationships             AssetRelationship[]
   assetPortServices              AssetPortService[]
+  asmServiceFingerprintObservations AsmServiceFingerprintObservation[]
   assetFindings                  AssetFinding[]
   asmSchedules                   AsmDiscoverySchedule[]
   asmRuns                        AsmDiscoveryRun[]
@@ -575,6 +665,8 @@ model User {
   createdAt               DateTime                @default(now())
   updatedAt               DateTime                @updatedAt
   moduleAccess            UserModuleAccess[]
+  monitoringWatchlistsCreated MonitoringWatchlist[]
+  monitoringReviews MonitoringReview[]
   responsibleStakeholders Stakeholder[]           @relation("StakeholderResponsible")
   createdStakeholders     Stakeholder[]           @relation("StakeholderCreator")
   updatedStakeholders     Stakeholder[]           @relation("StakeholderUpdater")
@@ -585,6 +677,14 @@ model User {
   createdSirs             Sir[]                   @relation("SirCreator")
   updatedSirs             Sir[]                   @relation("SirUpdater")
   createdSirEvidence      SirEvidence[]           @relation("SirEvidenceCreator")
+  ttpObservationsCreated  TtpObservation[]        @relation("TtpObservationCreator")
+  ttpObservationReviews   TtpObservationReview[]  @relation("TtpObservationReviewer")
+  nextStepRunsCreated     NextStepRun[]           @relation("NextStepRunCreator")
+  nextStepReviews         NextStepReview[]        @relation("NextStepReviewer")
+  playbookRunsTriggered   PlaybookRun[]           @relation("PlaybookTrigger")
+  playbookDecisions       PlaybookDecision[]
+  playbookReceipts        PlaybookReceipt[]
+  sandboxJobsRequested SandboxConnectorJob[] @relation("SandboxJobRequester")
   sourceReliabilityAssessments SourceReliabilityAssessment[] @relation("SourceReliabilityAssessor")
   evidenceCredibilityAssessments EvidenceCredibilityAssessment[] @relation("EvidenceCredibilityAssessor")
   assignedCollectionTasks CollectionTask[]        @relation("CollectionTaskResponsible")
@@ -593,8 +693,17 @@ model User {
   authSessions            AuthSession[]
   casesCreated            Case[]                  @relation("CaseCreator")
   casesAssigned           Case[]                  @relation("CaseAssignee")
+  caseTasksAssigned       CaseTask[]              @relation("CaseTaskAssignee")
+  caseTasksCreated        CaseTask[]              @relation("CaseTaskCreator")
   investigationNotes      CaseInvestigationNote[] @relation("CaseNoteAuthor")
   evidenceCreated         CaseEvidence[]          @relation("CaseEvidenceCreator")
+  evidenceRevisionsAuthored CaseEvidenceRevision[] @relation("CaseEvidenceRevisionAuthor")
+  caseReviewsRequested CaseReviewRequest[] @relation("CaseReviewRequestActor")
+  caseReviewsAssigned CaseReviewRequest[] @relation("CaseReviewAssignee")
+  caseReviewDecisions CaseReviewDecision[] @relation("CaseReviewDecisionActor")
+  caseClosuresCreated CaseClosure[] @relation("CaseClosureActor")
+  caseClosuresReviewed CaseClosure[] @relation("CaseClosureReviewer")
+  caseReopensCreated CaseReopen[] @relation("CaseReopenActor")
   asmNotificationReads    AsmNotificationRead[]
   notificationRecipients  NotificationRecipient[]
   authoredAnalysisReports IntelligenceReport[] @relation("AnalysisReportAuthor")
@@ -607,6 +716,7 @@ model User {
   indicatorDecisions IndicatorDecision[] @relation("IndicatorDecisionActor")
   assignedAppSecFindings AppSecFinding[] @relation("AppSecFindingAssignee")
   appSecFindingActions AppSecFindingActionEvent[] @relation("AppSecFindingActionActor")
+  asmCorrelationDecisions AsmCorrelationDecision[] @relation("AsmCorrelationDecisionActor")
 
   @@unique([id, tenantId])
 }
@@ -744,6 +854,7 @@ model SirEvidence {
   analysisReportEvidence IntelligenceReportEvidence[]
   collectionTaskEvidence CollectionTaskEvidence[]
   credibilityAssessments EvidenceCredibilityAssessment[]
+  ttpObservations TtpObservation[]
 
   @@unique([id, tenantId, sirId])
   @@unique([id, tenantId])
@@ -855,6 +966,7 @@ model PasswordResetToken {
 
 model Indicator {
   id                   String                        @id @default(cuid())
+  threatCorrelations   ThreatCorrelation[]
   tenantId             String
   tenant               Tenant                        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   value                String
@@ -909,6 +1021,7 @@ model IndicatorDecision {
 
 model IndicatorSourceObservation {
   id                   String              @id @default(cuid())
+  threatCorrelations   ThreatCorrelation[]
   tenantId             String
   indicatorId          String
   intelligenceSourceId String?
@@ -923,6 +1036,7 @@ model IndicatorSourceObservation {
   intelligenceSource   IntelligenceSource? @relation(fields: [intelligenceSourceId], references: [id], onDelete: SetNull)
 
   @@unique([tenantId, indicatorId, sourceKey])
+  @@unique([id, tenantId])
   @@index([tenantId, indicatorId])
   @@index([tenantId, intelligenceSourceId])
 }
@@ -990,6 +1104,7 @@ model IntelligenceSource {
   telegramPollingState  TelegramPollingState?
   collectionTasks       CollectionTask[]
   reliabilityAssessments SourceReliabilityAssessment[]
+  monitoringSources MonitoringSource[]
 
   @@unique([tenantId, name])
   @@unique([id, tenantId])
@@ -1172,6 +1287,8 @@ model ThreatActor {
   createdAt           DateTime                        @default(now())
   updatedAt           DateTime                        @updatedAt
   campaigns           Campaign[]
+  ttpObservations     TtpObservation[]
+  nextStepRuns        NextStepRun[]
   sirEvidence         SirEvidence[]
   malwareTools        ThreatActorMalwareTool[]
   vulnerabilities     ThreatActorVulnerability[]
@@ -1202,6 +1319,8 @@ model Campaign {
   indicators          CampaignIndicator[]
   sirEvidence         SirEvidence[]
   mitreTechniques     CampaignMitreTechnique[]
+  ttpObservations     TtpObservation[]
+  nextStepRuns        NextStepRun[]
   malwareTools        CampaignMalwareTool[]
   vulnerabilities     CampaignVulnerability[]
   intelligenceReports IntelligenceReportCampaign[]
@@ -1253,6 +1372,7 @@ model Vulnerability {
   affectedVersionExact String?
   source               String?
   correlations         AssetVulnerabilityCorrelation[]
+  asmCorrelationObservations AsmCorrelationObservation[]
   threatActors         ThreatActorVulnerability[]
   campaigns            CampaignVulnerability[]
   malwareTools         MalwareToolVulnerability[]
@@ -1590,6 +1710,8 @@ model MitreTechnique {
   platform    String
   url         String?
   campaigns   CampaignMitreTechnique[]
+  ttpObservations TtpObservation[]
+  nextStepCandidates NextStepCandidate[]
   createdAt   DateTime                 @default(now())
   updatedAt   DateTime                 @updatedAt
 
@@ -1610,6 +1732,278 @@ model CampaignMitreTechnique {
 
   @@id([campaignId, mitreTechniqueId])
   @@index([tenantId, mitreTechniqueId])
+}
+
+model TtpObservation {
+  id String @id @default(cuid())
+  tenantId String
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  idempotencyKey String
+  threatActorId String?
+  threatActor ThreatActor? @relation(fields: [threatActorId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  campaignId String?
+  campaign Campaign? @relation(fields: [campaignId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  mitreTechniqueId String
+  mitreTechnique MitreTechnique @relation(fields: [mitreTechniqueId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  attackVersion String
+  sirEvidenceId String
+  sirEvidence SirEvidence @relation(fields: [sirEvidenceId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  evidenceSnapshot String
+  evidenceDigest String
+  attributionBasis String
+  observedStartAt DateTime
+  observedEndAt DateTime
+  timePrecision TtpTimePrecision
+  ingestedAt DateTime @default(now())
+  tlp TlpLevel @default(AMBER)
+  sourceReliability String?
+  evidenceCredibility String?
+  actorConfidence Int?
+  techniqueConfidence Int
+  status TtpObservationStatus @default(CANDIDATE)
+  createdById String
+  createdBy User @relation("TtpObservationCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  reviews TtpObservationReview[]
+  nextStepOutcomeReviews NextStepReview[]
+
+  @@unique([tenantId, idempotencyKey])
+  @@unique([id, tenantId])
+  @@index([tenantId, threatActorId, observedStartAt, id])
+  @@index([tenantId, campaignId, observedStartAt, id])
+  @@index([tenantId, status])
+}
+
+model TtpObservationReview {
+  id String @id @default(cuid())
+  tenantId String
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  observationId String
+  observation TtpObservation @relation(fields: [observationId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  status TtpObservationStatus
+  reason String
+  reviewerId String
+  reviewer User @relation("TtpObservationReviewer", fields: [reviewerId], references: [id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, observationId, createdAt, id])
+}
+
+model NextStepRun {
+  id String @id @default(cuid())
+  tenantId String
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  idempotencyKey String
+  threatActorId String?
+  threatActor ThreatActor? @relation(fields: [threatActorId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  campaignId String?
+  campaign Campaign? @relation(fields: [campaignId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  asOf DateTime
+  horizonDays Int
+  engineVersion String
+  ruleVersion String
+  inputSnapshot Json
+  inputDigest String
+  maxTlp TlpLevel
+  status NextStepRunStatus
+  abstentionReason String?
+  createdById String
+  createdBy User @relation("NextStepRunCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+  candidates NextStepCandidate[]
+
+  @@unique([tenantId, idempotencyKey])
+  @@unique([id, tenantId])
+  @@index([tenantId, threatActorId, createdAt])
+  @@index([tenantId, campaignId, createdAt])
+}
+
+model NextStepCandidate {
+  id String @id @default(cuid())
+  tenantId String
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  runId String
+  run NextStepRun @relation(fields: [runId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  mitreTechniqueId String
+  mitreTechnique MitreTechnique @relation(fields: [mitreTechniqueId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  rank Int
+  techniqueExternalId String
+  techniqueName String
+  techniqueTactic String
+  supportScore Int
+  supportingObservationIds Json
+  contradictingObservationIds Json
+  ruleTrace Json
+  investigationSteps Json
+  reviews NextStepReview[]
+
+  @@unique([runId, rank])
+  @@unique([id, tenantId])
+  @@index([tenantId, mitreTechniqueId])
+}
+
+model NextStepReview {
+  id String @id @default(cuid())
+  tenantId String
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  candidateId String
+  candidate NextStepCandidate @relation(fields: [candidateId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  kind NextStepReviewKind
+  disposition NextStepDisposition?
+  outcome NextStepOutcome?
+  outcomeObservationId String?
+  outcomeObservation TtpObservation? @relation(fields: [outcomeObservationId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  reason String
+  reviewerId String
+  reviewer User @relation("NextStepReviewer", fields: [reviewerId], references: [id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, candidateId, createdAt, id])
+}
+
+model PlaybookDefinition {
+  id String @id @default(cuid())
+  tenantId String
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  key String
+  version Int
+  title String
+  actionKind String
+  policy Json
+  createdAt DateTime @default(now())
+  runs PlaybookRun[]
+
+  @@unique([tenantId, key, version])
+  @@unique([id, tenantId])
+}
+
+model PlaybookRun {
+  id String @id @default(cuid())
+  tenantId String
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  definitionId String
+  definition PlaybookDefinition @relation(fields: [definitionId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  alertId String
+  alert Alert @relation(fields: [alertId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  caseId String?
+  caseTenantId String?
+  case Case? @relation(fields: [caseId, caseTenantId], references: [id, tenantId], onDelete: SetNull)
+  idempotencyKey String
+  status String @default("PENDING_CONFIRMATION")
+  domain String
+  tlp TlpLevel
+  triggeredById String
+  triggeredBy User @relation("PlaybookTrigger", fields: [triggeredById], references: [id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  steps PlaybookStep[]
+  decisions PlaybookDecision[]
+  receipts PlaybookReceipt[]
+  sandboxJobs SandboxConnectorJob[]
+  sandboxEvents SandboxConnectorEvent[]
+
+  @@unique([tenantId, idempotencyKey])
+  @@unique([id, tenantId])
+  @@index([tenantId, createdAt])
+  @@index([tenantId, alertId])
+}
+
+model PlaybookStep {
+  id String @id @default(cuid())
+  tenantId String
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  runId String
+  run PlaybookRun @relation(fields: [runId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  ordinal Int
+  actionKind String
+  status String @default("PENDING")
+  attemptCount Int @default(0)
+  startedAt DateTime?
+  completedAt DateTime?
+  failureCode String?
+  receipts PlaybookReceipt[]
+
+  @@unique([runId, ordinal])
+  @@unique([id, tenantId])
+}
+
+model PlaybookDecision {
+  id String @id @default(cuid())
+  tenantId String
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  runId String
+  run PlaybookRun @relation(fields: [runId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  kind String
+  reason String
+  actorId String
+  actor User @relation(fields: [actorId], references: [id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, runId, createdAt])
+}
+
+model PlaybookReceipt {
+  id String @id @default(cuid())
+  tenantId String
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  runId String
+  run PlaybookRun @relation(fields: [runId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  stepId String
+  step PlaybookStep @relation(fields: [stepId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  attempt Int
+  adapter String
+  action String
+  result String
+  targetDigest String
+  evidence Json
+  actorId String
+  actor User @relation(fields: [actorId], references: [id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+
+  @@unique([runId, stepId, attempt])
+  @@index([tenantId, runId, createdAt])
+}
+
+model SandboxConnectorJob {
+  id String @id @default(cuid())
+  tenantId String
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  runId String
+  run PlaybookRun @relation(fields: [runId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  operation String
+  target String
+  requestId String @unique
+  requestedById String
+  requestedBy User @relation("SandboxJobRequester", fields: [requestedById], references: [id], onDelete: Restrict)
+  status String @default("QUEUED")
+  attempts Int @default(0)
+  nextAttemptAt DateTime @default(now())
+  leaseUntil DateTime?
+  failureCode String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  events SandboxConnectorEvent[]
+
+  @@unique([runId, operation])
+  @@unique([id, tenantId])
+  @@index([status, nextAttemptAt])
+  @@index([tenantId, runId])
+}
+
+model SandboxConnectorEvent {
+  id String @id @default(cuid())
+  tenantId String
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  runId String
+  run PlaybookRun @relation(fields: [runId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  jobId String
+  job SandboxConnectorJob @relation(fields: [jobId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  kind String
+  evidence Json
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, runId, createdAt])
 }
 
 model CampaignIndicator {
@@ -1660,6 +2054,7 @@ model Case {
   updatedAt          DateTime                @updatedAt
   entities           CaseEntity[]
   alerts             Alert[]
+  playbookRuns       PlaybookRun[]
   investigationNotes CaseInvestigationNote[]
   evidence           CaseEvidence[]
   activities         CaseActivity[]
@@ -1667,11 +2062,27 @@ model Case {
   threatActors       CaseThreatActor[]
   campaigns          CaseCampaign[]
   appSecFindingLink  AppSecFindingCase?
+  origin             CaseOrigin?
+  createRequests     CaseCreateRequest[]
+  revision           Int                     @default(0)
+  dueAt              DateTime?
+  slaPolicyKey       String?
+  tasks              CaseTask[]
+  handoffs           CaseHandoff[]
+  investigationCycle Int                    @default(1)
+  evidenceRevisions CaseEvidenceRevision[]
+  reviewRequests     CaseReviewRequest[]
+  reviewDecisions    CaseReviewDecision[]
+  closures           CaseClosure[]
+  reopens            CaseReopen[]
+  monitoringFindings MonitoringFinding[]
 
   @@unique([tenantId, caseNumber])
   @@unique([id, tenantId])
   @@index([tenantId, status, priority, severity])
   @@index([tenantId, createdAt])
+  @@index([tenantId, dueAt])
+  @@index([tenantId, status, dueAt, assigneeId, createdAt, id])
 }
 
 model CaseCampaign {
@@ -1687,6 +2098,78 @@ model CaseCampaign {
   @@id([caseId, campaignId])
   @@index([tenantId, caseId, createdAt])
   @@index([tenantId, campaignId])
+}
+
+model CaseOrigin {
+  id               String         @id @default(cuid())
+  tenantId         String
+  caseId           String         @unique
+  kind             CaseOriginKind
+  sourceId         String?
+  sourceOccurredAt DateTime?
+  capturedAt       DateTime       @default(now())
+  actorId          String
+  snapshot         Json
+  tenant           Tenant         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  case             Case           @relation(fields: [caseId, tenantId], references: [id, tenantId], onDelete: Restrict)
+
+  @@unique([caseId, tenantId])
+  @@index([tenantId, kind, sourceId])
+}
+
+model CaseCreateRequest {
+  id             String   @id @default(cuid())
+  tenantId       String
+  actorId        String
+  idempotencyKey String
+  requestHash    String
+  caseId         String
+  createdAt      DateTime @default(now())
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  case           Case     @relation(fields: [caseId, tenantId], references: [id, tenantId], onDelete: Cascade)
+
+  @@unique([tenantId, actorId, idempotencyKey])
+  @@index([tenantId, caseId])
+}
+
+model CaseTask {
+  id          String        @id @default(cuid())
+  tenantId    String
+  caseId      String
+  title       String
+  description String?
+  state       CaseTaskState @default(TODO)
+  assigneeId  String
+  createdBy   String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  completedAt DateTime?
+  tenant      Tenant        @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  case        Case          @relation(fields: [caseId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  assignee    User          @relation("CaseTaskAssignee", fields: [assigneeId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  creator     User          @relation("CaseTaskCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+
+  @@unique([id, tenantId])
+  @@index([tenantId, caseId, state])
+  @@index([tenantId, assigneeId, state])
+}
+
+model CaseHandoff {
+  id                 String   @id @default(cuid())
+  tenantId           String
+  caseId             String
+  previousAssigneeId String?
+  previousAssigneeName String?
+  newAssigneeId      String
+  newAssigneeName    String
+  actorId            String
+  reason             String
+  caseRevision       Int
+  createdAt          DateTime @default(now())
+  tenant             Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  case               Case     @relation(fields: [caseId, tenantId], references: [id, tenantId], onDelete: Restrict)
+
+  @@index([tenantId, caseId, createdAt])
 }
 
 model CaseIndicator {
@@ -1746,8 +2229,118 @@ model CaseEvidence {
   tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   case        Case     @relation(fields: [caseId, tenantId], references: [id, tenantId], onDelete: Cascade)
   creator     User     @relation("CaseEvidenceCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+  revisions   CaseEvidenceRevision[]
 
+  @@unique([id, tenantId, caseId])
   @@index([tenantId, caseId, createdAt])
+}
+
+model CaseEvidenceRevision {
+  id            String   @id @default(cuid())
+  tenantId      String
+  caseId        String
+  evidenceId    String
+  revision      Int
+  name          String
+  type          String
+  description   String?
+  source        String?
+  authorId      String
+  recordedAt    DateTime @default(now())
+  integrityKind String   @default("METADATA_ONLY")
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  case          Case     @relation(fields: [caseId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  evidence      CaseEvidence @relation(fields: [evidenceId, tenantId, caseId], references: [id, tenantId, caseId], onDelete: Restrict)
+  author        User @relation("CaseEvidenceRevisionAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@unique([evidenceId, revision])
+  @@index([tenantId, caseId, evidenceId, revision])
+}
+
+model CaseReviewRequest {
+  id          String   @id @default(cuid())
+  tenantId    String
+  caseId      String
+  cycle       Int
+  requestedBy String
+  reviewerId  String
+  reason      String?
+  createdAt   DateTime @default(now())
+  tenant      Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  case        Case @relation(fields: [caseId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  requester   User @relation("CaseReviewRequestActor", fields: [requestedBy], references: [id], onDelete: Restrict)
+  reviewer    User @relation("CaseReviewAssignee", fields: [reviewerId], references: [id], onDelete: Restrict)
+  decision    CaseReviewDecision?
+
+  @@unique([id, tenantId, caseId])
+  @@index([tenantId, caseId, cycle, createdAt])
+  @@index([tenantId, caseId, cycle, createdAt, id])
+}
+
+model CaseReviewDecision {
+  id                    String @id @default(cuid())
+  tenantId              String
+  caseId                String
+  reviewId              String @unique
+  kind                  CaseReviewDecisionKind
+  reason                String
+  actorId               String
+  caseRevision          Int
+  investigationSnapshotHash String
+  investigationActivityCount Int
+  decidedAt             DateTime @default(now())
+  tenant                Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  case                  Case @relation(fields: [caseId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  review                CaseReviewRequest @relation(fields: [reviewId, tenantId, caseId], references: [id, tenantId, caseId], onDelete: Restrict)
+  actor                 User @relation("CaseReviewDecisionActor", fields: [actorId], references: [id], onDelete: Restrict)
+  closures              CaseClosure[]
+
+  @@unique([id, tenantId, caseId])
+  @@unique([reviewId, tenantId, caseId])
+  @@index([tenantId, caseId, decidedAt])
+}
+
+model CaseClosure {
+  id                   String @id @default(cuid())
+  tenantId             String
+  caseId               String
+  cycle                Int
+  reviewDecisionId     String
+  reviewerId           String
+  actorId              String
+  reason               String
+  investigationSummary String
+  evidenceSnapshot     Json
+  closedAt             DateTime @default(now())
+  tenant               Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  case                 Case @relation(fields: [caseId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  actor                User @relation("CaseClosureActor", fields: [actorId], references: [id], onDelete: Restrict)
+  reviewer             User @relation("CaseClosureReviewer", fields: [reviewerId], references: [id], onDelete: Restrict)
+  decision             CaseReviewDecision @relation(fields: [reviewDecisionId, tenantId, caseId], references: [id, tenantId, caseId], onDelete: Restrict)
+  reopens              CaseReopen[]
+
+  @@unique([id, tenantId, caseId])
+  @@unique([caseId, cycle])
+  @@index([tenantId, caseId, closedAt])
+}
+
+model CaseReopen {
+  id          String @id @default(cuid())
+  tenantId    String
+  caseId      String
+  fromCycle   Int
+  toCycle     Int
+  closureId   String
+  actorId     String
+  reason      String
+  reopenedAt  DateTime @default(now())
+  tenant      Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  case        Case @relation(fields: [caseId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  closure     CaseClosure @relation(fields: [closureId, tenantId, caseId], references: [id, tenantId, caseId], onDelete: Restrict)
+  actor       User @relation("CaseReopenActor", fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@unique([caseId, fromCycle])
+  @@index([tenantId, caseId, reopenedAt])
 }
 
 model CaseActivity {
@@ -1775,6 +2368,8 @@ model CaseEntity {
 
 model Alert {
   id                         String                         @id @default(cuid())
+  threatCorrelation          ThreatCorrelation?
+  playbookRuns               PlaybookRun[]
   tenantId                   String
   tenant                     Tenant                         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   title                      String
@@ -1804,11 +2399,83 @@ model Alert {
   updatedAt                  DateTime                       @updatedAt
   entities                   AlertEntity[]
   asmNotification            AsmNotification?
+  monitoringFindings MonitoringFinding[]
 
   @@unique([tenantId, source, sourceKey])
+  @@unique([id, tenantId])
   @@index([tenantId, status, severity])
   @@index([tenantId, assetId, status])
   @@index([tenantId, status, resolvedAt], map: "Alert_tenantId_status_resolvedAt_idx")
+}
+
+model ThreatEvent {
+  id              String              @id @default(cuid())
+  tenantId        String
+  tenant          Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sourceKind      String
+  sourceKey       String
+  sourceName      String
+  observableType  IndicatorType
+  observableValue String
+  ioaKind         String?
+  provenance      Json
+  confidence      Int
+  tlp             TlpLevel
+  observedAt      DateTime
+  ingestedAt      DateTime            @default(now())
+  processingStatus String            @default("PENDING")
+  attempts        Int                @default(0)
+  nextAttemptAt   DateTime           @default(now())
+  processingStartedAt DateTime?
+  processedAt     DateTime?
+  failureCode     String?
+  correlations    ThreatCorrelation[]
+
+  @@unique([tenantId, sourceKind, sourceKey])
+  @@unique([id, tenantId])
+  @@index([tenantId, observableType, observableValue, observedAt])
+  @@index([processingStatus, nextAttemptAt, ingestedAt])
+}
+
+model CorrelationConnectorCredential {
+  id            String   @id @default(cuid())
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name          String
+  secretHash    String   @db.Char(64)
+  scope         String   @default("telemetry:write")
+  createdAt     DateTime @default(now())
+  expiresAt     DateTime
+  revokedAt     DateTime?
+  rotatedFromId String?
+  lastUsedAt    DateTime?
+
+  @@index([tenantId, revokedAt, expiresAt])
+}
+
+model ThreatCorrelation {
+  id             String      @id @default(cuid())
+  tenantId       String
+  tenant         Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  eventId        String
+  event          ThreatEvent @relation(fields: [eventId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  indicatorId    String
+  indicator      Indicator   @relation(fields: [indicatorId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  feedObservationId String
+  feedObservation IndicatorSourceObservation @relation(fields: [feedObservationId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  alertId        String      @unique
+  alert          Alert       @relation(fields: [alertId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  score          Int
+  reason         String
+  evidence       Json
+  matchedAt      DateTime
+  correlatedAt   DateTime    @default(now())
+  alertVisibleAt DateTime
+
+  @@unique([id, tenantId])
+  @@index([eventId, tenantId])
+  @@unique([alertId, tenantId])
+  @@index([tenantId, correlatedAt])
 }
 
 model AsmNotificationPreference {
@@ -1943,17 +2610,20 @@ model Asset {
   updatedAt                 DateTime                        @updatedAt
   tenant                    Tenant                          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   portServices              AssetPortService[]
+  fingerprintObservations   AsmServiceFingerprintObservation[]
   findings                  AssetFinding[]
   applications              ApplicationAsset[]
   alerts                    Alert[]
   riskSnapshots             AsmRiskSnapshot[]
   vulnerabilityCorrelations AssetVulnerabilityCorrelation[]
+  asmCorrelationObservations AsmCorrelationObservation[]
   discoverySchedule         AsmDiscoverySchedule?
   discoveryRuns             AsmDiscoveryRun[]
   exposureChanges           AsmExposureChange[]
   outgoingRelationships     AssetRelationship[]             @relation("RelationshipSource")
   incomingRelationships     AssetRelationship[]             @relation("RelationshipTarget")
   rootRelationships         AssetRelationship[]             @relation("RelationshipRoot")
+  monitoringWatchlists MonitoringWatchlist[]
 
   @@unique([tenantId, type, value])
   @@unique([id, tenantId])
@@ -2123,6 +2793,8 @@ model AssetPortService {
   banner       String?
   source       String?
   correlations AssetVulnerabilityCorrelation[]
+  asmCorrelationObservations AsmCorrelationObservation[]
+  fingerprintObservations AsmServiceFingerprintObservation[]
   status       PortDiscoveryStatus             @default(UNKNOWN)
   firstSeenAt  DateTime                        @default(now())
   lastSeenAt   DateTime                        @default(now())
@@ -2145,6 +2817,12 @@ model AssetVulnerabilityCorrelation {
   vulnerabilityId String
   confidence      String
   status          String           @default("ACTIVE")
+  workflowVersion Int              @default(1)
+  revision        Int              @default(0)
+  reviewStatus    String?
+  evidenceHash    String?
+  reviewedEvidenceHash String?
+  reviewedAt      DateTime?
   matchReason     String
   evidence        Json
   firstSeenAt     DateTime         @default(now())
@@ -2154,9 +2832,91 @@ model AssetVulnerabilityCorrelation {
   service         AssetPortService @relation(fields: [serviceId, tenantId], references: [id, tenantId], onDelete: Cascade, map: "AssetVulnerabilityCorrelation_serviceId_fkey")
   vulnerability   Vulnerability    @relation(fields: [vulnerabilityId, tenantId], references: [id, tenantId], onDelete: Cascade)
   alerts          Alert[]
+  observations    AsmCorrelationObservation[]
+  decisions       AsmCorrelationDecision[]
 
   @@unique([tenantId, serviceId, vulnerabilityId], map: "AssetVulnerabilityCorrelation_tenantId_serviceId_vulnerabilityI")
+  @@unique([id, tenantId])
   @@index([tenantId, assetId])
+  @@index([tenantId, assetId, workflowVersion, reviewStatus, status], map: "AssetVulnerabilityCorrelation_v2_queue_idx")
+}
+
+model AsmV2Enrollment {
+  tenantId  String   @id
+  enabled   Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model AsmCorrelationObservation {
+  id                String   @id @default(cuid())
+  tenantId          String
+  assetId           String
+  serviceId         String
+  vulnerabilityId   String
+  correlationId     String
+  discoveryRunId    String?
+  observedAt        DateTime @default(now())
+  kind              String
+  confidence        String?
+  matchReason       String?
+  matcherVersion    String
+  evidenceHash      String
+  serviceSnapshot   Json
+  tiSnapshot        Json
+  fingerprintSource String?
+  tenant            Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  asset             Asset    @relation(fields: [assetId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  service           AssetPortService @relation(fields: [serviceId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  vulnerability     Vulnerability @relation(fields: [vulnerabilityId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  correlation       AssetVulnerabilityCorrelation @relation(fields: [correlationId, tenantId], references: [id, tenantId], onDelete: Cascade)
+
+  @@index([tenantId, assetId, observedAt, id], map: "AsmCorrelationObservation_asset_history_idx")
+  @@index([tenantId, correlationId, observedAt, id], map: "AsmCorrelationObservation_correlation_history_idx")
+}
+
+model AsmServiceFingerprintObservation {
+  id             String   @id @default(cuid())
+  tenantId       String
+  assetId        String
+  serviceId      String
+  discoveryRunId String
+  product        String
+  version        String
+  source         String
+  bannerHash     String
+  observedAt     DateTime
+  tenant         Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  asset          Asset @relation(fields: [assetId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  service        AssetPortService @relation(fields: [serviceId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  discoveryRun   AsmDiscoveryRun @relation(fields: [discoveryRunId, tenantId], references: [id, tenantId], onDelete: Cascade)
+
+  @@unique([discoveryRunId, serviceId])
+  @@index([tenantId, assetId, discoveryRunId])
+}
+
+model AsmCorrelationDecision {
+  id                   String   @id @default(cuid())
+  tenantId             String
+  correlationId        String
+  actorId              String
+  kind                 String
+  previousReviewStatus String
+  reviewStatus         String
+  reason               String
+  evidenceHash         String
+  expectedRevision     Int
+  resultingRevision    Int
+  requestKey           String
+  inspectedEvidence    Boolean
+  overrideReason       String?
+  createdAt            DateTime @default(now())
+  tenant               Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  correlation          AssetVulnerabilityCorrelation @relation(fields: [correlationId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  actor                User @relation("AsmCorrelationDecisionActor", fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@unique([tenantId, correlationId, actorId, requestKey], map: "AsmCorrelationDecision_request_key")
+  @@index([tenantId, correlationId, createdAt, id], map: "AsmCorrelationDecision_history_idx")
 }
 
 model AssetFinding {
@@ -2218,8 +2978,10 @@ model AsmDiscoveryRun {
   asset         Asset                 @relation(fields: [assetId, tenantId], references: [id, tenantId], onDelete: Cascade)
   changes       AsmExposureChange[]
   riskSnapshots AsmRiskSnapshot[]
+  fingerprintObservations AsmServiceFingerprintObservation[]
 
   @@index([tenantId, assetId, startedAt])
+  @@unique([id, tenantId])
 }
 
 model AsmRiskSnapshot {
@@ -2263,4 +3025,196 @@ model AsmExposureChange {
 
   @@unique([runId, type, entityKey])
   @@index([tenantId, assetId, detectedAt])
+}
+
+enum MonitoringWatchKind {
+  DOMAIN
+  BRAND
+  IDENTITY_HASH
+}
+
+enum MonitoringObservationKind {
+  CREDENTIAL_EXPOSURE
+  CORPORATE_DATA_EXPOSURE
+  BRAND_IMPERSONATION
+  PHISHING_DOMAIN
+}
+
+enum MonitoringFindingStatus {
+  NEW
+  UNDER_REVIEW
+  CONFIRMED
+  FALSE_POSITIVE
+  RESOLVED
+}
+
+enum MonitoringCollectionStatus {
+  QUEUED
+  RUNNING
+  RETRY
+  SUCCEEDED
+  FAILED
+}
+
+model MonitoringWatchlist {
+  id String @id @default(cuid())
+  tenantId String
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  kind MonitoringWatchKind
+  value String
+  identityKeyVersion String?
+  label String
+  active Boolean @default(true)
+  expiresAt DateTime?
+  assetId String?
+  assetTenantId String?
+  asset Asset? @relation(fields: [assetId, assetTenantId], references: [id, tenantId], onDelete: SetNull)
+  createdById String
+  creator User @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+  matches MonitoringMatch[]
+
+  @@unique([tenantId, kind, value])
+  @@unique([id, tenantId])
+  @@index([tenantId, active, expiresAt])
+}
+
+model MonitoringSource {
+  id String @id @default(cuid())
+  tenantId String
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  catalogSourceId String?
+  catalogTenantId String?
+  catalogSource IntelligenceSource? @relation(fields: [catalogSourceId, catalogTenantId], references: [id, tenantId], onDelete: SetNull)
+  catalogName String
+  catalogTlp TlpLevel
+  providerKey String
+  authorized Boolean @default(false)
+  qaOnly Boolean @default(true)
+  retentionDays Int @default(30)
+  connectorVersion Int @default(1)
+  collectionEnabled Boolean @default(false)
+  collectionIntervalMinutes Int @default(60)
+  nextCollectionAt DateTime?
+  lastSuccessAt DateTime?
+  lastFailureReason String?
+  coverageLabel String?
+  createdAt DateTime @default(now())
+  observations MonitoringObservation[]
+  collectionJobs MonitoringCollectionJob[]
+
+  @@unique([tenantId, providerKey])
+  @@unique([id, tenantId])
+}
+
+model MonitoringObservation {
+  id String @id @default(cuid())
+  tenantId String
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sourceId String
+  source MonitoringSource @relation(fields: [sourceId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  providerEventKey String
+  kind MonitoringObservationKind
+  domain String?
+  identityHash String?
+  identityKeyVersion String?
+  metadataCategory String
+  evidenceRef String
+  evidenceDigest String
+  observedAt DateTime
+  collectedAt DateTime?
+  providerPublishedAt DateTime?
+  collectionJobId String?
+  collectionJobTenantId String?
+  collectionJob MonitoringCollectionJob? @relation(fields: [collectionJobId, collectionJobTenantId], references: [id, tenantId], onDelete: SetNull)
+  expiresAt DateTime
+  tlp TlpLevel
+  createdAt DateTime @default(now())
+  matches MonitoringMatch[]
+
+  @@unique([tenantId, sourceId, providerEventKey])
+  @@unique([id, tenantId])
+  @@index([tenantId, kind, observedAt])
+  @@index([expiresAt])
+}
+
+model MonitoringCollectionJob {
+  id String @id @default(cuid())
+  tenantId String
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sourceId String
+  source MonitoringSource @relation(fields: [sourceId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  requestId String @unique
+  status MonitoringCollectionStatus @default(QUEUED)
+  attempt Int @default(0)
+  dueAt DateTime @default(now())
+  leaseUntil DateTime?
+  startedAt DateTime?
+  finishedAt DateTime?
+  observationCount Int @default(0)
+  failureReason String?
+  collectionLatencyMs Int?
+  processingLatencyMs Int?
+  createdAt DateTime @default(now())
+  observations MonitoringObservation[]
+
+  @@unique([id, tenantId])
+  @@index([status, dueAt])
+  @@index([tenantId, sourceId, createdAt])
+}
+
+model MonitoringMatch {
+  id String @id @default(cuid())
+  tenantId String
+  observationId String
+  observation MonitoringObservation @relation(fields: [observationId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  watchlistId String
+  watchlist MonitoringWatchlist @relation(fields: [watchlistId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  rule String
+  confidence Int
+  severity IndicatorSeverity
+  finding MonitoringFinding?
+  createdAt DateTime @default(now())
+
+  @@unique([observationId, watchlistId])
+  @@unique([id, tenantId])
+  @@index([tenantId, confidence])
+}
+
+model MonitoringFinding {
+  id String @id @default(cuid())
+  tenantId String
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  matchId String
+  match MonitoringMatch @relation(fields: [matchId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  status MonitoringFindingStatus @default(NEW)
+  alertId String?
+  alertTenantId String?
+  alert Alert? @relation(fields: [alertId, alertTenantId], references: [id, tenantId], onDelete: SetNull)
+  caseId String?
+  caseTenantId String?
+  case Case? @relation(fields: [caseId, caseTenantId], references: [id, tenantId], onDelete: SetNull)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  reviews MonitoringReview[]
+
+  @@unique([id, tenantId])
+  @@unique([matchId, tenantId])
+  @@index([tenantId, status, createdAt])
+}
+
+model MonitoringReview {
+  id String @id @default(cuid())
+  tenantId String
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  findingId String
+  finding MonitoringFinding @relation(fields: [findingId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  actorId String
+  actor User @relation(fields: [actorId], references: [id], onDelete: Restrict)
+  fromStatus MonitoringFindingStatus
+  toStatus MonitoringFindingStatus
+  reason String
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, findingId, createdAt])
 }

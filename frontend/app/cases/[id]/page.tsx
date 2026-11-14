@@ -6,6 +6,8 @@ import Link from 'next/link';
 import AssignModal from './assign-modal';
 import EditCaseModal from './edit-case-modal';
 import { InvestigationPanel } from './investigation-panel';
+import { CaseWorkflowPanel } from './case-workflow-panel';
+import { CaseIntegrityPanel } from './case-integrity-panel';
 import { RelatedIndicators } from './related-indicators';
 import { RelatedThreatActors } from './related-threat-actors';
 import { RelatedCampaigns } from './related-campaigns';
@@ -48,9 +50,11 @@ export default function CaseDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [integrityEnabled, setIntegrityEnabled] = useState(false);
 
   useEffect(() => {
     setCaseDetail(null);
+    setIntegrityEnabled(false);
     const controller = new AbortController();
     if (ready) void fetchCaseDetail(controller.signal);
     return () => controller.abort();
@@ -119,6 +123,8 @@ export default function CaseDetailPage() {
     );
   }
 
+  const controlledClosed = integrityEnabled && caseDetail.status === 'CLOSED';
+
   return (
     <main className="case-page editorial-module">
       <div className="max-w-4xl mx-auto">
@@ -130,7 +136,7 @@ export default function CaseDetailPage() {
         <div className="editorial-heading"><span className="source-eyebrow">CASE INTELLIGENCE WORKSPACE · {caseDetail.caseNumber}</span><h1>{caseDetail.title}</h1><p>{caseDetail.tenant.name} · Updated {new Date(caseDetail.updatedAt).toLocaleString('id-ID')}</p></div>
         <section className="editorial-metrics" aria-label="Case status"><div><span>Status</span><strong className="editorial-text-metric">{caseDetail.status.replaceAll("_", " ")}</strong></div><div><span>Priority</span><strong className="editorial-text-metric">{caseDetail.priority}</strong></div><div><span>Severity</span><strong className="editorial-text-metric">{caseDetail.severity}</strong></div><div><span>Assignee</span><strong className="editorial-text-metric">{caseDetail.assignee?.name ?? "Unassigned"}</strong></div></section>
         {caseDetail.alerts?.length ? <section className="case-panel mb-4 p-8" aria-label="Attack Surface Context"><span className="source-eyebrow">ASM PROVENANCE</span><h2 className="case-detail-section-title">Attack Surface Context</h2>{caseDetail.alerts.map(alert => <dl className="asm-detail" key={alert.id}><div><dt>Asset</dt><dd>{alert.asset?.value ?? alert.assetId ?? '-'}</dd></div><div><dt>Alert</dt><dd>{alert.title} ({alert.id})</dd></div><div><dt>Finding</dt><dd>{alert.finding?.title ?? alert.findingId ?? '-'}</dd></div><div><dt>Vulnerability / CVE</dt><dd>{alert.vulnerabilityCorrelation?.vulnerability.cveId ?? alert.vulnerabilityCorrelationId ?? '-'}</dd></div><div><dt>Change event</dt><dd>{alert.changeEvent?.type ?? alert.changeEventId ?? '-'}</dd></div><div><dt>Severity / source</dt><dd>{alert.severity} / {alert.source}</dd></div><div><dt>Detected</dt><dd>{new Date(alert.firstSeenAt).toLocaleString('id-ID')}</dd></div></dl>)}</section> : null}
-        {canMutateCases && <div className="case-operations"><span className="source-eyebrow">CASE OPERATIONS</span><div><button type="button" onClick={() => setShowEditModal(true)} className="soc-button-outline">Edit case</button></div></div>}
+        {canMutateCases && !controlledClosed && <div className="case-operations"><span className="source-eyebrow">CASE OPERATIONS</span><div><button type="button" onClick={() => setShowEditModal(true)} className="soc-button-outline">Edit case</button></div></div>}
         <nav aria-label="Bagian detail case" className="case-panel mb-4 flex gap-2 overflow-x-auto p-2">
           <a href="#overview" className="case-detail-tab">Overview</a>
           <a href="#investigation" className="case-detail-tab">Investigation</a>
@@ -168,7 +174,7 @@ export default function CaseDetailPage() {
             <div className="case-subpanel p-6">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="font-semibold text-card-foreground">Assigned To</h3>
-                {canMutateCases && (
+                {canMutateCases && !controlledClosed && (
                   <Button
                     type="button"
                     size="s"
@@ -196,17 +202,19 @@ export default function CaseDetailPage() {
             <p className="text-xs text-muted-foreground">Updated: {new Date(caseDetail.updatedAt).toLocaleString('id-ID')}</p>
           </div>
         </section>
-        <InvestigationPanel caseId={caseDetail.id} section="investigation" />
+        <InvestigationPanel caseId={caseDetail.id} section="investigation" readOnly={controlledClosed} />
+        <CaseWorkflowPanel caseId={caseDetail.id} onCaseChange={() => void fetchCaseDetail()} readOnly={controlledClosed} />
         <section id="related-intelligence" aria-labelledby="related-intelligence-heading" className="scroll-mt-4">
           <div className="mt-8">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Case intelligence</p>
             <h2 id="related-intelligence-heading" className="mt-1 text-xl font-semibold text-card-foreground">Related Intelligence</h2>
           </div>
-          <RelatedIndicators caseId={caseDetail.id} canMutate={canMutateCases} />
-          <RelatedThreatActors caseId={caseDetail.id} canMutate={canMutateCases} />
-          <RelatedCampaigns caseId={caseDetail.id} canMutate={canMutateCases} />
+          <RelatedIndicators caseId={caseDetail.id} canMutate={canMutateCases && !controlledClosed} />
+          <RelatedThreatActors caseId={caseDetail.id} canMutate={canMutateCases && !controlledClosed} />
+          <RelatedCampaigns caseId={caseDetail.id} canMutate={canMutateCases && !controlledClosed} />
         </section>
-        <InvestigationPanel caseId={caseDetail.id} section="evidence" />
+        <InvestigationPanel caseId={caseDetail.id} section="evidence" readOnly={controlledClosed} />
+        <CaseIntegrityPanel caseId={caseDetail.id} caseStatus={caseDetail.status} onCaseChange={() => void fetchCaseDetail()} onAvailability={setIntegrityEnabled} />
         <InvestigationPanel caseId={caseDetail.id} section="activity" />
       </div>
 

@@ -71,6 +71,8 @@ const caseManagementItems: readonly NavigationItem[] = [
 
 const attackSurfaceItems: readonly NavigationItem[] = [
   { label: 'Assets', href: '/attack-surface/assets', icon: Radar, matchDescendants: true },
+  ...(process.env.NEXT_PUBLIC_ASM_V2_REVIEW_ENABLED === 'true' ? [{ label: 'Correlation Review', href: '/attack-surface/review', icon: ClipboardList }] : []),
+  ...(process.env.NEXT_PUBLIC_ASM_V2_OPERATIONS_ENABLED === 'true' ? [{ label: 'Operations', href: '/attack-surface/operations', icon: Radar }] : []),
   { label: 'Reports', href: '/attack-surface/reports', icon: ClipboardList },
 ];
 
@@ -95,6 +97,8 @@ const threatIntelligenceItems: readonly NavigationItem[] = [
   { label: 'Intelligence Reports', href: '/threat-intelligence/reports', icon: FileText },
   { label: 'Sources', href: '/intelligence/sources', icon: BookOpen, aliases: ['/threat-intelligence/sources'] },
   { label: 'Threat Feeds', href: '/threat-intelligence/feeds', icon: Radio },
+  { label: 'Playbooks', href: '/threat-intelligence/playbooks', icon: ClipboardList },
+  { label: 'Monitoring', href: '/threat-intelligence/monitoring', icon: Radar },
   { label: 'MITRE ATT&CK', href: '/threat-intelligence/mitre-attack', icon: Crosshair },
   { label: 'Intelligence Hub', href: '/threat-intelligence/hub', icon: GitFork, aliases: ['/intelligence'] },
 ];
@@ -155,7 +159,7 @@ export default function Sidebar({
     }));
   const modules: readonly NavigationModule[] = [
     ...catalogModules,
-    ...(canAccessThreatIntelligence ? [{ id: 'threat-intelligence', label: 'Threat Intelligence', items: threatIntelligenceItems.filter(item => ['Overview', 'Indicators', 'IOC Candidates', 'Threat Feeds'].includes(item.label) ? intelligenceAccess?.featureKeys.includes('indicator-management') : intelligenceAccess?.featureKeys.includes('intelligence-hub')) }] : []),
+    ...(canAccessThreatIntelligence ? [{ id: 'threat-intelligence', label: 'Threat Intelligence', items: threatIntelligenceItems.filter(item => ['Overview', 'Indicators', 'IOC Candidates', 'Threat Feeds', 'Playbooks'].includes(item.label) ? intelligenceAccess?.featureKeys.includes('indicator-management') : intelligenceAccess?.featureKeys.includes('intelligence-hub')) }] : []),
     ...(administrationItemsForRole(role).length > 0 ? [{ id: 'administration', label: 'Administration', items: administrationItemsForRole(role) }] : []),
   ].sort((left, right) => moduleOrder(left.id) - moduleOrder(right.id));
 

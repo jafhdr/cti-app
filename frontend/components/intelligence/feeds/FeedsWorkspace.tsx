@@ -2,6 +2,7 @@
 
 import { AlertCircle, CheckCircle2, Clock3, RefreshCw, Radio, TimerReset } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useThreatIntelligenceTenant } from '../ThreatIntelligenceShell';
@@ -61,6 +62,7 @@ export function FeedsWorkspace({ role }: { readonly role: Role }) {
     {feedback && <div className={`feed-feedback feed-feedback-${feedback.tone}`} role={feedback.tone === 'error' ? 'alert' : 'status'}>{feedback.tone === 'success' ? <CheckCircle2 size={16} aria-hidden="true" /> : <AlertCircle size={16} aria-hidden="true" />}<span>{feedback.message}</span></div>}
     {data && <Phase2bSummary title="FEED STATUS" metrics={[{label:"Active",value:data.providers.filter(feed=>feed.status==="ACTIVE").length},{label:"Failed",value:data.providers.filter(feed=>feed.status==="FAILED").length},{label:"Not configured",value:data.providers.filter(feed=>feed.status==="NOT_CONFIGURED").length}]}/>}
     <section className="feed-scheduler" aria-labelledby="scheduler-title"><div><span className="source-eyebrow">SCHEDULER</span><h2 id="scheduler-title">Automatic Sync</h2></div><div className="feed-scheduler-stat"><Radio size={17} aria-hidden="true" /><span>Status<strong>{data ? (data.scheduler.enabled ? 'Enabled' : 'Disabled') : loading ? 'Loading' : 'Unavailable'}</strong></span></div><div className="feed-scheduler-stat"><TimerReset size={17} aria-hidden="true" /><span>Sync Interval<strong>{data ? formatInterval(data.scheduler.intervalMinutes) : '—'}</strong></span></div><div className="feed-scheduler-stat"><Clock3 size={17} aria-hidden="true" /><span>Next Sync<strong>{data ? formatDate(data.scheduler.nextSyncAt) : '—'}</strong></span></div></section>
+    {process.env.NEXT_PUBLIC_THREAT_CORRELATION_PILOT_ENABLED === 'true' && <Link href="/threat-intelligence/correlations">View QA correlations</Link>}
     <div className="editorial-section-heading"><span className="source-eyebrow">PROVIDERS</span><h2>Provider health</h2></div>
     {loading && !data ? <Card view="outlined" className="source-state" aria-live="polite">Loading threat feeds...</Card> : <div className="feed-grid">{data?.providers.map(feed => <Card view="outlined" className="feed-card" key={feed.provider}><header><div className="feed-provider-icon"><Radio size={18} aria-hidden="true" /></div><div><span className="source-eyebrow">{feed.provider}</span><h2>{feed.name}</h2></div><span className={`feed-status feed-status-${feed.status.toLowerCase().replace('_', '-')}`}><span aria-hidden="true" />{statusLabel(feed.status)}</span></header><dl><div><dt>Last Sync</dt><dd>{formatDate(feed.lastSyncAt)}</dd></div><div><dt>Indicators Received</dt><dd>{feed.received.toLocaleString('id-ID')}</dd></div><div><dt>Created</dt><dd>{formatCount(feed.created)}</dd></div><div><dt>Updated</dt><dd>{formatCount(feed.updated)}</dd></div></dl>{feed.error && <div className="feed-error"><AlertCircle size={15} aria-hidden="true" /><span><strong>Last error</strong>{feed.error}</span></div>}</Card>)}</div>}
   </div>;

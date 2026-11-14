@@ -277,6 +277,7 @@ export function CampaignsWorkspace({ role }: { readonly role: Role }) {
       )}
       {panel !== "closed" && (
         <CampaignPanel
+          role={role}
           campaign={selected}
           form={form}
           actors={actors}

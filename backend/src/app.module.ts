@@ -15,6 +15,8 @@ import { AttackSurfaceManagementModule } from './attack-surface-management/attac
 import { AppSecModule } from './appsec/appsec.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { NotificationsModule } from './notifications/notifications.module';
+import { CorrelationModule } from './correlation/correlation.module';
+import { PlaybookModule } from './playbooks/playbook.module';
 
 @Module({
   imports: [
@@ -30,6 +32,8 @@ import { NotificationsModule } from './notifications/notifications.module';
     SubscriptionModule,
     CasesModule,
     NotificationsModule,
+    CorrelationModule,
+    PlaybookModule,
     AttackSurfaceManagementModule,
     AppSecModule,
     UsersModule,

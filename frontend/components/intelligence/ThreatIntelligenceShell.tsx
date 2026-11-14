@@ -47,7 +47,7 @@ export function ThreatIntelligenceShell({ children, title }: { readonly children
 
   if (!ready) return <div className="app"><main className="content">Loading Threat Intelligence...</main></div>;
   if (sessionError) return <div className="app"><Sidebar moduleAccess={[]} /><main className="content"><p className="error" role="alert">{sessionError}</p><Link href="/dashboard">Kembali ke Dashboard</Link></main></div>;
-  const requiredFeature = ['Overview', 'Indicators', 'IOC Candidates', 'Feeds', 'Threat Feeds'].includes(title) ? 'indicator-management' : 'intelligence-hub';
+  const requiredFeature = ['Overview', 'Indicators', 'IOC Candidates', 'Feeds', 'Threat Feeds', 'Correlations', 'Playbooks'].includes(title) ? 'indicator-management' : 'intelligence-hub';
   if (!user?.moduleAccess.some(module => module.moduleSlug === 'threat-intelligence' && module.accessible === true && module.featureKeys.includes(requiredFeature))) {
     return <div className="app"><Sidebar role={user?.role} moduleAccess={user?.moduleAccess ?? []} onLogout={logout} /><main className="content"><h1>Akses modul dibatasi</h1><div className="error" role="alert">Anda tidak memiliki akses ke modul Threat Intelligence.</div><Link href="/dashboard">Kembali ke Dashboard</Link></main></div>;
   }

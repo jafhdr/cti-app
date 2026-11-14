@@ -29,7 +29,7 @@ const actionLabel: Readonly<Record<string, string>> = {
   CAMPAIGN_UNLINKED: 'Campaign dilepas',
 };
 
-export function InvestigationPanel({ caseId, section }: { readonly caseId: string; readonly section: 'investigation' | 'evidence' | 'activity' }) {
+export function InvestigationPanel({ caseId, section, readOnly = false }: { readonly caseId: string; readonly section: 'investigation' | 'evidence' | 'activity'; readonly readOnly?: boolean }) {
   const { role, tenantId } = useCaseTenant();
   const [notes, setNotes] = useState<readonly Note[]>([]);
   const [evidence, setEvidence] = useState<readonly Evidence[]>([]);
@@ -103,10 +103,11 @@ export function InvestigationPanel({ caseId, section }: { readonly caseId: strin
       {section === 'investigation' && <div className="flex flex-col gap-6 xl:flex-row">
         <Card view="outlined" className="min-w-0 flex-1 border-input p-5">
           <h2 className="flex items-center gap-2 text-lg font-semibold !text-card-foreground"><MessageSquareText className="h-5 w-5 text-primary" />Investigation Notes</h2>
-          <form className="mt-4 flex flex-col gap-2 sm:flex-row" onSubmit={(event) => { event.preventDefault(); void submit('notes', { requestId: noteRequestId, content: note }); }}>
+          {readOnly ? <p className="mt-3 text-sm text-muted-foreground">Case closed. Reopen to add investigation notes.</p> : null}
+          {!readOnly && <form className="mt-4 flex flex-col gap-2 sm:flex-row" onSubmit={(event) => { event.preventDefault(); void submit('notes', { requestId: noteRequestId, content: note }); }}>
             <label htmlFor="investigation-note" className="flex flex-1 flex-col gap-1 text-xs font-semibold text-muted-foreground">Catatan investigasi<textarea id="investigation-note" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Tambahkan temuan investigasi..." className="min-h-32 resize-y rounded-sm border border-input !bg-card px-3 py-2 text-sm font-normal !text-card-foreground" required /></label>
             <button type="submit" aria-label="Tambah catatan" disabled={submitting || !note.trim()} className="self-end rounded-sm bg-primary px-4 py-2.5 text-sm text-primary-foreground disabled:opacity-50">{submitting ? 'Menyimpan...' : 'Save note'}</button>
-          </form>
+          </form>}
           <div className="mt-5 space-y-3">
             {notes.length === 0 ? <p className="rounded-md bg-muted py-8 text-center text-sm text-muted-foreground">Belum ada catatan investigasi.</p> : notes.map((item) => <div key={item.id} className="rounded-md border border-input p-3"><p className="whitespace-pre-wrap text-sm text-card-foreground">{item.content}</p><p className="mt-2 text-xs text-muted-foreground">{item.author.name} / {formatTime(item.createdAt)}</p></div>)}
           </div>
@@ -116,8 +117,9 @@ export function InvestigationPanel({ caseId, section }: { readonly caseId: strin
 
       {section === 'evidence' && <Card view="outlined" className="min-w-0 border-input p-5">
           <h3 className="flex items-center gap-2 text-lg font-semibold !text-card-foreground"><FileSearch className="h-5 w-5 text-primary" />Evidence inventory</h3>
+          {readOnly ? <p className="mt-3 text-sm text-muted-foreground">Case closed. Reopen to add evidence.</p> : null}
           <div className="mt-4 grid gap-3 sm:grid-cols-3"><div className="case-subpanel p-4"><p className="text-xs text-muted-foreground">Total evidence</p><strong className="text-xl text-card-foreground">{evidence.length}</strong></div><div className="case-subpanel p-4"><p className="text-xs text-muted-foreground">Recent</p><strong className="text-sm text-card-foreground">{evidence[0] ? formatTime(evidence[0].createdAt) : 'No data available'}</strong></div><div className="case-subpanel p-4"><p className="text-xs text-muted-foreground">Types</p><strong className="text-xl text-card-foreground">{new Set(evidence.map((item) => item.type)).size}</strong></div></div>
-          <button type="button" className="soc-button-primary mt-4 rounded px-4 py-2" onClick={() => setEvidenceOpen(true)}>Add Evidence</button>
+          {!readOnly && <button type="button" className="soc-button-primary mt-4 rounded px-4 py-2" onClick={() => setEvidenceOpen(true)}>Add Evidence</button>}
 
           <div className="mt-5 space-y-3">
             {evidence.length === 0 ? <p className="rounded-md bg-muted py-8 text-center text-sm text-muted-foreground">No evidence available for this case.</p> : evidence.map((item) => <details key={item.id} className="min-w-0 rounded-md border border-input p-3"><summary className="cursor-pointer text-sm font-medium text-card-foreground">{item.name} · {item.type}</summary><div className="mt-3 grid gap-2 text-sm text-muted-foreground sm:grid-cols-2"><p>Source: {item.source ?? 'Not available'}</p><p>Created: {formatTime(item.createdAt)}</p><p>Collected by: {item.creator.name}</p><p className="sm:col-span-2">Description: {item.description ?? 'No data available'}</p></div></details>)}

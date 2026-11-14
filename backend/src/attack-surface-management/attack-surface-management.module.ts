@@ -13,6 +13,12 @@ import { DiscoveryScheduler } from './discovery-scheduler';
 import { FindingsController } from './findings.controller';
 import { VulnerabilityCorrelationsController } from './vulnerability-correlations.controller';
 import { VulnerabilityCorrelationsService } from './vulnerability-correlations.service';
+import { AsmV2EvidenceController } from './asm-v2-evidence.controller';
+import { AsmV2EvidenceService } from './asm-v2-evidence.service';
+import { AsmV2ReviewService } from './asm-v2-review.service';
+import { AsmV2PriorityService } from './asm-v2-priority.service';
+import { AsmV2OperationsController } from './asm-v2-operations.controller';
+import { AsmV2OperationsService } from './asm-v2-operations.service';
 import { FindingsService } from './findings.service';
 import { AuthModule } from '../auth/auth.module';
 import { PrismaService } from '../prisma.service';
@@ -23,11 +29,12 @@ import { DiscoveryService } from './discovery.service';
 import { PortServicesController } from './port-services.controller';
 import { PortDiscoveryClient } from './port-discovery.client';
 import { PortDiscoveryService } from './port-discovery.service';
+import { SshFingerprintClient } from './ssh-fingerprint.client';
 import { PortServicesService } from './port-services.service';
 
 @Module({
   imports: [AuthModule],
-  controllers: [AsmNotificationsController, AsmReportsController, AssetsController, PortServicesController, FindingsController, VulnerabilityCorrelationsController, DiscoveryRunsController, AsmAlertsController, AlertBackfillController, RiskPostureController],
+  controllers: [AsmNotificationsController, AsmReportsController, AssetsController, PortServicesController, FindingsController, VulnerabilityCorrelationsController, AsmV2EvidenceController, AsmV2OperationsController, DiscoveryRunsController, AsmAlertsController, AlertBackfillController, RiskPostureController],
   providers: [
     AssetsService,
     AsmAlertsService,
@@ -35,12 +42,17 @@ import { PortServicesService } from './port-services.service';
     RiskPostureService,
     FindingsService,
     VulnerabilityCorrelationsService,
+    AsmV2EvidenceService,
+    AsmV2ReviewService,
+    AsmV2PriorityService,
+    AsmV2OperationsService,
     DiscoveryService,
     DiscoveryRunsService,
     DiscoveryScheduler,
     DiscoveryClient,
     PortDiscoveryService,
     PortDiscoveryClient,
+    SshFingerprintClient,
     PortServicesService,
     PrismaService,
   ],

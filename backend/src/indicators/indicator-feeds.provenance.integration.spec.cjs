@@ -25,7 +25,11 @@ before(async () => {
 });
 
 after(async () => {
-  if (tenantId) await prisma.tenant.delete({ where: { id: tenantId } });
+  if (tenantId) {
+    await prisma.case.deleteMany({ where: { tenantId } });
+    await prisma.user.deleteMany({ where: { tenantId } });
+    await prisma.tenant.delete({ where: { id: tenantId } });
+  }
   await prisma.$disconnect();
 });
 

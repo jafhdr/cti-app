@@ -1,0 +1,20 @@
+# ASM V2 verified SSH fingerprint retirement — case18
+
+## Scope and result
+
+The existing TCP-connect scanner confirms reachability, not product or version. This change adds a bounded SSH identification probe for enrolled ASM V2 tenants. A successful probe records an `AsmServiceFingerprintObservation` tied to the exact tenant, IP asset, service, and discovery run. The record contains observed product/version, `SSH_BANNER` source, observation time, and SHA-256 digest of the bounded banner. Unknown, ambiguous, unsupported, failed, and timed-out banners create no fingerprint record and cannot authorize a negative correlation decision.
+
+An unmatched active V2 correlation retires only after a successful `COMPLETED` run with a fresh observation for that exact service. Final run status, V2 matching/retirement, exposure changes, risk snapshot, and alert linkage publish in one database transaction. The locked retirement marks the correlation `STALE`, increments revision, appends `NOT_OBSERVED`, and resolves only an `OPEN` finding with the matching automatic `VULNERABILITY_CORRELATION` source key. Review decisions, analyst alerts, Cases, and other findings are not changed. A later verified match can reactivate the correlation under the existing evidence/review safeguards. Manual product/version edits and TCP `lastSeenAt` are not retirement proof. A run begun at a parent asset also needs a fresh relationship to the scanned IP asset.
+
+## Isolated verification
+
+- Disposable PostgreSQL: `cti_asm62_qa_case18_f5b0e34a`, created empty after the composite run/tenant FK was added. All 77 migrations, including `20261102160000_asm_v2_verified_fingerprint`, applied successfully. An earlier disposable iteration remains separate. Active `cti` was not migrated.
+- `prisma validate`: PASS with a schema-only placeholder URL. `npm run build`: PASS.
+- Focused Jest: six suites, 52 tests PASS, covering SSH parsing/deadline, retirement guards, port discovery, version matching, and correlation evidence.
+- Connected Node tests: real local controllable SSH server plus disposable PostgreSQL PASS. A first `8.4` banner generated a new V2 correlation for an enrolled second tenant; a parent asset run later observed `9.9` and retired it. For a separate legacy correlation promoted to V2, the test observed `8.4`, then `9.9` on the same `OPEN` service, and verified `STALE`, revision increment, one `NOT_OBSERVED` row with run provenance, and its matching automatic finding `RESOLVED`. A synthetic risk-publication failure after the retirement attempt rolled back the retirement and left the run `FAILED`, with no exposure-change or risk-snapshot rows for that failed run. A repeat run and concurrent refresh produced no duplicate retirement. A subsequent observed `8.4` reactivated the correlation. Existing ASM review decision, analyst alert/Case link, unrelated manual finding, TI indicator, and AppSec finding status/revision stayed intact.
+- Negative checks: manually changed version with an older run, `PARTIAL` run even with a real banner observation, unsupported banner on a completed run, foreign tenant, and closed service did not cause an unsupported retirement.
+- ASM V2 P1-A connected regression and two ASM V1 discovery connected regressions PASS. The older P1-A synthetic closed-port expectation was updated: a manually changed service state paired with a synthetic completed run no longer constitutes verified negative evidence. Its fixture now checks that no retirement occurs.
+
+## Limits and rollout
+
+SSH `SSH-2.0-OpenSSH_X.Y[patch]` is the only verified product/version source. Other protocols and unparseable SSH banners remain UNKNOWN. The banner proves only what the remote endpoint presented, not its authenticity or that a vulnerability is exploitable. Product/version collection is gated by `ASM_V2_EVIDENCE_ENABLED=true` and tenant enrollment; both remain off in the active environment. No frontend changed. The added table and index are additive, but production migration timing and target-database approval remain separate from this development QA. GitHub CI and repository merge rules must be checked independently before merge.

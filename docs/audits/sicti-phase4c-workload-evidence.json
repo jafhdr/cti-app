@@ -1,0 +1,39 @@
+{
+  "scope": "isolated synthetic QA",
+  "sources": 12,
+  "initialQueueDepth": 12,
+  "cycles": 6,
+  "elapsedMs": 5790,
+  "succeeded": 12,
+  "failed": 0,
+  "retries": 5,
+  "collectionLatencyMs": [
+    4,
+    3,
+    3,
+    3,
+    4,
+    2,
+    2,
+    2,
+    2,
+    3,
+    2,
+    3
+  ],
+  "processingLatencyMs": [
+    18,
+    18,
+    17,
+    17,
+    16,
+    16,
+    17,
+    28,
+    17,
+    22,
+    17,
+    15
+  ],
+  "observationCount": 12
+}

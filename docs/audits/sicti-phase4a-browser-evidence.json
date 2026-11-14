@@ -1,0 +1,12 @@
+{
+  "verdict": "PASS",
+  "authenticated": true,
+  "tenantWatchlist": true,
+  "syntheticObservation": true,
+  "matched": true,
+  "evidence": true,
+  "reviewed": true,
+  "alertLinked": true,
+  "caseLinked": true,
+  "screenshots": 2
+}

@@ -5,6 +5,7 @@ import { enqueueCaseAssignment } from '../notifications/case-assignment-event';
 import { AuthUser } from '../users/users.types';
 import { CreateCaseInput, CreateEvidenceInput, CreateInvestigationNoteInput, UpdateCaseInput, ListCaseQuery } from './cases.types';
 import { operationalIndicatorWhere } from '../indicators/indicator-eligibility';
+import { allocateCaseNumber } from './case-number';
 
 @Injectable()
 export class CasesService {
@@ -40,11 +41,9 @@ export class CasesService {
 
   private async generateCaseNumber(
     tenantId: string,
-    client: Pick<Prisma.TransactionClient, 'case'> = this.prisma,
+    client: Prisma.TransactionClient,
   ): Promise<string> {
-    const count = await client.case.count({ where: { tenantId } });
-    const year = new Date().getFullYear();
-    return `CASE-${year}-${String(count + 1).padStart(5, '0')}`;
+    return allocateCaseNumber(client, tenantId);
   }
 
   async list(user: AuthUser, query: ListCaseQuery) {
@@ -116,7 +115,7 @@ export class CasesService {
     const detail = await this.prisma.case.findUnique({
       where: { id: caseId },
       include: {
-        alerts: { where: { source: 'ASM' }, orderBy: { firstSeenAt: 'desc' }, include: { asset: { select: { id: true, value: true } }, finding: { select: { id: true, title: true } }, changeEvent: { select: { id: true, type: true, detectedAt: true } }, vulnerabilityCorrelation: { include: { vulnerability: { select: { cveId: true, name: true } } } } } },
+        alerts: { where: { OR: [{ source: 'ASM' }, { source: 'CORRELATION', ...(user.role === 'USER' ? { threatCorrelation: { event: { tlp: { not: 'RED' } } } } : {}) }] }, orderBy: { firstSeenAt: 'desc' }, include: { asset: { select: { id: true, value: true } }, finding: { select: { id: true, title: true } }, changeEvent: { select: { id: true, type: true, detectedAt: true } }, vulnerabilityCorrelation: { include: { vulnerability: { select: { cveId: true, name: true } } } } } },
         tenant: { select: { id: true, name: true, slug: true } },
         creator: { select: { id: true, name: true, email: true } },
         assignee: { select: { id: true, name: true, email: true } },
@@ -495,23 +494,23 @@ export class CasesService {
     });
   }
 
-  async create(user: AuthUser, input: CreateCaseInput) {
+  async create(user: AuthUser, input: CreateCaseInput, transaction?: Prisma.TransactionClient) {
     const tenantId = user.role === 'SUPER_ADMIN' ? input.tenantId : this.tenantId(user);
     if (!tenantId) throw new BadRequestException('Tenant wajib dipilih');
 
-    const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
+    const client = transaction ?? this.prisma;
+    const tenant = await client.tenant.findUnique({ where: { id: tenantId } });
     if (!tenant) throw new NotFoundException('Tenant tidak ditemukan');
 
     if (input.assigneeId) {
-      const assignee = await this.prisma.user.findUnique({ where: { id: input.assigneeId } });
+      const assignee = await client.user.findUnique({ where: { id: input.assigneeId } });
       if (!assignee || assignee.tenantId !== tenantId || !assignee.isActive) {
         throw new NotFoundException('Assignee tidak ditemukan di tenant ini');
       }
     }
 
-    const caseNumber = await this.generateCaseNumber(tenantId);
-
-    return this.prisma.$transaction(async tx => {
+    const create = async (tx: Prisma.TransactionClient) => {
+      const caseNumber = await this.generateCaseNumber(tenantId, tx);
       const newCase = await tx.case.create({
         data: {
           tenantId,
@@ -540,7 +539,8 @@ export class CasesService {
       if (input.assigneeId) await enqueueCaseAssignment(tx, { tenantId, caseId: newCase.id, recipientId: input.assigneeId, actorId: user.sub, type: 'CASE_ASSIGNED' });
 
       return newCase;
-    });
+    };
+    return transaction ? create(transaction) : this.prisma.$transaction(create);
   }
 
   async update(user: AuthUser, caseId: string, input: UpdateCaseInput) {

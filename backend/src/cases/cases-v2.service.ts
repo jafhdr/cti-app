@@ -7,6 +7,7 @@ import { PrismaService } from '../prisma.service';
 import type { AuthUser } from '../users/users.types';
 import type { CreateCaseV2Input } from './case-v2.types';
 import { writeCaseV2Audit } from './case-v2-audit';
+import { allocateCaseNumber } from './case-number';
 
 type Source = {
   readonly sourceId: string | null;
@@ -111,9 +112,7 @@ export class CasesV2Service {
           const origin = await tx.caseOrigin.findUnique({ where: { caseId: caseRecord.id } });
           return { case: caseRecord, origin: origin ?? { kind: 'LEGACY_UNKNOWN' }, reused: true };
         }
-        const prefix = `CASE-${new Date().getFullYear()}-`;
-        const rows = await tx.$queryRaw<Array<{ number: number }>>`SELECT COALESCE(MAX(SUBSTRING("caseNumber" FROM LENGTH(${prefix}) + 1)::integer), 0)::integer AS number FROM "Case" WHERE "tenantId" = ${tenantId} AND "caseNumber" LIKE ${`${prefix}%`} AND SUBSTRING("caseNumber" FROM LENGTH(${prefix}) + 1) ~ '^[0-9]+$'`;
-        const caseNumber = `${prefix}${String((rows[0]?.number ?? 0) + 1).padStart(5, '0')}`;
+        const caseNumber = await allocateCaseNumber(tx, tenantId);
         const caseRecord = await tx.case.create({ data: { tenantId, caseNumber, title: input.title.trim(), description: input.description?.trim(), status: CaseStatus.OPEN, priority: input.priority ?? CasePriority.MEDIUM, severity: input.severity, assigneeId: input.assigneeId, createdBy: user.sub } });
         if (input.kind === 'INDICATOR' && source.sourceId) await tx.caseIndicator.create({ data: { tenantId, caseId: caseRecord.id, indicatorId: source.sourceId, createdBy: user.sub } });
         if (input.kind === 'APPSEC_FINDING' && source.sourceId) await tx.appSecFindingCase.create({ data: { tenantId, caseId: caseRecord.id, findingId: source.sourceId } });

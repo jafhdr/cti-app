@@ -28,7 +28,7 @@ export class CorrelationService {
     this.enabled();
     const tenantId = await this.tenantId(user, requested);
     return this.prisma.threatCorrelation.findMany({ where: { tenantId, ...(user.role === 'USER' ? { event: { tlp: { not: 'RED' as const } } } : {}) }, orderBy: { correlatedAt: 'desc' }, take: 50,
-      include: { event: true, indicator: { select: { id: true, value: true, type: true, severity: true } }, alert: { select: { id: true, title: true, status: true, severity: true } } } });
+      include: { event: true, indicator: { select: { id: true, value: true, type: true, severity: true } }, alert: { select: { id: true, title: true, status: true, severity: true, caseId: true } } } });
   }
 
   async ingest(user: AuthUser, input: TelemetryInput) {

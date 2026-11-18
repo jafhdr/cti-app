@@ -1,3 +1,13 @@
+if (process.env.SICTI_ISOLATED_QA !== 'true') throw new Error('Isolated QA flag required');
+if (!process.env.DATABASE_URL) throw new Error('Disposable QA database URL required');
+let qaDatabaseUrl;
+try { qaDatabaseUrl = new URL(process.env.DATABASE_URL); }
+catch { throw new Error('Invalid disposable QA database URL'); }
+if (!['postgresql:', 'postgres:'].includes(qaDatabaseUrl.protocol)
+  || !['localhost', '127.0.0.1', '[::1]'].includes(qaDatabaseUrl.hostname)
+  || !/^\/cti_corr_qa_[a-z0-9_]+$/.test(qaDatabaseUrl.pathname)
+  || qaDatabaseUrl.search || qaDatabaseUrl.hash) throw new Error('Local disposable QA PostgreSQL database required');
+
 const assert = require('node:assert/strict');
 const test = require('node:test');
 const { randomUUID } = require('node:crypto');

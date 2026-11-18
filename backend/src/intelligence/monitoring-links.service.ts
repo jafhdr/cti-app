@@ -32,20 +32,23 @@ export class MonitoringLinksService {
     const finding = await this.confirmed(user, id, requested);
     const decision = await this.access.evaluateForTenant(user, finding.tenantId, 'case-management', ['case-workflow']);
     if (!decision.accessible) throw new ForbiddenException('Case Management access required');
-    if (finding.caseId) {
-      if (input.caseId && input.caseId !== finding.caseId) throw new ConflictException('Finding already linked to another case');
-      return this.prisma.case.findFirstOrThrow({ where: { id: finding.caseId, tenantId: finding.tenantId } });
-    }
-    let caseId = input.caseId;
-    if (caseId) {
-      const existing = await this.prisma.case.findFirst({ where: { id: caseId, tenantId: finding.tenantId }, select: { id: true } });
-      if (!existing) throw new NotFoundException('Tenant case not found');
-    } else {
-      const created = await this.cases.create(user, { tenantId: finding.tenantId, title: `Monitoring investigation: ${finding.match.observation.kind}`, description: `Synthetic monitoring finding ${id}`, severity: finding.match.severity });
-      caseId = created.id;
-    }
-    const linkedCaseId = caseId;
     return this.prisma.$transaction(async tx => {
+      const locked = await tx.$queryRaw<Array<{ id: string }>>`SELECT "id" FROM "MonitoringFinding" WHERE "id" = ${id} AND "tenantId" = ${finding.tenantId} FOR UPDATE`;
+      if (locked.length !== 1) throw new NotFoundException('Confirmed finding not found');
+      const current = await tx.monitoringFinding.findFirst({ where: { id, tenantId: finding.tenantId, status: 'CONFIRMED', match: { observation: { expiresAt: { gt: new Date() } } } } });
+      if (!current) throw new NotFoundException('Confirmed finding not found');
+      if (current.caseId) {
+        if (input.caseId && input.caseId !== current.caseId) throw new ConflictException('Finding already linked to another case');
+        return tx.case.findFirstOrThrow({ where: { id: current.caseId, tenantId: finding.tenantId } });
+      }
+      let linkedCaseId = input.caseId;
+      if (linkedCaseId) {
+        const existing = await tx.case.findFirst({ where: { id: linkedCaseId, tenantId: finding.tenantId }, select: { id: true } });
+        if (!existing) throw new NotFoundException('Tenant case not found');
+      } else {
+        const created = await this.cases.create(user, { tenantId: finding.tenantId, title: `Monitoring investigation: ${finding.match.observation.kind}`, description: `Synthetic monitoring finding ${id}`, severity: finding.match.severity }, tx);
+        linkedCaseId = created.id;
+      }
       const changed = await tx.monitoringFinding.updateMany({ where: { id, tenantId: finding.tenantId, caseId: null, status: 'CONFIRMED' }, data: { caseId: linkedCaseId, caseTenantId: finding.tenantId } });
       if (changed.count !== 1) throw new ConflictException('Finding link changed');
       await tx.auditLog.create({ data: { tenantId: finding.tenantId, userId: user.sub, action: 'MONITORING_CASE_LINKED', metadata: { findingId: id, caseId: linkedCaseId } } });

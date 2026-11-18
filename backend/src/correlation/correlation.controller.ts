@@ -8,13 +8,26 @@ import type { AuthUser } from '../users/users.types';
 import { telemetrySchema } from './correlation.dto';
 import { CorrelationService } from './correlation.service';
 import { CorrelationConnectorService } from './correlation-connector.service';
+import { CorrelationCaseService } from './correlation-case.service';
 
 @Controller('threat-correlations')
 @UseGuards(AuthGuard, RolesGuard, ModuleAccessGuard)
 @RequiresModule('threat-intelligence')
 @RequiresModuleFeature('indicator-management')
 export class CorrelationController {
-  constructor(private readonly correlations: CorrelationService, private readonly connector: CorrelationConnectorService) {}
+  constructor(private readonly correlations: CorrelationService, private readonly connector: CorrelationConnectorService, private readonly cases: CorrelationCaseService) {}
+
+  @Get('alerts/:alertId/case') @Roles('SUPER_ADMIN', 'ADMIN', 'USER')
+  linkedCase(@Req() req: { user: AuthUser }, @Param('alertId') alertId: string, @Query('tenantId') tenantId?: string) {
+    return this.cases.get(req.user, alertId, tenantId);
+  }
+
+  @Post('alerts/:alertId/case') @Roles('SUPER_ADMIN', 'ADMIN')
+  linkCase(@Req() req: { user: AuthUser }, @Param('alertId') alertId: string, @Body() body: unknown, @Query('tenantId') tenantId?: string) {
+    const input = body as { caseId?: unknown; createCase?: unknown } | null;
+    if (!input || typeof input !== 'object' || (input.caseId !== undefined && typeof input.caseId !== 'string') || (input.createCase !== undefined && input.createCase !== true) || Object.keys(input).some(key => key !== 'caseId' && key !== 'createCase')) throw new BadRequestException('Invalid case link request');
+    return this.cases.link(req.user, alertId, input as { caseId?: string; createCase?: true }, tenantId);
+  }
 
   @Post('connector/events') @Roles('SUPER_ADMIN', 'ADMIN')
   enqueue(@Req() req: { user: AuthUser }, @Body() body: unknown) {

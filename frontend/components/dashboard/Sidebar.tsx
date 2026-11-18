@@ -159,7 +159,7 @@ export default function Sidebar({
     }));
   const modules: readonly NavigationModule[] = [
     ...catalogModules,
-    ...(canAccessThreatIntelligence ? [{ id: 'threat-intelligence', label: 'Threat Intelligence', items: threatIntelligenceItems.filter(item => ['Overview', 'Indicators', 'IOC Candidates', 'Threat Feeds', 'Playbooks'].includes(item.label) ? intelligenceAccess?.featureKeys.includes('indicator-management') : intelligenceAccess?.featureKeys.includes('intelligence-hub')) }] : []),
+    ...(canAccessThreatIntelligence ? [{ id: 'threat-intelligence', label: 'Threat Intelligence', items: threatIntelligenceItems.filter(item => (item.label !== 'IOC Candidates' || role !== 'USER') && (['Overview', 'Indicators', 'IOC Candidates', 'Threat Feeds', 'Playbooks'].includes(item.label) ? intelligenceAccess?.featureKeys.includes('indicator-management') : intelligenceAccess?.featureKeys.includes('intelligence-hub'))) }] : []),
     ...(administrationItemsForRole(role).length > 0 ? [{ id: 'administration', label: 'Administration', items: administrationItemsForRole(role) }] : []),
   ].sort((left, right) => moduleOrder(left.id) - moduleOrder(right.id));
 

@@ -1,5 +1,11 @@
 # CTI administration design contract
 
+## Five route UX reference reconciliation (Phase 4B)
+
+The Case list, Threat Intelligence Overview, IOC Candidates, Threat Actors, and Campaigns routes use a scoped `ux-reference` presentation inspired by the approved five-screen UX branch. The pale blue light canvas, floating navigation, identity topbar, serif page headings, rounded metric and directory cards, and compact text statuses reuse the existing Dashboard `--db-*` and semantic `--soc-*` tokens. Dark mode uses explicit dark surface tokens without alias cycles. The reference treatment does not extend to Case detail, Correlations, Playbooks, Monitoring, ASM, or other routes.
+
+The shared primitives are a route-scoped shell, account menu with real sign-out and notification bell, metric card, filter/directory card, and status text. Authentication, feature entitlements, tenant context, Case V2 reporting/actions, and API-backed values remain unchanged. The current Correlation score layout and Alert-to-Case navigation are preserved. Full descriptions, aliases, and country/region remain readable without hover. Effectiveness metrics remain visible. At tablet width, tables scroll inside their own panel or use labeled rows; at mobile width, headings, filters, cards, and controls stack without document overflow. Keyboard focus, empty, loading, denied, and error states remain explicit. No motion or new runtime dependency is introduced.
+
 ## Phase 3A playbook workspace
 
 The Playbooks route sits in Threat Intelligence and uses the editorial canvas, `source-heading`, `feed-card`, `source-eyebrow`, shared Button, and semantic `--soc-*` colors. It presents a correlation alert selector, explicit confirmation and separate approval states, a single sandbox domain-block step, verification, and append-only decision/receipt history. The status is always text; the sandbox-only boundary and disabled execution state are visible before actions. Scoped `--playbook-*` values reuse the established 8/12/16/24px spacing and 8/12px radii. At mobile width, controls and evidence cards stack and long IDs wrap. Loading, empty, denied, pending, and failed states remain distinct. No new motion or external connector is introduced.

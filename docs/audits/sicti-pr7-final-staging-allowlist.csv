@@ -1,0 +1,230 @@
+git_status,path,bytes,sha256,classification,stage,commit_group
+??,.github/workflows/sicti-ci.yml,6264,187f2470a7ae311ecd50711a446d6896b60d1b9fe39efe6082e56ae421d1df1a,required GitHub Actions configuration,YES,ci
+??,backend/.qa-phase3c-state/qa-sict39-mock-state.json,424,786e283c542a1c36f0aeadef81853ecdbb6fdd194eaac379d522a14f5924f76e,local-only temporary or sensitive QA state,NO,exclude
+??,backend/.qa-phase3c-state/qa-sict39-mock-state.json.lock,5,0863d6a4dde2c12b7072a8885133f5878a479eabaf0c0073f73af0be3683873c,local-only temporary or sensitive QA state,NO,exclude
+??,backend/.qa-phase3c-state/qa-sict40-mock-state.json,424,86b09644183544bc1457485baea51866bb6529e3125b1e0feb31602de86331fc,local-only temporary or sensitive QA state,NO,exclude
+??,backend/.qa-phase3c-state/qa-sict40-mock-state.json.lock,5,37391b6a88116c32962c10953fc6204ec878331b1de7e6d1fa00db50c67f0d5b,local-only temporary or sensitive QA state,NO,exclude
+??,backend/.qa-phase3c-state/qa-sict41-mock-state.json,424,edc01ed4ef9df1bac18b8bb4dfd9f807d04de038fea8e937903b95a43817d9d4,local-only temporary or sensitive QA state,NO,exclude
+??,backend/.qa-phase3c-state/qa-sict41-mock-state.json.lock,4,20bb38aa47c991bab94b8d7ae0a1101b3c2640f27d8889557192eea90c0f9cbf,local-only temporary or sensitive QA state,NO,exclude
+??,backend/.qa-phase3c-state/sict34-0bfb21c8.json.lock,5,ce9fe307e3f2fcd17d8843f9a0819ab15070817a88cd9d9708f098bba71b7576,local-only temporary or sensitive QA state,NO,exclude
+??,backend/.qa-phase3c-state/sict34-f6ee1b14.json,380,be9a1e0a27f000449ec566f9eec8e4f2c24b21928743a6d634da479df5324256,local-only temporary or sensitive QA state,NO,exclude
+??,backend/.qa-phase3c-state/sict34-f6ee1b14.json.lock,4,16251c20d0eff6727d56ebc8da8d73450abb0933f5c7322104bc77cd844972f5,local-only temporary or sensitive QA state,NO,exclude
+??,backend/qa-sict39-state.json,230,7b75e974873776c7ae7ab164bf3d34e0243dbf833dfe4c8a19f2c929f558dddd,local-only temporary or sensitive QA state,NO,exclude
+ M,backend/src/auth/access.integration.spec.cjs,25529,e16045953d31522b8435e84b99b76bd718a32488d5cd42b21656088d6a682b82,required automated regression test or CI dependency,YES,backend
+??,backend/src/cases/case-number-concurrency.integration.spec.cjs,4194,3ef830e6ccf935f93158eb9315e97473af196f171674698b8eafc42fcd962634,required automated regression test or CI dependency,YES,backend
+??,backend/src/cases/case-number-workflows.integration.spec.cjs,11423,78ff0355e959d6a23480fe2aec75ba24c4af309734adf55128f3c05dcf0936dd,required automated regression test or CI dependency,YES,backend
+??,backend/src/cases/case-number.ts,909,27b79c414943d476927cdf14babab6d265e04048502768f4929627b4d82bbf74,required application implementation,YES,backend
+ M,backend/src/cases/cases-v2.service.ts,12407,f5a35e4971497051ee457857d5c044ffbed977a75c1e540f22fd8dfeb7dd35ae,required application implementation,YES,backend
+ M,backend/src/cases/cases.from-indicator.spec.cjs,6553,7f3bba31738dbe3f64b899ac9fd9500274ebd4211d550dcc05cc99cd600f3271,required automated regression test or CI dependency,YES,backend
+ M,backend/src/cases/cases.service.ts,41039,dd5211d1cf2a5209ee21fd78cd104ec44d5b10b697c3a14496e14e27466dda27,required application implementation,YES,backend
+??,backend/src/correlation/correlation-case-soar.http.integration.spec.cjs,4257,af8441d1b8ecf2ac14f80295788dfba66da375e146fe07111f94463d698c363b,required automated regression test or CI dependency,YES,backend
+??,backend/src/correlation/correlation-case.http.integration.spec.cjs,10250,643aa6dd02d698253cf7ed7236dccc0dec7806c021e0b33db06cf973b1a23c3b,required automated regression test or CI dependency,YES,backend
+??,backend/src/correlation/correlation-case.service.ts,5283,e7e0b485f4191f4d5f12afded867f0684d67fdc4b9edfbd31c3b5c40b52bde5a,required application implementation,YES,backend
+ M,backend/src/correlation/correlation.controller.ts,3361,c9c846acc8613428bd7854307753537647d3ef223796a72805d483ad4479e190,required application implementation,YES,backend
+ M,backend/src/correlation/correlation.module.ts,1084,d577cd43572beb811802364774ff8c1bbb0f553ed6e8a6cf292953c4e88f52cc,required application implementation,YES,backend
+ M,backend/src/correlation/correlation.service.ts,7622,7c29ee82da334aecba4bb514398b341ea8d34daf2adba903cda3b1fee2a6c5de,required application implementation,YES,backend
+??,backend/src/intelligence/monitoring-case-concurrency.integration.spec.cjs,11459,e8972f50a2d6231c85b7ca40021c0574768544bae918dcb9b012d73fa330fb91,required automated regression test or CI dependency,YES,backend
+ M,backend/src/intelligence/monitoring-links.service.ts,4582,170bdba5fd56ecef053d2d4fa5dd541a2438805de417ed8571ad3a4ca0772fa0,required application implementation,YES,backend
+??,docs/audits/sicti-final-cross-feature-api-log.json,222,03bbe05e08e6ef7a2654c4886e3f29e9260255b0678c472da6ac6ad0eec85d88,optional historical evidence,NO,exclude
+??,docs/audits/sicti-final-cross-feature-browser.json,1473,2ccfad50cec3987f0d49ef574bbdb2c3dfe09837227ad34b866c90391c9da675,optional historical evidence,NO,exclude
+??,docs/audits/sicti-final-cross-feature-cases.png,119429,d40a5e1cd176a6142fa09127b449979b02d30afe1acd8511e303a81a1f492c53,optional historical evidence,NO,exclude
+??,docs/audits/sicti-final-cross-feature-e2e-report.md,5499,a27fdc381adbec39035daebdee3afa72f3c991fed14a6bdcd50b5e7fd6b1cc0f,optional historical evidence,NO,exclude
+??,docs/audits/sicti-final-cross-feature-monitoring.png,142647,547adcc5cb5f383458cdb8b03c9a5c7a5d05f29c90204a2a89a2c8bde504180b,optional historical evidence,NO,exclude
+??,docs/audits/sicti-final-cross-feature-sql-log.txt,218,e3ad726910936333f6b41db35e8a857b747d69880ba4060ed5bc5a8e2c890e36,optional historical evidence,NO,exclude
+??,docs/audits/sicti-final-cross-feature-trace-ledger.json,7128,71abef69e8a695b3afcd60a7ce7b25935fb7e6751450e7ffbc896b31fd55dfb7,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-atomicity-build-log.txt,118,e12f73b992342dfb22e4baafddee722634a6874c97b719f6e52c4428b1e62f09,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-atomicity-concurrency-log.txt,816,7dd488d94b2a881434107ec89137d3a10a31f3bf1d15635be7e3b1db05e13e3a,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-atomicity-final-diff-review.md,4438,06ae804243f38a86b14a851a121e265ceef89d436b0bc73f7f9336833d7b5126,essential sanitized QA report/evidence,YES,evidence
+??,docs/audits/sicti-pr7-atomicity-focused-test-log.txt,3438,24ef04127165d78e700f87296276bc997bb8e2807ae25609b7d91d73eed284a0,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-atomicity-migration-log.txt,162,b32c66979c927d53b15c8bda0bc99865c5d18e17efee2f80b681ff1127732f78,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-atomicity-unit-log.txt,1436,9e9bfced9aeab3378a9c6395cae21b4d681d7b13c0da510bc7dae14471a15809,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-case-allocator-baseline.txt,1240,9320dbf2dbf67046a97d57bafafbc32c320855ed4191eef90319095bbd9ffae8,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-case-allocator-build.txt,92,6fb8b1640b74d7ab36c82572c36d4e80ad2317a97798aa4b159dd42742c0dbfa,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-case-allocator-direct.txt,680,7cadbebd0eef82ec9adf0ad733ce0de899a006b6fb69e4847983173dab6e4c73,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-case-allocator-focused.txt,4334,ca1f8c68ef7a5844748e77aa5cd092bb2903d153205be3d1a08962d523ce0562,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-case-allocator-soar.txt,756,8c5fb2bb963602480a46dc12efa7742dd2037d3cf6425a9d6a3ac7b64f86727c,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-case-allocator-unit.txt,1892,2dc67cf24aef7af854d65985e6b93ea3177a0e9e33a7fad9611c9e537b39cc8e,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-case-allocator-workflows.txt,1146,5e9c64d96707490b4a43bb2c873cc78f0211c2ef03012670d4d23a7e4ee1332d,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-case-number-allocator-remediation.md,6037,243cad13b99b9e3b523dbaec44ee0c783ce59cc799d24b59b108566127a78a9b,essential sanitized QA report/evidence,YES,evidence
+??,docs/audits/sicti-pr7-ci-prechange-inventory.csv,31016,5fbb7c2ffed47a267433cd5801d54ec1a31fbc8e488a935b06e83ba1030042fd,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-correlation-alert-case-integration.md,6411,848fc1d2e083ce2546ed46790943d48dc016a22135982fed7730683ad45a1f54,essential sanitized QA report/evidence,YES,evidence
+??,docs/audits/sicti-pr7-final-code-security-review.md,9080,37f76f16353291ce3f27009a39d36606ddbd967b19faa3ed098ab7aada989a0e,essential sanitized QA report/evidence,YES,evidence
+??,docs/audits/sicti-pr7-final-precommit-review.md,9829,ea6203321ba88267fb36f760a1bb39adf2d94af6ec6f17f3ce1692027f771f94,essential sanitized QA report/evidence,YES,evidence
+??,docs/audits/sicti-pr7-final-visual-qa-report.md,10048,66b55061773ea21831c5834fd969a603fdaedf68971928b10543f669ab4c0e2b,essential sanitized QA report/evidence,YES,evidence
+??,docs/audits/sicti-pr7-final-visual/asm-monitoring-asm-asset-1280.png,485164,e5f141c09bce90a0681fd716c36127162125b8bdd97d9c22533a9848cd3c0d40,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-final-visual/asm-monitoring-asm-asset-390.png,359518,4c9cc60e7cb18218ea1ece3448ecb271e25282ae38dc58d1548b3ee2257c80d9,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-final-visual/asm-monitoring-browser.json,1572,5a5fee31f83fe4c5b069af39b4c82b8d7973ea41212a8af8cc6494cd03b34f3f,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-final-visual/asm-monitoring-monitoring-detail-1280.png,200406,339ffaf428f4e0f8c729ef93734fb1c8d74c03bfd348cbf8b36ceacdfe1ed444,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-final-visual/asm-monitoring-monitoring-detail-390.png,161230,ae71312383da90e786721490a4dfb6e6922eb9b85d161b8ceb41bd13ff340457,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-final-visual/correlation-browser.json,1516,9b7bd4f31750ec80236fb9cb4ecd333608e80af1e36f78dd0cf46ebdc865a620,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-final-visual/correlation-case-detail-1280.png,193548,7e62e29df43c6226baa1dd8a52d630d455fe75721cb22d455ebc86ad215ecd3e,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-final-visual/correlation-case-detail-390.png,151007,10e97da329ede95a06ea252e6c64578f9471d498c1d2e85b833aaecf5d3eb98c,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-final-visual/correlation-corrected-browser.json,1299,9558a3ea9058e839621049cc62a28833348bd66909ed616abd5823097577f08e,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-final-visual/correlation-correlations-1280.png,115191,878c76786cc677641e72174899713e507524def6357c0f03178e511d8f542172,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-final-visual/correlation-correlations-390.png,85283,2673dfd9f24e983d387f0cf13379d31e656b48615ee7ed4e119a7e9ba9084454,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-final-visual/correlation-correlations-corrected-1280.png,108810,774aef8fdb6231b87b272f510f22700c58cef9bb1b5d064fd16399ccafc9a16f,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-final-visual/correlation-correlations-corrected-390.png,86197,bc509065f840fc32b67d4019bc0433a47083c444293f86f423dbd7cb2b5b4de6,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-final-visual/soar-browser.json,979,65fe4ff8005201e8795718ba57abde1bd2992d6c1dc5dde8ac80308ca99b16f1,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-final-visual/soar-playbook-verified-1280.png,140069,034391c33754063b23b202db91ac07058c85080e0974224306a65a497c40ba6e,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-final-visual/soar-playbook-verified-390.png,100478,f5f06f981dc84edf5ffa95db4b7d9e60326a74610dea789e12ea739daf5cc828,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-frontend-ux-reconciliation-implementation.md,13832,63352a87670ae93a78c27a7e1654332e7104d304693aa4133bf3035d7683f78a,essential sanitized QA report/evidence,YES,evidence
+??,docs/audits/sicti-pr7-frontend-ux-reconciliation-plan.md,12887,172fb883075689b2a3fbada0acbe51775a970f4a3e2dced3cc619cee98442fba,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-github-ci-implementation.md,8098,6af8c8406f772860968cf69ad5cf570e08c486984937f169a006c4b83390a391,essential sanitized QA report/evidence,YES,evidence
+??,docs/audits/sicti-pr7-monitoring-case-atomicity-fix.md,6304,ca5160e91fdc83128810eb9e1c30472f7d877b9cd6119c6700ee84e0347b227e,essential sanitized QA report/evidence,YES,evidence
+??,docs/audits/sicti-pr7-ux44-prechange-inventory.csv,14870,8a893f5ed2df34728cc01ee073a9d2e09604c3463c9045d97906423bfb0caa7c,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/actors-admin-1280-dark.png,107118,202bfede0950100fb46fe2abade2a8055836c96352f53471739f21622a89d420,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/actors-admin-1280-light.png,107203,916a9f117d8483dfd5ddc939a6eacdb082ffa7d441351942b9755d6456a6bdea,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/actors-admin-375-dark.png,74964,7884b02597205c1d091112335eb7b1d7220c137b11eb72b0bb37fff45d9c77da,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/actors-admin-375-light.png,75729,98ce944ec7d13fd6b4a3846c237fc4f8f0b295e262d3c97105ae21aaee34771b,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/actors-admin-768-light.png,83889,d4f194b2283104b8eb25f4bb47307aeab2ee0c02fb417be2cb262d1c795aa787,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/actors-outsider-1280-light.png,95870,aff05b69fb30259870a3b0bd4caeba0284ca0234cf4a3680eeb6a8f2783b259f,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/actors-super-1280-light.png,97222,de3ede90f26de43c524874e3e6fd538c4a431c52f4de2ff5f044a637a6204b90,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/actors-super-selected-1280-light.png,107937,5dbed988d81b555a27e46fbeb6f6b0b80dd0c8cdfcc7de5dee91cd613b87843c,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/actors-user-1280-light.png,103353,815cca04a8caf576158211c422132e43027f56dd66e91962d257a9704f4fb019,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/approval-after-click.png,66781,4ce32a7366c9df755e9c8f5b604eb509fbd8883d2d9b5749079aac9937d177b8,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/approval-evidence.json,815,c6770cdf125ec89838a3890899803d5b0841f77883f7626fca597408acc093c6,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/browser-evidence-final.json,38753,cb26964956d5ccf4cf4bb5e5abe0c5cea271f9df141c972b9ceeae0482849a3e,essential sanitized QA report/evidence,YES,evidence
+??,docs/audits/sicti-pr7-ux44/browser-evidence.json,74686,7b8b23140dc8721785817287fd2927e95b4e7b6cd71e5b1a59b6046455d71aef,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/campaigns-admin-1280-dark.png,98669,7438549108550dcd2d322b8b5ca073326e8a497bc6c807f9dd7a07b71abab655,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/campaigns-admin-1280-light.png,99640,8ac270c134f768247a0f69971c7c90354d29e94a168b8ecc9ae3f679b4a17696,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/campaigns-admin-375-dark.png,67451,c2717468bbacf5116eaf6fd787a76d2f83f6c9cb944bf6b33ea5929462aaf5e9,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/campaigns-admin-375-light.png,68412,c53996bd138b6f1fc0a27e9599fa9ec06e7100d919d82ae7c19137a9fdc4ca09,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/campaigns-admin-768-light.png,75527,c475de93bd0fc4f3ec4015d3e9c46bf15ee48b0e2997312d3b9012b7b8268213,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/campaigns-outsider-1280-light.png,91354,3ca6e0bf48e4eacabcf34a5cc894155f279832d7d29eb03d9f1ba1314e3e1d73,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/campaigns-super-1280-light.png,92685,d87a7943ef086d426f1368fa25c30f294a261b76fcd127d2eec0164b54e69e1c,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/campaigns-user-1280-light.png,94349,7bb159dc58a46e5b8ba5ba5ad13f0d9585bab29591859f42f321af9d727f02d3,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/candidates-admin-1280-dark.png,75427,a5a7571d5c238df49d58ac6f7e63a8cc5ccafa33d2ff3effffebca64609b896a,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/candidates-admin-1280-light.png,75123,f4653b8e32902cc5f6b0101cd74729fa5f25beff26e97c323096ebb5720b48d6,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/candidates-admin-375-dark.png,40577,88b69a4c0c8b1750c39fffdc258e0aa15bbe874a705423d63e4e3e967f06079f,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/candidates-admin-375-light.png,40638,c04bb5753f6af6a3dc959ef4b410a6b47a4597e45cb59011c67f494978123350,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/candidates-admin-768-light.png,45125,ab9da39dcd24b9598496499112654d6a9d543b7668fe77a5494f803702d990f9,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/candidates-outsider-1280-light.png,66413,3a39aa38f989ead9e254d59177f1b79d18bca1c580dbbcfd42464a4c0b00c78b,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/candidates-super-1280-light.png,67761,806adcd44b66aa752006cf22d952550a35ca90d4eb5a928b442d0d140b00509c,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/candidates-user-1280-light.png,141795,5ffd211636fe56bbed2e7be85e4780feaf9f38336f72a2e054cb40a2caa821aa,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/cases-admin-1280-dark.png,260126,dcf254736e7273c5332c8ee4248bff119876799f99258d901ce5f101adf418e0,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/cases-admin-1280-light.png,256350,90d45926ab70243206b9093ef9a4368ed66c2a44a5115e80cdbddc4ba38924db,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/cases-admin-375-dark.png,366795,f0b6cb9303f3f721fb34e5e83b0bdfb81c3f77b3e9859daf0def7bed78ba986a,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/cases-admin-375-light.png,369767,5714c86a5779282bd747981aba77062c42ec432d02a8ea11695953898659b5af,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/cases-admin-768-light.png,256802,70fcb75fc11a9bbaa39589a7f5169778f65bd4161239886ee367ab189442bdc9,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/cases-outsider-1280-light.png,88459,d42307263f595365c5f3556b2fe7627c0bce43293ff21ef59b36328f17ca226f,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/cases-super-1280-light.png,31631,9548757ae9352b3b2962834c24af7411dfa6ea981fe17751aac24e230a699ce2,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/cases-super-selected-1280-light.png,261069,aa0677503ac86c122035502e25b1fcd6bffc51e7843b3a1278607e882c33f89f,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/cases-user-1280-light.png,256324,8fe3692bf2a56b60e67ebde9bec884870388d5e348c0df70685d97f977d791b1,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/final-actors-1280-dark.png,110347,839dcc235d5f6c132b0b8ce5d7da1055964cfab64247d36ec7abe661a80b9b60,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/final-actors-1280-light.png,111788,1f48f914dfe7de7daab23e9e2abbf9520606f2a6b70c0f90d5377c26621270dd,essential sanitized QA report/evidence,YES,evidence
+??,docs/audits/sicti-pr7-ux44/final-actors-375-dark.png,75768,c38c9f5d95e9c777b584cb37333bda38526f38d1a8e77e6457fa635875b20376,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/final-actors-375-light.png,76659,a940a5a87b6e771b021a8120c0e1945fa46305458d6592568b0d6fcb5b18c743,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/final-actors-768-light.png,84409,8152853c7a1be1cd05b2946347df18d9c045eb8be56b87d00222fa6fb69f71c5,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/final-campaigns-1280-dark.png,98372,3421c0fb98b86a2337f9f50bf05891159f1a0c56921f688e888171d37986cc8d,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/final-campaigns-1280-light.png,99610,205f1578402d2bf17d3bd6124082c46856f498ac916076e05ee22adbc6b73e10,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/final-campaigns-375-dark.png,67255,c420108e57835ae1fae629193ed46355322e7954439eab05a8ded9cbd5f62cca,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/final-campaigns-375-light.png,68209,2ecd8279972ff00dc37b566c28dda45de6b24a78837ec9a7a6ffeafb1b9c88fc,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/final-campaigns-768-light.png,75398,6a1696a52ebdd9dbb861c2fc57b9c70d86a772643ede97c63a9bed25902244d2,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/final-candidates-1280-dark.png,75835,b53ba8c065887e56a9af35bb4bc1abe63288281ac4a59c940e0c139e473e4f65,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/final-candidates-1280-light.png,75740,8452e27236ae7181d597bc199bea903ccb9b0b9746755e5c3a06e77e12dc26b0,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/final-candidates-375-dark.png,39380,8c2ebdf10b3a7e50685c8e7ac5361d9f5a9013bbb0acfcfd2ea094eda8931e49,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/final-candidates-375-light.png,39289,e5db90696b703beb0a25241c73736e8bd41011d6e3acdcf2ed48ca2ea7b404ef,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/final-candidates-768-light.png,44877,68e23910d409a9e513c1b0a9ca3a5c44533d1fb19c61ba1e78a841a79c694f43,essential sanitized QA report/evidence,YES,evidence
+??,docs/audits/sicti-pr7-ux44/final-cases-1280-dark.png,261333,d5505c27144eddafc45e818cfb6174dc9a4b8305f4cc7ba3d5ca0e34c3b357d7,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/final-cases-1280-light.png,258579,cc575aa53586fcfd760c6d6ea404e863459182443c7faba15858f173dc37d847,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/final-cases-375-dark.png,383003,f94e7f3bf529f4531fcfbaa3a4bb6244881bd548c4a8fe9dfa5a4b115a5bab38,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/final-cases-375-light.png,385067,8cd31ce549fefdcd39e7135f658449fa4e9f12f33361e5c5988164c33d08553e,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/final-cases-768-light.png,238159,7f240616519564ff0acb0a67e7271776208cf7a771d425d5cfc10663649676c3,essential sanitized QA report/evidence,YES,evidence
+??,docs/audits/sicti-pr7-ux44/final-overview-1280-dark.png,283049,2f228e34adb18366e5821ca7fab8d684e7c143373cf5e079997f6780efc6d1d5,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/final-overview-1280-light.png,280447,fee27b034f2e2e84c462e64da39fe035c72eae993fcf48aaa1adadb31541ec6e,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/final-overview-375-dark.png,237100,412b8a3a5dfe14cb99adce8b31ac76ff687a9c989086771704e58b142e2f8f8c,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/final-overview-375-light.png,233378,58b29dd1da9168bcc684b9f319f8c21d1c72122a829f3b6edd61e85fdc13cd00,essential sanitized QA report/evidence,YES,evidence
+??,docs/audits/sicti-pr7-ux44/final-overview-768-light.png,237995,665f536e5478325578091d255ff669ae48e2b26a9a9806a9ad87da96cc426e96,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/overview-admin-1280-dark.png,285351,0db307e7fe8129759f3b5bea84e70904851dddf5580a36e36c243ef2db438d55,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/overview-admin-1280-light.png,282627,b5c75b2afe924eebe7166160baf50ef01c006c6be14986ad5c828251974246bf,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/overview-admin-375-dark.png,238668,86058e4df2e20eaebda7b2ef533f5dac8b575c28780192fabe40bdec55ba5de3,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/overview-admin-375-light.png,235074,296c2f334fa9e534bcafca1660db6792551b8a9d7b6b441cbc3e1b36dd1d5509,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/overview-admin-768-light.png,240452,ed8ecabc4e46e7af836e855c75efdaeda9e44338875dea4e7cf1794ca602b893,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/overview-outsider-1280-light.png,279615,b23c6be6ead3d076a9b57acd358275c5a295d2ba61c56699322f354883493911,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/overview-super-1280-light.png,280945,a655172a53652dc5e29c91ff105b2fc462a103e3d0e2ea6ea2bbe956ef233e1d,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/overview-user-1280-light.png,141795,5ffd211636fe56bbed2e7be85e4780feaf9f38336f72a2e054cb40a2caa821aa,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/regression-asm-1280.png,42998,b4d16ad5dde6c60326ae57452880242d2b57249b78ddac70f0f3bda1b56b453b,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/regression-asm-390.png,27057,ba1885968ff1912c5f2c745957cc67d003869766d75937c523811fac6b06e380,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/regression-case-detail-1280.png,239813,4571ce2ebbac7ab7fa9a79fccaddad66f7340f254cec650cc1322678cfe10a21,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/regression-case-detail-390.png,179430,14dad7d2042618a2656a1a1f39dceb18324b7f2e3cc5c3b3560fca51fc6ffb99,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/regression-correlation-1280.png,137816,be6a1b32094d404c46c204bcb11b5d393dec41102958b1995a5a203eacd39bfb,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/regression-correlation-390.png,104787,9f4d7e98f546523725d0516094d008e32ceb867c3b36aad0fc86955738a5efbf,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/regression-monitoring-1280.png,148391,4b0b3d2b63de68a39367fd587b352feca51bdb67299d2e2f2824c723d1d2d25b,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/regression-monitoring-390.png,101430,23e5f6a1b0e21ebc9a7014a72d57c5c963223f5b422c4b61aaa753f1ce61ea02,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/regression-soar-1280.png,159597,11c3c6d42ba8c0a9f7e87a308a5266e3d5ec40f30ec7735cd90703977a31b8e6,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux44/regression-soar-390.png,116525,0d150428ec588ec937314ffdf736136753608f5c4950aabff998b4430d0ca305,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux45/asm-populated-1280-light.png,526503,a6ef3c27db44f62cdc9f8ff16705b177fd9a787dd37c06567437c44549e8df93,essential sanitized QA report/evidence,YES,evidence
+??,docs/audits/sicti-pr7-ux45/asm-populated-390-light.png,396746,65f28053e949cc5e59754976caa70a0b67146c3d9612dd4d84271320e20746d6,essential sanitized QA report/evidence,YES,evidence
+??,docs/audits/sicti-pr7-ux45/browser-evidence.json,4851,af633c50305d011292c12f825458a2bc76aa2c86485149033e64c2fe8ebc45b1,essential sanitized QA report/evidence,YES,evidence
+??,docs/audits/sicti-pr7-ux45/campaign-sort-1280-dark.png,92520,2d16cfeeedc1a0575f1492ac6308cd239f3192335b27cbaa6c69d96911bf3852,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux45/campaign-sort-1280-light.png,93718,941906e4907e64a65e9e127faf37b9f99d399a4b4e53299209ee6d542e49f13e,essential sanitized QA report/evidence,YES,evidence
+??,docs/audits/sicti-pr7-ux45/campaign-sort-375-light.png,60834,0cc4604af63becfed76da73a3d4ee730b616df5bd343a50845407d32f4cc45d0,essential sanitized QA report/evidence,YES,evidence
+??,docs/audits/sicti-pr7-ux45/campaign-sort-768-light.png,66673,28fd2e50ec5fd2f17bd35ad51f0f5e81247e33dd795a29781dba52ea03eb0b1a,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux45/case-detail-1280-light.png,257879,7bc8029e26e8f48209a0e408f6a4ccc0490a7ea9eb9b44e9b2d193097ee8ab6b,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux45/case-detail-390-light.png,188549,76e96b7427e125e768d8b86475415e2812a90ccc0bcf59df855174d791de3970,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux45/correlation-1280.png,95418,6bf2d89a35a47928457f8e5aa27b9b96c97ded7c8bee42c751b2e67716ff5b1f,essential sanitized QA report/evidence,YES,evidence
+??,docs/audits/sicti-pr7-ux45/correlation-390.png,60615,43bfe18ca2865c49c8ae15ef794fcb314d16de1f9b4b4d214956f5ab8c92bf65,essential sanitized QA report/evidence,YES,evidence
+??,docs/audits/sicti-pr7-ux45/correlation-evidence.json,458,5dea8c7f7cb3e9c15efffeb4ae9e09cb57147cefb1f48520f383cb70f37106c9,essential sanitized QA report/evidence,YES,evidence
+??,docs/audits/sicti-pr7-ux45/monitoring-populated-1280-light.png,230187,6510e31ae7fa0cd0e9a0ca848fda05c7b817bf8de796f8211c1cecbde8cd3396,essential sanitized QA report/evidence,YES,evidence
+??,docs/audits/sicti-pr7-ux45/monitoring-populated-390-light.png,177290,210ac2b8e01f580458002b98cb7b9f13d0b9f4c9ace89cf257e5e31722233a81,essential sanitized QA report/evidence,YES,evidence
+??,docs/audits/sicti-pr7-ux45/scope-asm-1280-light.png,526503,a6ef3c27db44f62cdc9f8ff16705b177fd9a787dd37c06567437c44549e8df93,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux45/scope-case-detail-1280-light.png,257879,7bc8029e26e8f48209a0e408f6a4ccc0490a7ea9eb9b44e9b2d193097ee8ab6b,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux45/scope-monitoring-1280-light.png,172500,586378028966da8e7435dbbbb1f432f367f66c1e4bf63ff6670e62989a73f792,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux45/scope-playbooks-1280-light.png,104374,d8cd8a45efd8533ea4822564d1a8c5f7f6ab13e94d437d896e400908772b017d,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux45/super-monitoring-foreign-1280.png,122184,8f3f102e49c6e8db2088fbe96dd0eece0904ef9714fbc4c49d498b0a1d818f51,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux45/super-monitoring-own-1280.png,146085,1dcd72afd3836488e2b9acf2ecf151b191d7f703cbd79f145d121faf340c1d7b,optional historical evidence,NO,exclude
+??,docs/audits/sicti-pr7-ux45/user-ioc-denied-390.png,50742,ee425cf8363fb7eaae931831336ff1a29ab690905c7343e813425dc05f7c0b92,optional historical evidence,NO,exclude
+??,docs/audits/sicti-unified-staging-auth-test.txt,450,50bdd6499dda9e97afc53bc07fa379cfe31f2587431458dc79236c99b08ccb08,optional historical evidence,NO,exclude
+??,docs/audits/sicti-unified-staging-browser-log.json,6682,9be7a3a04ee6903fd1e0dd1b81cb5ca787a3c67ab0375bfa9b203391fefd5220,optional historical evidence,NO,exclude
+??,docs/audits/sicti-unified-staging-node-test.txt,11306,9f130ba638f44d615561d7c653d97947bdea36f6b8f28c6458a78b819fa9a679,optional historical evidence,NO,exclude
+??,docs/audits/sicti-unified-staging-screenshots/appsec-1280.png,69260,0a970a29f47f92d6ff34ca465cda336a65c6bfaec1cd753657b6cb841c938fa7,optional historical evidence,NO,exclude
+??,docs/audits/sicti-unified-staging-screenshots/appsec-390.png,46384,1b59466477bb167f98d6565c023ffe42ecf9bd89e4424f205cfb501160035036,optional historical evidence,NO,exclude
+??,docs/audits/sicti-unified-staging-screenshots/asm-review-1280.png,42728,331d703c65febc07282fcdae5275c4bc609e86049f5959162809dca171408150,optional historical evidence,NO,exclude
+??,docs/audits/sicti-unified-staging-screenshots/asm-review-390.png,19577,43b9f53fbdf80fabd7bed6017686451c82c064d386041c4c24ed60373edf8a0a,optional historical evidence,NO,exclude
+??,docs/audits/sicti-unified-staging-screenshots/cases-1280.png,238538,d82bb1582294f151b669b97cf0eed3b29385e1a9447a83f5948a90dbac54056f,optional historical evidence,NO,exclude
+??,docs/audits/sicti-unified-staging-screenshots/cases-390.png,170470,97a478fc8ab3b6c6561482ade8fd95b1682a0b4f0e9b4d7c383b1d32d95ba3f5,optional historical evidence,NO,exclude
+??,docs/audits/sicti-unified-staging-screenshots/correlations-1280.png,81347,a84424ea651d5d535b793c98942cdba2b40229147421e299b93f2599de0fecd2,optional historical evidence,NO,exclude
+??,docs/audits/sicti-unified-staging-screenshots/correlations-390.png,44567,4dd9dcc830f525706b78d09d8f32409bf644b40b567100bbad9076a86916a499,optional historical evidence,NO,exclude
+??,docs/audits/sicti-unified-staging-screenshots/monitoring-1280.png,118840,03cdea2a9b451d6b9eedd43295c0342cf55f0baafd1060af02fedbdcc6696977,optional historical evidence,NO,exclude
+??,docs/audits/sicti-unified-staging-screenshots/monitoring-390.png,77637,e9d61d7395aef9c23eccacfec5d6b1cb7757c56898debf6a928e66e0851bc82e,optional historical evidence,NO,exclude
+??,docs/audits/sicti-unified-staging-screenshots/playbooks-1280.png,83373,1f99ead6e44b0033b5a4d00d71913feb4a95116e89a48128f7bb35035dbc33b6,optional historical evidence,NO,exclude
+??,docs/audits/sicti-unified-staging-screenshots/playbooks-390.png,46011,0c4e8f020541b1fe240078b828a4d7e37789be4d6cf9680914df4241c34d60fa,optional historical evidence,NO,exclude
+??,docs/audits/sicti-unified-staging-validation-report.md,5397,ae3fe4f9249b9289f9409b93759641c8e8266b8da27e4de810abbd4cca598291,optional historical evidence,NO,exclude
+??,docs/audits/sicti-unified-stateful-appsec-log.txt,970,1978b0190b6146f37f0c3146708b2d13279ba880240bfa6b68ed001104d96eaa,optional historical evidence,NO,exclude
+??,docs/audits/sicti-unified-stateful-asm-log.txt,2194,faa70d6d95daa91fd3e482a0296297096f68c73398ec48aabf14c6f5ab0f171c,optional historical evidence,NO,exclude
+??,docs/audits/sicti-unified-stateful-browser-log.json,4070,e8e253a29e6f8b150133dba586504ee9556bca0aa54854c7d2aa9be1f10ac719,optional historical evidence,NO,exclude
+??,docs/audits/sicti-unified-stateful-correlation-log.txt,656,dbedf4a07a300503666a26e2ac1437668a87357b46b5ef1c3023c1985747fa3b,optional historical evidence,NO,exclude
+??,docs/audits/sicti-unified-stateful-e2e-report.md,7901,249892dead486b44d2bcfeda21c571cebb4de292dc59b45670ffd451072ea881,optional historical evidence,NO,exclude
+??,docs/audits/sicti-unified-stateful-monitoring-http-rerun.txt,504,684c1481d4a83a14918637906bf68a37f2f5a0d010b2500e0a5d4fc5606f11f2,optional historical evidence,NO,exclude
+??,docs/audits/sicti-unified-stateful-monitoring-log.txt,3102,55b6deedf63367fe7c92ab0acdb20a8143d079b2f116bd5cff7e1a353e85846c,optional historical evidence,NO,exclude
+??,docs/audits/sicti-unified-stateful-persistence.json,1850,7f33e8b6b2609c5f2f769a04569ecab2a939fa822f379eeee6bc911b24a66913,optional historical evidence,NO,exclude
+??,docs/audits/sicti-unified-stateful-profiling-log.txt,1618,50bc28b8e3bb2e85f8975f73ebde3d6cb390bb9839cbf858c3ae0556d2d308d3,optional historical evidence,NO,exclude
+??,docs/audits/sicti-unified-stateful-qa-case-v2-p1a.txt,706,5a2456869c3c535e26ee1c9fbc9f0867b5ced3312d077ba092d0cea9c769093e,optional historical evidence,NO,exclude
+??,docs/audits/sicti-unified-stateful-qa-case-v2-p1b.txt,868,dbe293b4617207c79fcce584fceb315b9a21d9900c3f5eb27e099bcb2d08678f,optional historical evidence,NO,exclude
+??,docs/audits/sicti-unified-stateful-qa-case-v2-p1c.txt,988,e45658253cd9a70b8befbebf2a79bbed37d0761e4029078fff06111ea8d3c95e,optional historical evidence,NO,exclude
+??,docs/audits/sicti-unified-stateful-qa-case-v2-p1d.txt,664,9b50ec4072009e28e936a59940402285ab76abf0f1bb867c9a3b18878a956aa3,optional historical evidence,NO,exclude
+??,docs/audits/sicti-unified-stateful-screenshots/cases-1280.png,139733,0269268b455a1eaeb43d02c4f8eca2ffe31bab4e85347c6a33d7d938696e9456,optional historical evidence,NO,exclude
+??,docs/audits/sicti-unified-stateful-screenshots/cases-390.png,79731,a2bcaa0308da43ade0e225f81c3a3edb9063e32f873a237231109007e0991219,optional historical evidence,NO,exclude
+??,docs/audits/sicti-unified-stateful-screenshots/correlations-1280.png,45583,090d579f64f9a07969b10df368566bf77d35c61334db6a23de223465d7049914,optional historical evidence,NO,exclude
+??,docs/audits/sicti-unified-stateful-screenshots/correlations-390.png,16949,59cf1d81a9769a765ab7cd28b20363d55add6cd0e2a04b0237e289fafad94885,optional historical evidence,NO,exclude
+??,docs/audits/sicti-unified-stateful-screenshots/monitoring-1280.png,192063,925bbd6d080f1ab255adce2fae68009043bf64dc430bdcc186954e2d45e95d0e,optional historical evidence,NO,exclude
+??,docs/audits/sicti-unified-stateful-screenshots/monitoring-390.png,148124,8dd185f7d983e1e3f57f71dfb5b57f58041a31b71bac0eeba6483e77c0045fc5,optional historical evidence,NO,exclude
+??,docs/audits/sicti-unified-stateful-screenshots/playbooks-1280.png,45583,090d579f64f9a07969b10df368566bf77d35c61334db6a23de223465d7049914,optional historical evidence,NO,exclude
+??,docs/audits/sicti-unified-stateful-screenshots/playbooks-390.png,16949,59cf1d81a9769a765ab7cd28b20363d55add6cd0e2a04b0237e289fafad94885,optional historical evidence,NO,exclude
+??,docs/audits/sicti-unified-stateful-soar-log.txt,974,e7a0d963052097dfc4918a6604932c0d8c82013cf6d2e7cc63af4e2ebc986ff8,optional historical evidence,NO,exclude
+ M,frontend/DESIGN.md,46360,14cf8bf30a239db318020e7f9cd5f9f333ad2d6dc17003951f425c230400c750,required application implementation,YES,frontend
+ M,frontend/app/cases/[id]/page.tsx,12626,0496ebe9b6daa6f2a6ad114b6cafac748c04608e5ba327a12f27ee2a4e1edd4b,required application implementation,YES,frontend
+ M,frontend/app/cases/layout.tsx,5057,22e29f44d2b9bca887940412f9b37a458ca920601adf22d5621fbfe7cc649a3e,required application implementation,YES,frontend
+ M,frontend/app/cases/page.tsx,8517,5683a84d523c726cabc4d76f662e62ebfefd1718075335ab435fe51330d3cf8d,required application implementation,YES,frontend
+ M,frontend/app/editorial.css,115798,2a712227959e678af7c7228d29265e3011743babcc11a4cfcfd891ecccbbde73,required application implementation,YES,frontend
+ M,frontend/app/layout.tsx,510,0606bca544958a4ca626ca19837d8a5faaabbf7887ca06bac153982869f0b472,required application implementation,YES,frontend
+??,frontend/app/reference-ux.css,14258,a7debdc691e181b5d5c1188beb9c32571070d2247f57d801eb5ffb49586dff45,required application implementation,YES,frontend
+ M,frontend/app/threat-intelligence/[section]/page.tsx,1110,d8728dfa58b85b6fd57a9278a9f04eb66ae5ea1504e355d76c25ed0e88aca1dd,required application implementation,YES,frontend
+??,frontend/components/ReferenceAccount.tsx,1509,a6ec3e67dba7b35273658461bc8a203485ff50663e0daf4c8153f1b752fddcf3,required application implementation,YES,frontend
+ M,frontend/components/dashboard/Sidebar.tsx,14439,7926f1cdb813e0bc7f00968b5c8ba7a6c3f284a8e570d4b7ea76690f01ac3b98,required application implementation,YES,frontend
+ M,frontend/components/intelligence/IntelligenceData.tsx,4840,fa8b5a6ecacc51969eaab557b052faabf9a52a36f169c85fb35e492bc3755c5f,required application implementation,YES,frontend
+ M,frontend/components/intelligence/ThreatIntelligenceShell.tsx,4713,e7d8bc76bb48ef22fb65aa87931210f9365106d60de2620e8f9d4d56468cda32,required application implementation,YES,frontend
+ M,frontend/components/intelligence/campaigns/CampaignsWorkspace.tsx,17805,08885892e0cf6a43ce435480566dc05f4ffc550cab132454e4d4d92ec0f28d1b,required application implementation,YES,frontend
+ M,frontend/components/intelligence/correlations/CorrelationWorkspace.tsx,6431,c00a3e203744db800be5bb2a0e4b7fc68fcdee96c27e681fb16c33d49ccd020a,required application implementation,YES,frontend
+ M,frontend/components/intelligence/ioc-candidates/IocCandidatesWorkspace.tsx,6080,3d5911f6ffacb37025eb5cf5da1164d415f45bbaf6ec50bf34425138dd90406a,required application implementation,YES,frontend
+ M,frontend/components/intelligence/threat-actors/ThreatActorsWorkspace.tsx,10997,e0e2ba9bf361c9a5dfd2024f682cfff3ef3372657b60cfdf0d20a37ddbcc80a2,required application implementation,YES,frontend

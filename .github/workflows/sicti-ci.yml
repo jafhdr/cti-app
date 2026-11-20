@@ -1,0 +1,190 @@
+name: SICTI CI
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sicti-ci-${{ github.event.pull_request.number }}-${{ github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend build and unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/cti_corr_qa_sict40
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - name: Install backend dependencies
+        run: npm ci --prefix backend
+      - name: Validate Prisma schema
+        working-directory: backend
+        run: npx prisma validate
+      - name: Generate Prisma client
+        working-directory: backend
+        run: npx prisma generate
+      - name: Build backend
+        run: npm run build --prefix backend
+      - name: Run Jest unit tests
+        run: npm test --prefix backend -- --runInBand
+
+  frontend:
+    name: Frontend typecheck and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEXT_PUBLIC_API_URL: http://localhost:3001
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - name: Install backend dependencies for frontend typecheck
+        run: npm ci --prefix backend
+      - name: Generate Prisma client for frontend typecheck
+        working-directory: backend
+        run: npx prisma generate
+      - name: Install frontend dependencies
+        run: npm ci --prefix frontend
+      - name: Typecheck
+        run: npm run typecheck --prefix frontend
+      - name: Production build
+        run: npm run build --prefix frontend
+
+  database-regressions:
+    name: Migrations and core regressions
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci-only-disposable-password
+          POSTGRES_DB: cti_corr_qa_sict40
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d cti_corr_qa_sict40"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://ci:ci-only-disposable-password@localhost:5432/cti_corr_qa_sict40
+      NODE_ENV: test
+      JWT_ACCESS_SECRET: synthetic-ci-access-secret-32-bytes-minimum-0001
+      JWT_REFRESH_SECRET: synthetic-ci-refresh-secret-32-bytes-minimum-0001
+      SEED_ADMIN_PASSWORD: synthetic-ci-seed-password-only
+      SICTI_ISOLATED_QA: 'true'
+      THREAT_CORRELATION_PILOT_ENABLED: 'true'
+      THREAT_CORRELATION_WORKER_ENABLED: 'true'
+      SICTI_MONITORING_QA_ENABLED: 'true'
+      SICTI_MONITORING_CONNECTOR_QA_ENABLED: 'false'
+      SICTI_SOAR_QA_ENABLED: 'false'
+      TELEGRAM_POLL_ENABLED: 'false'
+      ACCESS_BROWSER_QA: '0'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - name: Install backend dependencies
+        run: npm ci --prefix backend
+      - name: Install frontend test imports
+        run: npm ci --prefix frontend --ignore-scripts
+      - name: Generate Prisma client and build
+        working-directory: backend
+        run: |
+          npx prisma generate
+          npm run build
+      - name: Deploy migrations to fresh disposable database
+        working-directory: backend
+        run: npx prisma migrate deploy
+      - name: Repeat migration deployment and verify no pending migrations
+        working-directory: backend
+        run: |
+          npx prisma migrate deploy
+          npx prisma migrate status
+      - name: Seed synthetic module catalog
+        working-directory: backend
+        run: npm run seed
+      - name: Authentication, RBAC, tenant, correlation, and Case allocator regressions
+        working-directory: backend
+        run: >-
+          node --test --test-concurrency=1
+          src/auth/access.integration.spec.cjs
+          src/correlation/correlation.http.integration.spec.cjs
+          src/correlation/correlation.security.integration.spec.cjs
+          src/correlation/correlation-case.http.integration.spec.cjs
+          src/cases/case-number-concurrency.integration.spec.cjs
+          src/cases/case-number-workflows.integration.spec.cjs
+
+  monitoring-case:
+    name: Monitoring Case atomicity
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci-only-disposable-password
+          POSTGRES_DB: cti_phase4a_qa_sict36ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d cti_phase4a_qa_sict36ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://ci:ci-only-disposable-password@localhost:5432/cti_phase4a_qa_sict36ci
+      NODE_ENV: test
+      JWT_ACCESS_SECRET: synthetic-ci-access-secret-32-bytes-minimum-0001
+      JWT_REFRESH_SECRET: synthetic-ci-refresh-secret-32-bytes-minimum-0001
+      SICTI_ISOLATED_QA: 'true'
+      SICTI_MONITORING_QA_ENABLED: 'true'
+      SICTI_MONITORING_CONNECTOR_QA_ENABLED: 'false'
+      THREAT_CORRELATION_PILOT_ENABLED: 'false'
+      THREAT_CORRELATION_WORKER_ENABLED: 'false'
+      SICTI_SOAR_QA_ENABLED: 'false'
+      TELEGRAM_POLL_ENABLED: 'false'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - name: Install backend dependencies
+        run: npm ci --prefix backend
+      - name: Generate Prisma client and build
+        working-directory: backend
+        run: |
+          npx prisma generate
+          npm run build
+      - name: Deploy migrations
+        working-directory: backend
+        run: npx prisma migrate deploy
+      - name: Monitoring finding and Case concurrency regression
+        working-directory: backend
+        run: node --test src/intelligence/monitoring-case-concurrency.integration.spec.cjs

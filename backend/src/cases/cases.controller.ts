@@ -9,10 +9,11 @@ import { RequiresModule, RequiresModuleFeature } from '../auth/module-access.dec
 import { AuthUser } from '../users/users.types';
 import { CasesService } from './cases.service';
 import { CaseTenantGuard } from './case-tenant.guard';
+import { CaseClosedMutationGuard } from './case-closed-mutation.guard';
 import { AssignCaseInput, CaseTenantQuery, LinkAsmAlertInput, CreateCaseInput, CreateEvidenceInput, CreateInvestigationNoteInput, LinkCampaignInput, LinkIndicatorInput, LinkThreatActorInput, UpdateCaseInput, ListCaseQuery } from './cases.types';
 
 @Controller('cases')
-@UseGuards(AuthGuard, RolesGuard, ModuleAccessGuard, CaseTenantGuard)
+@UseGuards(AuthGuard, RolesGuard, ModuleAccessGuard, CaseTenantGuard, CaseClosedMutationGuard)
 @RequiresModule('case-management')
 @RequiresModuleFeature('case-workflow')
 export class CasesController {

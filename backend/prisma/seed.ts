@@ -54,11 +54,17 @@ async function main() {
     ],
     'case-management': [
       { key: 'case-workflow', name: 'Case Workflow', description: 'Kelola siklus investigasi insiden.' },
+      { key: 'case-v2-origin', name: 'Case V2 Origin', description: 'Tenant-scoped Case origin and traceability; disabled unless explicitly assigned and enabled.' },
+      { key: 'case-v2-workflow', name: 'Case V2 Workflow', description: 'Investigation tasks, handoffs and due dates; disabled unless explicitly assigned and enabled.' },
+      { key: 'case-v2-integrity', name: 'Case V2 Integrity', description: 'Evidence revisions, independent review, controlled closure and reopening; disabled unless explicitly assigned and enabled.' },
+      { key: 'case-v2-reviewer', name: 'Case V2 Reviewer', description: 'Dedicated independent Case review decision permission; disabled unless explicitly assigned.' },
+      { key: 'case-v2-reporting', name: 'Case V2 Reporting', description: 'Tenant-scoped operational Case metrics; disabled unless explicitly assigned and enabled.' },
       { key: 'alert-triage', name: 'Alert Triage', description: 'Prioritaskan dan tindak lanjuti alert.' },
     ],
     'attack-surface-management': [
       { key: 'asset-management', name: 'Asset Management', description: 'Kelola aset dan detail inventaris.' },
       { key: 'asset-discovery', name: 'Asset Discovery', description: 'Temukan dan monitor aset baru.' },
+      { key: 'asset-correlation-review', name: 'Asset Correlation Review', description: 'Tinjau dan putuskan relevansi korelasi aset dan CVE.' },
     ],
   };
   await Promise.all(modules.flatMap((module) => (featuresBySlug[module.slug] ?? []).map((feature) =>

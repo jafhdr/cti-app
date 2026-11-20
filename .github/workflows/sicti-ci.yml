@@ -54,6 +54,11 @@ jobs:
         with:
           node-version: '22'
           package-manager-cache: false
+      - name: Install backend dependencies for frontend typecheck
+        run: npm ci --prefix backend
+      - name: Generate Prisma client for frontend typecheck
+        working-directory: backend
+        run: npx prisma generate
       - name: Install frontend dependencies
         run: npm ci --prefix frontend
       - name: Typecheck

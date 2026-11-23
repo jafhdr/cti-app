@@ -188,3 +188,104 @@ jobs:
       - name: Monitoring finding and Case concurrency regression
         working-directory: backend
         run: node --test src/intelligence/monitoring-case-concurrency.integration.spec.cjs
+
+  stateful-integration:
+    name: SOAR, ASM V2, and AppSec V2 stateful integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci-only-disposable-password
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      NODE_ENV: test
+      JWT_ACCESS_SECRET: synthetic-ci-access-secret-32-bytes-minimum-0001
+      JWT_REFRESH_SECRET: synthetic-ci-refresh-secret-32-bytes-minimum-0001
+      SEED_ADMIN_PASSWORD: synthetic-ci-seed-password-only
+      SICTI_ISOLATED_QA: 'true'
+      TELEGRAM_POLL_ENABLED: 'false'
+      NOTIFICATION_WORKER_ENABLED: 'false'
+      FEEDBACK_FOLLOW_UP_ENABLED: 'false'
+      THREAT_CORRELATION_WORKER_ENABLED: 'false'
+      SICTI_MONITORING_CONNECTOR_QA_ENABLED: 'false'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - name: Install backend dependencies
+        run: npm ci --prefix backend
+      - name: Generate Prisma client and build
+        working-directory: backend
+        run: |
+          npx prisma generate
+          npm run build
+      - name: Create fresh disposable module databases
+        env:
+          PGPASSWORD: ci-only-disposable-password
+        run: |
+          psql -h localhost -U ci -d postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE cti_soar_qa_sict65_ci;'
+          psql -h localhost -U ci -d postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE cti_asm62_qa_case20_65c1a2b3;'
+          psql -h localhost -U ci -d postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE stake49_closure_65c1a2b3d4;'
+      - name: Deploy migrations and seed each module database
+        working-directory: backend
+        run: |
+          for database in cti_soar_qa_sict65_ci cti_asm62_qa_case20_65c1a2b3 stake49_closure_65c1a2b3d4; do
+            export DATABASE_URL="postgresql://ci:ci-only-disposable-password@localhost:5432/${database}"
+            npx prisma migrate deploy
+            npm run seed
+          done
+      - name: SOAR stateful integration
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://ci:ci-only-disposable-password@localhost:5432/cti_soar_qa_sict65_ci
+          SICTI_SOAR_QA_ENABLED: 'true'
+        run: |
+          mkdir -p ../.omo/evidence
+          node qa-phase3a-fixture.cjs
+          node qa-phase3b-fixture.cjs
+          node --test --test-concurrency=1 \
+            src/playbooks/playbook.http.integration.spec.cjs \
+            src/playbooks/sandbox-connector.integration.spec.cjs \
+            src/playbooks/sandbox-recovery.integration.spec.cjs \
+            qa-phase3c-mock-persistence.spec.cjs \
+            qa-phase3c-full-app.spec.cjs
+      - name: ASM V2 stateful integration
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://ci:ci-only-disposable-password@localhost:5432/cti_asm62_qa_case20_65c1a2b3
+          ASM_V2_EVIDENCE_ENABLED: 'true'
+        run: >-
+          node --test --test-concurrency=1
+          src/attack-surface-management/asm-v2-p1a.integration.spec.cjs
+          src/attack-surface-management/asm-v2-p1a.http.spec.cjs
+          src/attack-surface-management/asm-v2-p1b.http.spec.cjs
+          src/attack-surface-management/asm-v2-p1c.http.spec.cjs
+          src/attack-surface-management/asm-v2-p1d.http.spec.cjs
+          src/attack-surface-management/asm-v2-fingerprint.integration.spec.cjs
+          src/attack-surface-management/asm-v2-fingerprint-order.integration.spec.cjs
+      - name: AppSec V2 stateful integration
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://ci:ci-only-disposable-password@localhost:5432/stake49_closure_65c1a2b3d4
+          APPSEC_CLOSURE_QA_DB_NAME: stake49_closure_65c1a2b3d4
+        run: >-
+          node --test --test-concurrency=1
+          src/appsec/appsec.p1a.integration.spec.cjs
+          src/appsec/appsec.p1b.integration.spec.cjs
+          src/appsec/appsec.p1c.integration.spec.cjs
+          src/appsec/appsec.p1d.integration.spec.cjs
+          src/appsec/appsec.v2-closure.integration.spec.cjs

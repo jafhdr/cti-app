@@ -12,7 +12,8 @@ export class SandboxConnectorService {
 
   enabled(): boolean {
     const database = new URL(process.env.DATABASE_URL ?? 'postgresql://invalid/disabled').pathname.slice(1);
-    if (!simulationAllowed(process.env.SICTI_SOAR_QA_ENABLED, process.env.SICTI_ISOLATED_QA, database)) return false;
+    if (!simulationAllowed({ enabled: process.env.SICTI_SOAR_QA_ENABLED, database,
+      isolatedQa: process.env.SICTI_ISOLATED_QA, unifiedQa: process.env.SICTI_UNIFIED_QA_ENABLED })) return false;
     try { connectorConfig(); return true; } catch { return false; }
   }
 

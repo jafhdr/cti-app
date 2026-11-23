@@ -1,3 +1,5 @@
+import { qaRuntimeAllowed } from '../qa-runtime-policy';
+
 export const PLAYBOOK_KEY = 'malicious-domain-block-simulation' as const;
 export const PLAYBOOK_VERSION = 1 as const;
 export const PLAYBOOK_TIMEOUT_MS = 30_000 as const;
@@ -25,6 +27,14 @@ export function nextPlaybookState(state: State, event: Event): State {
   return next;
 }
 
-export function simulationAllowed(enabled: string | undefined, isolated: string | undefined, database: string): boolean {
-  return enabled === 'true' && isolated === 'true' && /^cti_soar_qa_[a-z0-9_]+$/.test(database);
+type SimulationPolicyInput = {
+  readonly enabled: string | undefined;
+  readonly isolatedQa: string | undefined;
+  readonly unifiedQa: string | undefined;
+  readonly database: string;
+};
+
+export function simulationAllowed(input: SimulationPolicyInput): boolean {
+  return qaRuntimeAllowed({ module: 'soar', database: input.database,
+    featureEnabled: input.enabled, isolatedQa: input.isolatedQa, unifiedQa: input.unifiedQa });
 }

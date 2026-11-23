@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
 import { PrismaService } from '../prisma.service';
+import { qaRuntimeAllowed } from '../qa-runtime-policy';
 import { effectiveIndicatorEligibility } from '../indicators/indicator-eligibility';
 import { correlationWindowMs, evaluateCorrelation } from './correlation-rules';
 
@@ -12,9 +13,9 @@ export class CorrelationQueueService {
 
   private enabled(): boolean {
     const database = new URL(process.env.DATABASE_URL ?? 'postgresql://invalid/disabled').pathname.slice(1);
-    return process.env.THREAT_CORRELATION_PILOT_ENABLED === 'true' && process.env.SICTI_ISOLATED_QA === 'true'
-      && process.env.THREAT_CORRELATION_WORKER_ENABLED !== 'false'
-      && /^cti_corr_qa_[a-z0-9_]+$/.test(database);
+    return process.env.THREAT_CORRELATION_WORKER_ENABLED !== 'false'
+      && qaRuntimeAllowed({ module: 'correlation', database, featureEnabled: process.env.THREAT_CORRELATION_PILOT_ENABLED, isolatedQa: process.env.SICTI_ISOLATED_QA,
+        unifiedQa: process.env.SICTI_UNIFIED_QA_ENABLED });
   }
 
   @Interval(250)

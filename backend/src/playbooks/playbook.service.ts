@@ -22,7 +22,8 @@ export class PlaybookService {
 
   capabilities() {
     const database = new URL(process.env.DATABASE_URL ?? 'postgresql://invalid/disabled').pathname.slice(1);
-    const simulationEnabled = simulationAllowed(process.env.SICTI_SOAR_QA_ENABLED, process.env.SICTI_ISOLATED_QA, database);
+    const simulationEnabled = simulationAllowed({ enabled: process.env.SICTI_SOAR_QA_ENABLED, database,
+      isolatedQa: process.env.SICTI_ISOLATED_QA, unifiedQa: process.env.SICTI_UNIFIED_QA_ENABLED });
     let connectorEnabled = false;
     if (simulationEnabled) { try { connectorConfig(); connectorEnabled = true; } catch { /* connector remains disabled */ } }
     return { simulationEnabled, connectorEnabled, adapter: 'IN_PROCESS_SANDBOX' as const };
@@ -39,7 +40,8 @@ export class PlaybookService {
 
   private qaEnabled(): void {
     const database = new URL(process.env.DATABASE_URL ?? 'postgresql://invalid/disabled').pathname.slice(1);
-    if (!simulationAllowed(process.env.SICTI_SOAR_QA_ENABLED, process.env.SICTI_ISOLATED_QA, database)) throw new NotFoundException('Simulated execution unavailable');
+    if (!simulationAllowed({ enabled: process.env.SICTI_SOAR_QA_ENABLED, database,
+      isolatedQa: process.env.SICTI_ISOLATED_QA, unifiedQa: process.env.SICTI_UNIFIED_QA_ENABLED })) throw new NotFoundException('Simulated execution unavailable');
   }
 
   async list(user: AuthUser, requested?: string) {

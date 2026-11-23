@@ -9,8 +9,8 @@ describe('playbook policy', () => {
   });
 
   it('restricts simulated execution to an isolated QA database', () => {
-    expect(simulationAllowed('true', 'true', 'cti_soar_qa_demo')).toBe(true);
-    expect(simulationAllowed('true', 'true', 'cti')).toBe(false);
-    expect(simulationAllowed('false', 'true', 'cti_soar_qa_demo')).toBe(false);
+    expect(simulationAllowed({ enabled: 'true', isolatedQa: 'true', unifiedQa: undefined, database: 'cti_soar_qa_demo' })).toBe(true);
+    expect(simulationAllowed({ enabled: 'true', isolatedQa: 'true', unifiedQa: 'true', database: 'cti' })).toBe(false);
+    expect(simulationAllowed({ enabled: 'false', isolatedQa: 'true', unifiedQa: undefined, database: 'cti_soar_qa_demo' })).toBe(false);
   });
 });

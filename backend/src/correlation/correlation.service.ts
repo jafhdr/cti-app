@@ -1,6 +1,7 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
+import { qaRuntimeAllowed } from '../qa-runtime-policy';
 import type { AuthUser } from '../users/users.types';
 import { effectiveIndicatorEligibility } from '../indicators/indicator-eligibility';
 import type { TelemetryInput } from './correlation.dto';
@@ -12,8 +13,8 @@ export class CorrelationService {
 
   private enabled(): void {
     const database = new URL(process.env.DATABASE_URL ?? 'postgresql://invalid/disabled').pathname.slice(1);
-    if (process.env.THREAT_CORRELATION_PILOT_ENABLED !== 'true' || process.env.SICTI_ISOLATED_QA !== 'true'
-      || !/^cti_corr_qa_[a-z0-9_]+$/.test(database)) throw new NotFoundException('Correlation pilot unavailable');
+    if (!qaRuntimeAllowed({ module: 'correlation', database, featureEnabled: process.env.THREAT_CORRELATION_PILOT_ENABLED,
+      isolatedQa: process.env.SICTI_ISOLATED_QA, unifiedQa: process.env.SICTI_UNIFIED_QA_ENABLED })) throw new NotFoundException('Correlation pilot unavailable');
   }
 
   private async tenantId(user: AuthUser, requested?: string): Promise<string> {

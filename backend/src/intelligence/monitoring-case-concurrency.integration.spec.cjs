@@ -15,7 +15,9 @@ const { MonitoringCollectorService } = require('../../dist/src/intelligence/moni
 const { createAccessToken } = require('../auth/integration-session.cjs');
 
 test('Given a confirmed finding, when two authenticated requests create a Case concurrently, then exactly one Case and link commit', { timeout: 90000 }, async () => {
-  assert.match(new URL(process.env.DATABASE_URL).pathname, /^\/cti_phase4a_qa_sict36[a-z0-9]+$/);
+  const database = new URL(process.env.DATABASE_URL).pathname;
+  assert.ok(/^\/cti_phase4a_qa_sict36[a-z0-9]+$/.test(database)
+    || (process.env.SICTI_UNIFIED_QA_ENABLED === 'true' && database === '/cti_unified_qa_sict72'));
   assert.equal(process.env.SICTI_ISOLATED_QA, 'true');
   assert.equal(process.env.SICTI_MONITORING_QA_ENABLED, 'true');
   const db = new PrismaClient();

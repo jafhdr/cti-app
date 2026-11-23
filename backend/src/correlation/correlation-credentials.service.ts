@@ -1,6 +1,7 @@
 import { ForbiddenException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { createHash, randomBytes, timingSafeEqual } from 'crypto';
 import { PrismaService } from '../prisma.service';
+import { qaRuntimeAllowed } from '../qa-runtime-policy';
 import type { AuthUser } from '../users/users.types';
 
 const digest = (secret: string): string => createHash('sha256').update(secret).digest('hex');
@@ -15,8 +16,8 @@ export class CorrelationCredentialsService {
 
   private enabled(): void {
     const database = new URL(process.env.DATABASE_URL ?? 'postgresql://invalid/disabled').pathname.slice(1);
-    if (process.env.THREAT_CORRELATION_PILOT_ENABLED !== 'true' || process.env.SICTI_ISOLATED_QA !== 'true'
-      || !/^cti_corr_qa_[a-z0-9_]+$/.test(database)) throw new NotFoundException('Correlation connector unavailable');
+    if (!qaRuntimeAllowed({ module: 'correlation', database, featureEnabled: process.env.THREAT_CORRELATION_PILOT_ENABLED,
+      isolatedQa: process.env.SICTI_ISOLATED_QA, unifiedQa: process.env.SICTI_UNIFIED_QA_ENABLED })) throw new NotFoundException('Correlation connector unavailable');
   }
 
   private async tenantId(user: AuthUser, requested?: string): Promise<string> {

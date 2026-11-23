@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, ForbiddenException, Injectable,
 import { Prisma, type MonitoringFindingStatus, type MonitoringObservation } from '@prisma/client';
 import { Interval } from '@nestjs/schedule';
 import { PrismaService } from '../prisma.service';
+import { qaRuntimeAllowed } from '../qa-runtime-policy';
 import type { AuthUser } from '../users/users.types';
 import type { ObservationInput, ReviewInput, SourceInput, WatchInput, WatchUpdate } from './monitoring.dto';
 import { matchObservation, normalizeDomain, normalizeWatch, safeEvidenceRef } from './monitoring.logic';
@@ -32,8 +33,9 @@ export class MonitoringService {
   constructor(private readonly prisma: PrismaService) {}
 
   private qa(): void {
-    if (process.env.SICTI_MONITORING_QA_ENABLED !== 'true' || process.env.SICTI_ISOLATED_QA !== 'true'
-      || !/^\/cti_phase4a_qa_[a-z0-9]+$/.test(new URL(process.env.DATABASE_URL || 'postgresql://invalid@localhost/invalid').pathname)) {
+    const database = new URL(process.env.DATABASE_URL || 'postgresql://invalid@localhost/invalid').pathname.slice(1);
+    if (!qaRuntimeAllowed({ module: 'monitoring', database, featureEnabled: process.env.SICTI_MONITORING_QA_ENABLED,
+      isolatedQa: process.env.SICTI_ISOLATED_QA, unifiedQa: process.env.SICTI_UNIFIED_QA_ENABLED })) {
       throw new ForbiddenException('Monitoring ingestion is available only in isolated Phase 4A QA');
     }
   }

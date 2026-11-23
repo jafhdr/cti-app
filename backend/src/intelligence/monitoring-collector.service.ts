@@ -2,8 +2,10 @@ import { randomUUID } from 'node:crypto';
 import { BadRequestException, ForbiddenException, HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
 import { PrismaService } from '../prisma.service';
+import { qaRuntimeAllowed } from '../qa-runtime-policy';
 import type { AuthUser } from '../users/users.types';
 import { collectionResponseSchema, connectorSecret, evidenceDigest, signConnector, verifyConnector, type CollectionRequest } from './monitoring-connector.contract';
+import { monitoringSimulatorEndpoint } from './monitoring-collector-policy';
 import { MonitoringService, monitoringTenant } from './monitoring.service';
 
 @Injectable()
@@ -11,21 +13,16 @@ export class MonitoringCollectorService {
   constructor(private readonly prisma: PrismaService, private readonly monitoring: MonitoringService) {}
 
   private qa(): void {
-    const db = new URL(process.env.DATABASE_URL || 'postgresql://invalid@localhost/invalid').pathname;
-    if (process.env.SICTI_ISOLATED_QA !== 'true' || process.env.SICTI_MONITORING_QA_ENABLED !== 'true'
-      || process.env.SICTI_MONITORING_CONNECTOR_QA_ENABLED !== 'true' || !/^\/cti_phase4a_qa_[a-z0-9]+$/.test(db)) {
+    const database = new URL(process.env.DATABASE_URL || 'postgresql://invalid@localhost/invalid').pathname.slice(1);
+    if (process.env.SICTI_MONITORING_CONNECTOR_QA_ENABLED !== 'true'
+      || !qaRuntimeAllowed({ module: 'monitoring', database, featureEnabled: process.env.SICTI_MONITORING_QA_ENABLED, isolatedQa: process.env.SICTI_ISOLATED_QA,
+        unifiedQa: process.env.SICTI_UNIFIED_QA_ENABLED })) {
       throw new ForbiddenException('Monitoring collection is disabled');
     }
   }
 
   private endpoint(): string {
-    const value = process.env.SICTI_MONITORING_SIMULATOR_URL;
-    if (!value) throw new ForbiddenException('Simulator endpoint unavailable');
-    const url = new URL(value);
-    if (url.protocol !== 'http:' || url.hostname !== '127.0.0.1' || url.pathname !== '/v1/collect' || url.search || url.hash) {
-      throw new ForbiddenException('Simulator must use the fixed loopback path');
-    }
-    return url.toString();
+    return monitoringSimulatorEndpoint(process.env.SICTI_MONITORING_SIMULATOR_URL);
   }
 
   async configure(user: AuthUser, id: string, intervalMinutes: number, requested?: string) {

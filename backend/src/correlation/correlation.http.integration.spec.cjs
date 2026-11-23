@@ -11,7 +11,9 @@ const { createAccessToken } = require('../auth/integration-session.cjs');
 const { CorrelationQueueService } = require('../../dist/src/correlation/correlation-queue.service');
 
 test('Given a URLhaus IOC and synthetic telemetry, when ingested, then one tenant-visible alert is recorded', { timeout: 90000 }, async () => {
-  assert.match(new URL(process.env.DATABASE_URL).pathname, /^\/cti_corr_qa_/);
+  const database = new URL(process.env.DATABASE_URL).pathname;
+  assert.ok(/^\/cti_corr_qa_/.test(database)
+    || (process.env.SICTI_UNIFIED_QA_ENABLED === 'true' && database === '/cti_unified_qa_sict72'));
   const prisma = new PrismaClient();
   const marker = randomUUID();
   const moduleRef = await Test.createTestingModule({ imports: [ConfigModule.forRoot({ isGlobal: true }), AuthModule, CorrelationModule] }).compile();

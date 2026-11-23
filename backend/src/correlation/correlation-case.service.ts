@@ -4,6 +4,7 @@ import { ModuleAccessService } from '../auth/module-access.service';
 import { CasesService } from '../cases/cases.service';
 import { effectiveIndicatorEligibility } from '../indicators/indicator-eligibility';
 import { PrismaService } from '../prisma.service';
+import { qaRuntimeAllowed } from '../qa-runtime-policy';
 import type { AuthUser } from '../users/users.types';
 
 @Injectable()
@@ -12,7 +13,8 @@ export class CorrelationCaseService {
 
   private async tenant(user: AuthUser, requested?: string): Promise<string> {
     const database = new URL(process.env.DATABASE_URL ?? 'postgresql://invalid/disabled').pathname.slice(1);
-    if (process.env.THREAT_CORRELATION_PILOT_ENABLED !== 'true' || process.env.SICTI_ISOLATED_QA !== 'true' || !/^cti_corr_qa_[a-z0-9_]+$/.test(database)) throw new NotFoundException('Correlation pilot unavailable');
+    if (!qaRuntimeAllowed({ module: 'correlation', database, featureEnabled: process.env.THREAT_CORRELATION_PILOT_ENABLED,
+      isolatedQa: process.env.SICTI_ISOLATED_QA, unifiedQa: process.env.SICTI_UNIFIED_QA_ENABLED })) throw new NotFoundException('Correlation pilot unavailable');
     const tenantId = user.role === 'SUPER_ADMIN' ? requested : user.tenantId;
     if (!tenantId || (requested && requested !== tenantId)) throw new ForbiddenException('Tenant context denied');
     const tenant = await this.prisma.tenant.findFirst({ where: { id: tenantId, isActive: true }, select: { id: true } });

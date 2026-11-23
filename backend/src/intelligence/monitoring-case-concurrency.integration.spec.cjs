@@ -132,6 +132,72 @@ test('Given a confirmed finding, when two authenticated requests create a Case c
     assert.equal(rollbackCaseAudits, 1);
     assert.equal(rollbackLinkAudits, 1);
     cases.create = original;
+
+    async function confirmedFinding(suffix) {
+      const observed = await call('observations', admin, { sourceId: authorized.body.id, providerEventKey: `${marker}-${suffix}`, kind: 'PHISHING_DOMAIN', domain, metadataCategory: 'PHISHING_SIGNAL', evidenceRef: `qa://atomic/${marker}-${suffix}`, evidenceDigest: createHash('sha256').update(`${marker}-${suffix}`).digest('hex'), observedAt: new Date().toISOString(), tlp: 'AMBER' });
+      assert.equal(observed.status, 201);
+      const confirmedId = observed.body.matches[0].finding.id;
+      assert.equal((await call(`findings/${confirmedId}/reviews`, admin, { status: 'UNDER_REVIEW', expectedStatus: 'NEW', reason: `Synthetic ${suffix} review started` })).status, 201);
+      assert.equal((await call(`findings/${confirmedId}/reviews`, admin, { status: 'CONFIRMED', expectedStatus: 'UNDER_REVIEW', reason: `Synthetic ${suffix} signal confirmed` })).status, 201);
+      return confirmedId;
+    }
+
+    const adminActor = await db.user.findFirstOrThrow({ where: { tenantId: own.id, role: 'ADMIN' } });
+    const activeCase = await db.case.create({ data: { tenantId: own.id, caseNumber: `ACTIVE-${marker}`, title: 'Active monitoring policy Case', status: 'OPEN', createdBy: adminActor.id } });
+    const activeFindingId = await confirmedFinding('active');
+    const activeLink = await call(`findings/${activeFindingId}/case`, admin, { caseId: activeCase.id });
+    assert.equal(activeLink.status, 201);
+    assert.equal(activeLink.body.id, activeCase.id);
+    await db.case.update({ where: { id: activeCase.id }, data: { status: 'RESOLVED' } });
+    const historicalReplay = await call(`findings/${activeFindingId}/case`, admin, { caseId: activeCase.id });
+    assert.equal(historicalReplay.status, 201);
+    assert.equal(historicalReplay.body.id, activeCase.id);
+    assert.equal(await db.auditLog.count({ where: { tenantId: own.id, action: 'MONITORING_CASE_LINKED', metadata: { path: ['findingId'], equals: activeFindingId } } }), 1);
+
+    const inProgressCase = await db.case.create({ data: { tenantId: own.id, caseNumber: `IN-PROGRESS-${marker}`, title: 'In-progress monitoring policy Case', status: 'IN_PROGRESS', createdBy: adminActor.id } });
+    const inProgressFindingId = await confirmedFinding('in-progress');
+    const inProgressLink = await call(`findings/${inProgressFindingId}/case`, admin, { caseId: inProgressCase.id });
+    assert.equal(inProgressLink.status, 201);
+    assert.equal(inProgressLink.body.id, inProgressCase.id);
+
+    for (const status of ['RESOLVED', 'CLOSED']) {
+      const inactiveCase = await db.case.create({ data: { tenantId: own.id, caseNumber: `${status}-${marker}`, title: `${status} monitoring policy Case`, status, createdBy: adminActor.id } });
+      const inactiveFindingId = await confirmedFinding(status.toLowerCase());
+      const linkAuditsBefore = await db.auditLog.count({ where: { tenantId: own.id, action: 'MONITORING_CASE_LINKED' } });
+      const rejected = await call(`findings/${inactiveFindingId}/case`, admin, { caseId: inactiveCase.id });
+      assert.equal(rejected.status, 409);
+      assert.equal((await db.monitoringFinding.findUniqueOrThrow({ where: { id: inactiveFindingId } })).caseId, null);
+      assert.equal(await db.auditLog.count({ where: { tenantId: own.id, action: 'MONITORING_CASE_LINKED' } }), linkAuditsBefore);
+    }
+
+    const racingCase = await db.case.create({ data: { tenantId: own.id, caseNumber: `RACING-${marker}`, title: 'Racing monitoring policy Case', status: 'OPEN', createdBy: adminActor.id } });
+    const racingFindingId = await confirmedFinding('racing');
+    let statusLocked;
+    const statusLockHeld = new Promise(resolve => { statusLocked = resolve; });
+    let releaseStatus;
+    const statusMayCommit = new Promise(resolve => { releaseStatus = resolve; });
+    const statusChange = db.$transaction(async tx => {
+      await tx.case.update({ where: { id: racingCase.id }, data: { status: 'RESOLVED' } });
+      statusLocked();
+      await statusMayCommit;
+    });
+    await statusLockHeld;
+    const racingLink = call(`findings/${racingFindingId}/case`, admin, { caseId: racingCase.id });
+    let caseLockWaitObserved = false;
+    try {
+      const deadline = Date.now() + 3000;
+      while (Date.now() < deadline) {
+        const [activity] = await db.$queryRaw`SELECT count(*)::int AS count FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid() AND wait_event_type = 'Lock' AND query LIKE '%FROM "Case"%' AND query LIKE '%FOR UPDATE%'`;
+        if (activity.count > 0) { caseLockWaitObserved = true; break; }
+        await new Promise(resolve => setTimeout(resolve, 10));
+      }
+    } finally { releaseStatus(); }
+    await statusChange;
+    const racingRejected = await racingLink;
+    assert.equal(caseLockWaitObserved, true, 'link request must serialize behind the Case status row lock');
+    assert.equal(racingRejected.status, 409);
+    assert.equal((await db.monitoringFinding.findUniqueOrThrow({ where: { id: racingFindingId } })).caseId, null);
+    assert.equal(await db.auditLog.count({ where: { tenantId: own.id, action: 'MONITORING_CASE_LINKED', metadata: { path: ['findingId'], equals: racingFindingId } } }), 0);
     console.log(JSON.stringify({ first: first.status, second: second.status, overlapObserved, sameCase: first.body.id === second.body.id, caseCount: rows.length, findingLinked: finding.caseId === rows[0].id, createAudits: 1, linkAudits: 1, denials: { foreignFinding: foreignFinding.status, foreignCase: foreignCaseDenied.status, reader: readerDenied.status, unauthenticated: unauthenticated.status }, rollback: { status: failed.status, caseCount: rollbackCaseCount, findingUnlinked: rollbackFinding.caseId === null, caseAudits: rollbackCaseAudits, linkAudits: rollbackLinkAudits } }));
   } finally { await app.close(); await db.$disconnect(); }
 });

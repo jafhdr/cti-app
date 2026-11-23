@@ -1,4 +1,5 @@
 import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { CaseStatus } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
 import { ModuleAccessService } from '../auth/module-access.service';
 import { CasesService } from '../cases/cases.service';
@@ -43,8 +44,9 @@ export class MonitoringLinksService {
       }
       let linkedCaseId = input.caseId;
       if (linkedCaseId) {
-        const existing = await tx.case.findFirst({ where: { id: linkedCaseId, tenantId: finding.tenantId }, select: { id: true } });
-        if (!existing) throw new NotFoundException('Tenant case not found');
+        const [target] = await tx.$queryRaw<Array<{ id: string; status: CaseStatus }>>`SELECT "id", "status" FROM "Case" WHERE "id" = ${linkedCaseId} AND "tenantId" = ${finding.tenantId} FOR UPDATE`;
+        if (!target) throw new NotFoundException('Tenant case not found');
+        if (target.status === CaseStatus.RESOLVED || target.status === CaseStatus.CLOSED) throw new ConflictException('Case is not active');
       } else {
         const created = await this.cases.create(user, { tenantId: finding.tenantId, title: `Monitoring investigation: ${finding.match.observation.kind}`, description: `Synthetic monitoring finding ${id}`, severity: finding.match.severity }, tx);
         linkedCaseId = created.id;

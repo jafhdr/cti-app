@@ -1,0 +1,36 @@
+{
+  "runId": "cmwblllf1001hgpm4n171s3sr",
+  "alertId": "cmwblldub0010gpgoi2jo35hf",
+  "status": "ROLLED_BACK",
+  "mockRestarted": true,
+  "persistedBlockedStateConfirmed": true,
+  "operatorRecoveryVerified": true,
+  "jobs": [
+    {
+      "operation": "BLOCK_DOMAIN",
+      "status": "SUCCEEDED",
+      "attempts": 1,
+      "events": [
+        "QUEUED",
+        "ACKNOWLEDGED",
+        "STATE_VERIFIED"
+      ]
+    },
+    {
+      "operation": "UNBLOCK_DOMAIN",
+      "status": "SUCCEEDED",
+      "attempts": 1,
+      "events": [
+        "QUEUED",
+        "RETRY_SCHEDULED",
+        "RETRY_SCHEDULED",
+        "FAILED",
+        "RECOVERY_QUEUED",
+        "ACKNOWLEDGED",
+        "STATE_VERIFIED"
+      ]
+    }
+  ],
+  "authenticated": true,
+  "screenshotCount": 6
+}

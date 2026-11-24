@@ -1,0 +1,412 @@
+﻿{
+    "verdict":  "PASS",
+    "events":  1440,
+    "failed":  0,
+    "failureRate":  0,
+    "method":  "Machine HTTP ingestion, database completion detection, authenticated HTTP status read; 100ms monitor interval; single-host QA",
+    "phases":  [
+                   {
+                       "label":  "steady",
+                       "requestedRatePerSecond":  12,
+                       "durationSeconds":  60,
+                       "sent":  720,
+                       "submissionWallMs":  59927,
+                       "pausedWorkerSeconds":  10,
+                       "completed":  720,
+                       "receiptToReadableAlertMs":  {
+                                                        "p50":  265,
+                                                        "p95":  7743,
+                                                        "p99":  9785,
+                                                        "max":  10349
+                                                    },
+                       "databaseProcessingMs":  {
+                                                    "p50":  193,
+                                                    "p95":  7621,
+                                                    "p99":  9643,
+                                                    "max":  10205
+                                                },
+                       "upstreamAcquisitionMs":  {
+                                                     "p50":  2010,
+                                                     "p95":  2023,
+                                                     "p99":  2034,
+                                                     "max":  2069
+                                                 }
+                   },
+                   {
+                       "label":  "high",
+                       "requestedRatePerSecond":  24,
+                       "durationSeconds":  30,
+                       "sent":  720,
+                       "submissionWallMs":  29978,
+                       "pausedWorkerSeconds":  0,
+                       "completed":  720,
+                       "receiptToReadableAlertMs":  {
+                                                        "p50":  256,
+                                                        "p95":  364,
+                                                        "p99":  390,
+                                                        "max":  435
+                                                    },
+                       "databaseProcessingMs":  {
+                                                    "p50":  167,
+                                                    "p95":  275,
+                                                    "p99":  295,
+                                                    "max":  338
+                                                },
+                       "upstreamAcquisitionMs":  {
+                                                     "p50":  2011,
+                                                     "p95":  2029,
+                                                     "p99":  2054,
+                                                     "max":  2097
+                                                 }
+                   }
+               ],
+    "maxQueueDepth":  114,
+    "finalQueueDepth":  0,
+    "queueDepthSamples":  [
+                              {
+                                  "elapsedSeconds":  0,
+                                  "queued":  0
+                              },
+                              {
+                                  "elapsedSeconds":  1,
+                                  "queued":  3
+                              },
+                              {
+                                  "elapsedSeconds":  2,
+                                  "queued":  3
+                              },
+                              {
+                                  "elapsedSeconds":  3,
+                                  "queued":  3
+                              },
+                              {
+                                  "elapsedSeconds":  4,
+                                  "queued":  3
+                              },
+                              {
+                                  "elapsedSeconds":  5,
+                                  "queued":  4
+                              },
+                              {
+                                  "elapsedSeconds":  6,
+                                  "queued":  3
+                              },
+                              {
+                                  "elapsedSeconds":  7,
+                                  "queued":  3
+                              },
+                              {
+                                  "elapsedSeconds":  8,
+                                  "queued":  3
+                              },
+                              {
+                                  "elapsedSeconds":  9,
+                                  "queued":  3
+                              },
+                              {
+                                  "elapsedSeconds":  10,
+                                  "queued":  4
+                              },
+                              {
+                                  "elapsedSeconds":  11,
+                                  "queued":  2
+                              },
+                              {
+                                  "elapsedSeconds":  12,
+                                  "queued":  1
+                              },
+                              {
+                                  "elapsedSeconds":  13,
+                                  "queued":  1
+                              },
+                              {
+                                  "elapsedSeconds":  14,
+                                  "queued":  3
+                              },
+                              {
+                                  "elapsedSeconds":  15,
+                                  "queued":  1
+                              },
+                              {
+                                  "elapsedSeconds":  17,
+                                  "queued":  0
+                              },
+                              {
+                                  "elapsedSeconds":  18,
+                                  "queued":  2
+                              },
+                              {
+                                  "elapsedSeconds":  19,
+                                  "queued":  1
+                              },
+                              {
+                                  "elapsedSeconds":  20,
+                                  "queued":  2
+                              },
+                              {
+                                  "elapsedSeconds":  21,
+                                  "queued":  9
+                              },
+                              {
+                                  "elapsedSeconds":  22,
+                                  "queued":  22
+                              },
+                              {
+                                  "elapsedSeconds":  23,
+                                  "queued":  36
+                              },
+                              {
+                                  "elapsedSeconds":  24,
+                                  "queued":  48
+                              },
+                              {
+                                  "elapsedSeconds":  25,
+                                  "queued":  62
+                              },
+                              {
+                                  "elapsedSeconds":  26,
+                                  "queued":  75
+                              },
+                              {
+                                  "elapsedSeconds":  27,
+                                  "queued":  88
+                              },
+                              {
+                                  "elapsedSeconds":  28,
+                                  "queued":  101
+                              },
+                              {
+                                  "elapsedSeconds":  29,
+                                  "queued":  114
+                              },
+                              {
+                                  "elapsedSeconds":  31,
+                                  "queued":  100
+                              },
+                              {
+                                  "elapsedSeconds":  32,
+                                  "queued":  27
+                              },
+                              {
+                                  "elapsedSeconds":  33,
+                                  "queued":  3
+                              },
+                              {
+                                  "elapsedSeconds":  34,
+                                  "queued":  3
+                              },
+                              {
+                                  "elapsedSeconds":  35,
+                                  "queued":  3
+                              },
+                              {
+                                  "elapsedSeconds":  36,
+                                  "queued":  2
+                              },
+                              {
+                                  "elapsedSeconds":  37,
+                                  "queued":  1
+                              },
+                              {
+                                  "elapsedSeconds":  38,
+                                  "queued":  0
+                              },
+                              {
+                                  "elapsedSeconds":  39,
+                                  "queued":  1
+                              },
+                              {
+                                  "elapsedSeconds":  40,
+                                  "queued":  1
+                              },
+                              {
+                                  "elapsedSeconds":  41,
+                                  "queued":  1
+                              },
+                              {
+                                  "elapsedSeconds":  42,
+                                  "queued":  2
+                              },
+                              {
+                                  "elapsedSeconds":  43,
+                                  "queued":  1
+                              },
+                              {
+                                  "elapsedSeconds":  44,
+                                  "queued":  1
+                              },
+                              {
+                                  "elapsedSeconds":  45,
+                                  "queued":  2
+                              },
+                              {
+                                  "elapsedSeconds":  46,
+                                  "queued":  2
+                              },
+                              {
+                                  "elapsedSeconds":  47,
+                                  "queued":  2
+                              },
+                              {
+                                  "elapsedSeconds":  48,
+                                  "queued":  3
+                              },
+                              {
+                                  "elapsedSeconds":  49,
+                                  "queued":  3
+                              },
+                              {
+                                  "elapsedSeconds":  50,
+                                  "queued":  4
+                              },
+                              {
+                                  "elapsedSeconds":  51,
+                                  "queued":  1
+                              },
+                              {
+                                  "elapsedSeconds":  52,
+                                  "queued":  1
+                              },
+                              {
+                                  "elapsedSeconds":  53,
+                                  "queued":  1
+                              },
+                              {
+                                  "elapsedSeconds":  54,
+                                  "queued":  1
+                              },
+                              {
+                                  "elapsedSeconds":  55,
+                                  "queued":  0
+                              },
+                              {
+                                  "elapsedSeconds":  56,
+                                  "queued":  1
+                              },
+                              {
+                                  "elapsedSeconds":  57,
+                                  "queued":  1
+                              },
+                              {
+                                  "elapsedSeconds":  58,
+                                  "queued":  1
+                              },
+                              {
+                                  "elapsedSeconds":  59,
+                                  "queued":  0
+                              },
+                              {
+                                  "elapsedSeconds":  60,
+                                  "queued":  3
+                              },
+                              {
+                                  "elapsedSeconds":  62,
+                                  "queued":  4
+                              },
+                              {
+                                  "elapsedSeconds":  63,
+                                  "queued":  6
+                              },
+                              {
+                                  "elapsedSeconds":  64,
+                                  "queued":  5
+                              },
+                              {
+                                  "elapsedSeconds":  65,
+                                  "queued":  2
+                              },
+                              {
+                                  "elapsedSeconds":  66,
+                                  "queued":  3
+                              },
+                              {
+                                  "elapsedSeconds":  67,
+                                  "queued":  4
+                              },
+                              {
+                                  "elapsedSeconds":  68,
+                                  "queued":  7
+                              },
+                              {
+                                  "elapsedSeconds":  69,
+                                  "queued":  4
+                              },
+                              {
+                                  "elapsedSeconds":  70,
+                                  "queued":  3
+                              },
+                              {
+                                  "elapsedSeconds":  71,
+                                  "queued":  4
+                              },
+                              {
+                                  "elapsedSeconds":  72,
+                                  "queued":  4
+                              },
+                              {
+                                  "elapsedSeconds":  73,
+                                  "queued":  3
+                              },
+                              {
+                                  "elapsedSeconds":  74,
+                                  "queued":  2
+                              },
+                              {
+                                  "elapsedSeconds":  75,
+                                  "queued":  4
+                              },
+                              {
+                                  "elapsedSeconds":  77,
+                                  "queued":  6
+                              },
+                              {
+                                  "elapsedSeconds":  78,
+                                  "queued":  4
+                              },
+                              {
+                                  "elapsedSeconds":  79,
+                                  "queued":  3
+                              },
+                              {
+                                  "elapsedSeconds":  80,
+                                  "queued":  4
+                              },
+                              {
+                                  "elapsedSeconds":  81,
+                                  "queued":  7
+                              },
+                              {
+                                  "elapsedSeconds":  82,
+                                  "queued":  6
+                              },
+                              {
+                                  "elapsedSeconds":  83,
+                                  "queued":  3
+                              },
+                              {
+                                  "elapsedSeconds":  84,
+                                  "queued":  5
+                              },
+                              {
+                                  "elapsedSeconds":  85,
+                                  "queued":  5
+                              },
+                              {
+                                  "elapsedSeconds":  86,
+                                  "queued":  6
+                              },
+                              {
+                                  "elapsedSeconds":  87,
+                                  "queued":  2
+                              },
+                              {
+                                  "elapsedSeconds":  88,
+                                  "queued":  3
+                              },
+                              {
+                                  "elapsedSeconds":  89,
+                                  "queued":  5
+                              }
+                          ],
+    "lastSampledQueueDepth":  5
+}

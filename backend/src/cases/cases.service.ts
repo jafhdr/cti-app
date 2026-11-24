@@ -5,6 +5,7 @@ import { enqueueCaseAssignment } from '../notifications/case-assignment-event';
 import { AuthUser } from '../users/users.types';
 import { CreateCaseInput, CreateEvidenceInput, CreateInvestigationNoteInput, UpdateCaseInput, ListCaseQuery } from './cases.types';
 import { operationalIndicatorWhere } from '../indicators/indicator-eligibility';
+import { allocateCaseNumber } from './case-number';
 
 @Injectable()
 export class CasesService {
@@ -14,6 +15,12 @@ export class CasesService {
     return (from === CaseStatus.OPEN && to === CaseStatus.IN_PROGRESS)
       || (from === CaseStatus.IN_PROGRESS && to === CaseStatus.RESOLVED)
       || (from === CaseStatus.RESOLVED && (to === CaseStatus.IN_PROGRESS || to === CaseStatus.CLOSED));
+  }
+
+  private async tenantIntegrityEnabled(tenantId: string): Promise<boolean> {
+    if (process.env.CASE_V2_INTEGRITY_ENABLED !== 'true') return false;
+    const assignment = await this.prisma.userModuleAccess.findFirst({ where: { tenantId, module: { slug: 'case-management' }, featureKeys: { has: 'case-v2-integrity' } }, select: { userId: true } });
+    return assignment !== null;
   }
 
   private tenantId(user: AuthUser): string {
@@ -34,11 +41,9 @@ export class CasesService {
 
   private async generateCaseNumber(
     tenantId: string,
-    client: Pick<Prisma.TransactionClient, 'case'> = this.prisma,
+    client: Prisma.TransactionClient,
   ): Promise<string> {
-    const count = await client.case.count({ where: { tenantId } });
-    const year = new Date().getFullYear();
-    return `CASE-${year}-${String(count + 1).padStart(5, '0')}`;
+    return allocateCaseNumber(client, tenantId);
   }
 
   async list(user: AuthUser, query: ListCaseQuery) {
@@ -110,7 +115,7 @@ export class CasesService {
     const detail = await this.prisma.case.findUnique({
       where: { id: caseId },
       include: {
-        alerts: { where: { source: 'ASM' }, orderBy: { firstSeenAt: 'desc' }, include: { asset: { select: { id: true, value: true } }, finding: { select: { id: true, title: true } }, changeEvent: { select: { id: true, type: true, detectedAt: true } }, vulnerabilityCorrelation: { include: { vulnerability: { select: { cveId: true, name: true } } } } } },
+        alerts: { where: { OR: [{ source: 'ASM' }, { source: 'CORRELATION', ...(user.role === 'USER' ? { threatCorrelation: { event: { tlp: { not: 'RED' } } } } : {}) }] }, orderBy: { firstSeenAt: 'desc' }, include: { asset: { select: { id: true, value: true } }, finding: { select: { id: true, title: true } }, changeEvent: { select: { id: true, type: true, detectedAt: true } }, vulnerabilityCorrelation: { include: { vulnerability: { select: { cveId: true, name: true } } } } } },
         tenant: { select: { id: true, name: true, slug: true } },
         creator: { select: { id: true, name: true, email: true } },
         assignee: { select: { id: true, name: true, email: true } },
@@ -137,6 +142,7 @@ export class CasesService {
     const caseRecord = await this.scopedCase(user, caseId);
     const content = input.content.trim();
     if (!content) throw new BadRequestException('Catatan investigasi wajib diisi');
+    const integrityEnabled = await this.tenantIntegrityEnabled(caseRecord.tenantId);
 
     try {
       return await this.prisma.$transaction(async (tx) => {
@@ -160,6 +166,7 @@ export class CasesService {
       await tx.auditLog.create({
         data: { userId: user.sub, tenantId: caseRecord.tenantId, action: 'CASE_NOTE_ADDED', metadata: { caseId, noteId: note.id } },
       });
+      if (integrityEnabled) await tx.case.update({ where: { id: caseId }, data: { revision: { increment: 1 } } });
         return note;
       });
     } catch (error) {
@@ -189,6 +196,7 @@ export class CasesService {
     const name = input.name.trim();
     const type = input.type.trim();
     if (!name || !type) throw new BadRequestException('Nama dan tipe evidence wajib diisi');
+    const integrityEnabled = await this.tenantIntegrityEnabled(caseRecord.tenantId);
 
     try {
       return await this.prisma.$transaction(async (tx) => {
@@ -221,6 +229,11 @@ export class CasesService {
       await tx.auditLog.create({
         data: { userId: user.sub, tenantId: caseRecord.tenantId, action: 'CASE_EVIDENCE_ADDED', metadata: { caseId, evidenceId: evidence.id, name } },
       });
+      if (integrityEnabled) {
+        await tx.caseEvidenceRevision.create({ data: { tenantId: caseRecord.tenantId, caseId, evidenceId: evidence.id, revision: 1,
+          name: evidence.name, type: evidence.type, description: evidence.description, source: evidence.source, authorId: user.sub } });
+        await tx.case.update({ where: { id: caseId }, data: { revision: { increment: 1 } } });
+      }
         return evidence;
       });
     } catch (error) {
@@ -481,23 +494,23 @@ export class CasesService {
     });
   }
 
-  async create(user: AuthUser, input: CreateCaseInput) {
+  async create(user: AuthUser, input: CreateCaseInput, transaction?: Prisma.TransactionClient) {
     const tenantId = user.role === 'SUPER_ADMIN' ? input.tenantId : this.tenantId(user);
     if (!tenantId) throw new BadRequestException('Tenant wajib dipilih');
 
-    const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
+    const client = transaction ?? this.prisma;
+    const tenant = await client.tenant.findUnique({ where: { id: tenantId } });
     if (!tenant) throw new NotFoundException('Tenant tidak ditemukan');
 
     if (input.assigneeId) {
-      const assignee = await this.prisma.user.findUnique({ where: { id: input.assigneeId } });
+      const assignee = await client.user.findUnique({ where: { id: input.assigneeId } });
       if (!assignee || assignee.tenantId !== tenantId || !assignee.isActive) {
         throw new NotFoundException('Assignee tidak ditemukan di tenant ini');
       }
     }
 
-    const caseNumber = await this.generateCaseNumber(tenantId);
-
-    return this.prisma.$transaction(async tx => {
+    const create = async (tx: Prisma.TransactionClient) => {
+      const caseNumber = await this.generateCaseNumber(tenantId, tx);
       const newCase = await tx.case.create({
         data: {
           tenantId,
@@ -526,11 +539,16 @@ export class CasesService {
       if (input.assigneeId) await enqueueCaseAssignment(tx, { tenantId, caseId: newCase.id, recipientId: input.assigneeId, actorId: user.sub, type: 'CASE_ASSIGNED' });
 
       return newCase;
-    });
+    };
+    return transaction ? create(transaction) : this.prisma.$transaction(create);
   }
 
   async update(user: AuthUser, caseId: string, input: UpdateCaseInput) {
     const caseRecord = await this.scopedCase(user, caseId);
+
+    if (input.status === CaseStatus.CLOSED && await this.tenantIntegrityEnabled(caseRecord.tenantId)) {
+      throw new ForbiddenException('Gunakan closure V2 untuk tenant ini');
+    }
 
     if (input.status && input.status !== caseRecord.status && !this.validTransition(caseRecord.status, input.status)) {
       throw new BadRequestException('Transisi status Case tidak valid');
@@ -553,6 +571,7 @@ export class CasesService {
     const updated = await tx.case.update({
       where: { id: caseId, status: caseRecord.status, assigneeId: caseRecord.assigneeId },
       data: {
+        revision: { increment: 1 },
         title: input.title,
         description: input.description,
         status: input.status,
@@ -600,7 +619,19 @@ export class CasesService {
   async delete(user: AuthUser, caseId: string) {
     const caseRecord = await this.scopedCase(user, caseId);
 
-    await this.prisma.case.delete({ where: { id: caseId } });
+    const origin = await this.prisma.caseOrigin.findUnique({ where: { caseId } });
+    if (origin) throw new ConflictException('Case dengan provenance V2 tidak dapat dihapus');
+    if (await this.prisma.caseEvidenceRevision.count({ where: { caseId, tenantId: caseRecord.tenantId } })
+      || await this.prisma.caseReviewRequest.count({ where: { caseId, tenantId: caseRecord.tenantId } })) {
+      throw new ConflictException('Case dengan riwayat V2 tidak dapat dihapus');
+    }
+
+    await this.prisma.case.delete({ where: { id: caseId } }).catch(error => {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+        throw new ConflictException('Case dengan riwayat V2 tidak dapat dihapus');
+      }
+      throw error;
+    });
 
     await this.audit(user, caseRecord.tenantId, 'CASE_DELETED', {
       caseId: caseId,
@@ -636,7 +667,7 @@ export class CasesService {
     const action = caseRecord.assigneeId ? 'CASE_REASSIGNED' : 'CASE_ASSIGNED';
     return this.prisma.$transaction(async tx => {
       const updated = await tx.case.update({
-        where: { id: caseId, tenantId: caseRecord.tenantId, assigneeId: caseRecord.assigneeId }, data: { assigneeId },
+        where: { id: caseId, tenantId: caseRecord.tenantId, assigneeId: caseRecord.assigneeId }, data: { assigneeId, revision: { increment: 1 } },
         include: { tenant: { select: { id: true, name: true, slug: true } }, creator: { select: { id: true, name: true, email: true } }, assignee: { select: { id: true, name: true, email: true } } },
       });
       await tx.auditLog.create({ data: { userId: user.sub, tenantId: caseRecord.tenantId, action, metadata: {

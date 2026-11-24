@@ -1,0 +1,189 @@
+{
+  "fixture": {
+    "database": "cti_phase4a_qa_sict45",
+    "caseId": "cmwkb18qm001cgp98y2qbv5yi",
+    "ipAssetId": "cmwkb18qw001egp98d8tyhli5",
+    "domainAssetId": "cmwkb18r6001ggp98y12t0b37",
+    "fingerprintId": "cmwkb18rn001mgp98cvkwm8lj",
+    "findingId": "cmwkb18td0022gp985iqoz38e"
+  },
+  "api": {
+    "asset": 200,
+    "services": 200,
+    "openSsh": true,
+    "correlations": 200,
+    "watchlistAsset": "cmwkb18r6001ggp98y12t0b37",
+    "findings": 200,
+    "detail": 200,
+    "findingCase": "cmwkb18qm001cgp98y2qbv5yi",
+    "findingAsset": "cmwkb18r6001ggp98y12t0b37"
+  },
+  "screenshots": [
+    {
+      "name": "asm-populated",
+      "route": "/attack-surface/assets?assetId=cmwkb18qw001egp98d8tyhli5",
+      "file": "asm-populated-1280-light.png",
+      "width": 1280,
+      "scrollWidth": 1280,
+      "reference": false,
+      "dark": false
+    },
+    {
+      "name": "monitoring-populated",
+      "route": "/threat-intelligence/monitoring",
+      "file": "monitoring-populated-1280-light.png",
+      "width": 1280,
+      "scrollWidth": 1280,
+      "reference": false,
+      "dark": false
+    },
+    {
+      "name": "case-detail",
+      "route": "/cases/cmwkb18qm001cgp98y2qbv5yi",
+      "file": "case-detail-1280-light.png",
+      "width": 1280,
+      "scrollWidth": 1280,
+      "reference": false,
+      "dark": false
+    },
+    {
+      "name": "asm-populated",
+      "route": "/attack-surface/assets?assetId=cmwkb18qw001egp98d8tyhli5",
+      "file": "asm-populated-390-light.png",
+      "width": 390,
+      "scrollWidth": 390,
+      "reference": false,
+      "dark": false
+    },
+    {
+      "name": "monitoring-populated",
+      "route": "/threat-intelligence/monitoring",
+      "file": "monitoring-populated-390-light.png",
+      "width": 390,
+      "scrollWidth": 390,
+      "reference": false,
+      "dark": false
+    },
+    {
+      "name": "case-detail",
+      "route": "/cases/cmwkb18qm001cgp98y2qbv5yi",
+      "file": "case-detail-390-light.png",
+      "width": 390,
+      "scrollWidth": 390,
+      "reference": false,
+      "dark": false
+    },
+    {
+      "name": "campaign-sort",
+      "route": "/threat-intelligence/campaigns",
+      "file": "campaign-sort-1280-light.png",
+      "width": 1280,
+      "scrollWidth": 1280,
+      "reference": true,
+      "dark": false,
+      "sortFit": {
+        "selected": "Recently updated",
+        "textWidth": 107.5703125,
+        "innerWidth": 195
+      }
+    },
+    {
+      "name": "campaign-sort",
+      "route": "/threat-intelligence/campaigns",
+      "file": "campaign-sort-768-light.png",
+      "width": 768,
+      "scrollWidth": 768,
+      "reference": true,
+      "dark": false,
+      "sortFit": {
+        "selected": "Recently updated",
+        "textWidth": 107.5703125,
+        "innerWidth": 259
+      }
+    },
+    {
+      "name": "campaign-sort",
+      "route": "/threat-intelligence/campaigns",
+      "file": "campaign-sort-375-light.png",
+      "width": 375,
+      "scrollWidth": 375,
+      "reference": true,
+      "dark": false,
+      "sortFit": {
+        "selected": "Recently updated",
+        "textWidth": 107.5703125,
+        "innerWidth": 209
+      }
+    },
+    {
+      "name": "campaign-sort",
+      "route": "/threat-intelligence/campaigns",
+      "file": "campaign-sort-1280-dark.png",
+      "width": 1280,
+      "scrollWidth": 1280,
+      "reference": true,
+      "dark": true
+    },
+    {
+      "name": "scope-monitoring",
+      "route": "/threat-intelligence/monitoring",
+      "file": "scope-monitoring-1280-light.png",
+      "width": 1280,
+      "scrollWidth": 1280,
+      "reference": false,
+      "dark": false
+    },
+    {
+      "name": "scope-asm",
+      "route": "/attack-surface/assets?assetId=cmwkb18qw001egp98d8tyhli5",
+      "file": "scope-asm-1280-light.png",
+      "width": 1280,
+      "scrollWidth": 1280,
+      "reference": false,
+      "dark": false
+    },
+    {
+      "name": "scope-case-detail",
+      "route": "/cases/cmwkb18qm001cgp98y2qbv5yi",
+      "file": "scope-case-detail-1280-light.png",
+      "width": 1280,
+      "scrollWidth": 1280,
+      "reference": false,
+      "dark": false
+    },
+    {
+      "name": "scope-playbooks",
+      "route": "/threat-intelligence/playbooks",
+      "file": "scope-playbooks-1280-light.png",
+      "width": 1280,
+      "scrollWidth": 1280,
+      "reference": false,
+      "dark": false
+    }
+  ],
+  "roles": {
+    "userIoc": {
+      "requested": "/threat-intelligence/ioc-candidates",
+      "landed": "/threat-intelligence",
+      "denied": true
+    }
+  },
+  "tenant": {
+    "foreign": {
+      "asset": 404,
+      "finding": 404,
+      "case": 404
+    },
+    "superSelection": {
+      "ownFindingVisible": true,
+      "foreignFindingAbsent": true,
+      "ownCaseVisible": true,
+      "foreignCaseAbsent": true
+    }
+  },
+  "account": {
+    "open": true,
+    "escape": true,
+    "logout": true
+  }
+}

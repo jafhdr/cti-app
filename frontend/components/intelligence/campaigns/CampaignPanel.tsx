@@ -2,6 +2,8 @@ import type { FormEvent, ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { FormModal } from "@/components/ui/modal-patterns";
+import { TtpTimeline } from "../TtpTimeline";
+import { NextStepHypotheses } from "../NextStepHypotheses";
 import {
   campaignSeverities,
   campaignStatuses,
@@ -13,6 +15,7 @@ import {
 } from "./types";
 type Props = {
   readonly campaign: Campaign | null;
+  readonly role: "SUPER_ADMIN" | "ADMIN" | "USER";
   readonly form: CampaignForm;
   readonly actors: readonly RelationActor[];
   readonly indicators: readonly RelationIndicator[];
@@ -27,7 +30,7 @@ type Props = {
   readonly onClose: () => void;
   readonly onSubmit: (event: FormEvent) => void;
 };
-export function CampaignPanel({ campaign, form, actors, indicators, mitreTechniques, readOnly, saving, error, onChange, onClose, onSubmit }: Props) {
+export function CampaignPanel({ campaign, role, form, actors, indicators, mitreTechniques, readOnly, saving, error, onChange, onClose, onSubmit }: Props) {
   const title = readOnly ? campaign?.name ?? "Campaign detail" : campaign ? "Edit campaign" : "Create campaign";
   if (readOnly && campaign) return <Card view="outlined" className="source-panel" role="region" aria-label={title}><div className="source-panel-heading"><div><span className="source-eyebrow">CAMPAIGN INTELLIGENCE</span><h2>{title}</h2></div><Button view="flat" onClick={onClose}>Close</Button></div>
         <>
@@ -76,6 +79,8 @@ export function CampaignPanel({ campaign, form, actors, indicators, mitreTechniq
             <h3>Malware &amp; Tools</h3>
             {(campaign.malwareTools?.length ?? 0) === 0 ? <p>No linked malware or tools.</p> : <ul>{campaign.malwareTools?.map(({ malwareTool }) => <li key={malwareTool.id}><span>{malwareTool.type}</span><strong>{malwareTool.name}</strong><small>{malwareTool.externalId || 'No external ID'}</small></li>)}</ul>}
           </section>
+          <TtpTimeline campaignId={campaign.id} role={role} />
+          <NextStepHypotheses campaignId={campaign.id} role={role} />
         </>
       </Card>;
   return <FormModal open onOpenChange={open => { if (!open) onClose(); }} title={title} onSubmit={onSubmit} loading={saving} error={error} submitLabel="Save campaign"><div className="ioc-form">

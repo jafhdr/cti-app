@@ -11,6 +11,7 @@ const indicator = { id: 'indicator-1', tenantId: 'tenant-1', value: '203.0.113.1
 function fakePrisma({ failLink = false, foreignIndicator = false } = {}) {
   const state = { cases: [], links: [], activities: [], audits: [] };
   const tx = {
+    $queryRaw: async strings => strings[0].includes('FROM "Tenant"') ? [{ id: indicator.tenantId }] : [{ number: BigInt(state.cases.length) }],
     case: {
       count: async () => state.cases.length,
       create: async ({ data }) => {
@@ -111,6 +112,6 @@ test('Given the create-from-Indicator route, then Create Case roles and case-man
   assert.equal(Reflect.getMetadata('requiredModule', CasesController), 'case-management');
   assert.deepEqual(
     Reflect.getMetadata('__guards__', CasesController).map(guard => guard.name),
-    ['AuthGuard', 'RolesGuard', 'ModuleAccessGuard', 'CaseTenantGuard'],
+    ['AuthGuard', 'RolesGuard', 'ModuleAccessGuard', 'CaseTenantGuard', 'CaseClosedMutationGuard'],
   );
 });

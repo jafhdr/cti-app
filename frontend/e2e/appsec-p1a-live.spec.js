@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const { assertQaDatabase } = require('./qa-database-guard.cjs');
 const { createRequire } = require('node:module');
 const { randomUUID } = require('node:crypto');
 const path = require('node:path');
@@ -27,7 +28,7 @@ test.setTimeout(120000);
 
 test.beforeAll(async () => {
   const qaDatabase = process.env.APPSEC_P1A_QA_DB_NAME;
-  if (!/^stake45_p1a_[0-9a-f]{10}$/.test(qaDatabase ?? '') || new URL(process.env.DATABASE_URL).pathname !== `/${qaDatabase}`) throw new Error('Expected isolated QA database');
+  assertQaDatabase({ databaseUrl: process.env.DATABASE_URL, declaredDatabase: qaDatabase, legacyDatabase: /^stake45_p1a_[0-9a-f]{10}$/, requireDeclaredDatabase: true });
   if (process.env.APPSEC_V2_TRIAGE_ENABLED !== 'true') throw new Error('Backend QA rollout disabled');
   prisma = new PrismaClient();
   const nest = await Test.createTestingModule({ imports: [ConfigModule.forRoot({ isGlobal: true }), AuthModule, UsersModule, ModulesModule, AppSecModule] }).compile();

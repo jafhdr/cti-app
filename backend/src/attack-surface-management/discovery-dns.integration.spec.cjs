@@ -4,6 +4,7 @@ const { randomUUID } = require('node:crypto');
 const { PrismaClient } = require('@prisma/client');
 const { DiscoveryRunsService } = require('../../dist/src/attack-surface-management/discovery-runs.service');
 const { VulnerabilityCorrelationsService } = require('../../dist/src/attack-surface-management/vulnerability-correlations.service');
+const { AsmV2EvidenceService } = require('../../dist/src/attack-surface-management/asm-v2-evidence.service');
 const { AsmAlertsService } = require('../../dist/src/attack-surface-management/alerts.service');
 const { RiskPostureService } = require('../../dist/src/attack-surface-management/risk-posture.service');
 
@@ -23,7 +24,7 @@ test('domain runs report new IP and DNS change without false loss on provider fa
       return { rootDomain: root.value, discovered: 1, created: 1, updated: 0, skipped: 0, failed: 0, providers: ['DNS'], errors: [] };
     } };
     const ports = { discover: async () => ({ target: 'ip', scanned: 0, open: 0, closed: 0, timeout: 0, failed: 0, results: [] }) };
-    const runner = new DiscoveryRunsService(prisma, discovery, ports, new VulnerabilityCorrelationsService(prisma, new AsmAlertsService(prisma)), new RiskPostureService(prisma));
+    const runner = new DiscoveryRunsService(prisma, discovery, ports, new VulnerabilityCorrelationsService(prisma, new AsmAlertsService(prisma), new AsmV2EvidenceService(prisma)), new RiskPostureService(prisma));
     const first = await runner.run(user, root.id);
     assert.equal(first.changes.filter(item => item.type === 'IP_DISCOVERED').length, 1);
     const second = await runner.run(user, root.id);

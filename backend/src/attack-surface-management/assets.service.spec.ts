@@ -79,7 +79,7 @@ describe('AssetsService', () => {
       [AssetType.IP_ADDRESS, '2001:db8::1'],
     ])('matches %s value %s in the asset tenant', async (assetType, value) => {
       jest.spyOn(prisma.asset, 'findFirst').mockResolvedValueOnce(mockAsset({ type: assetType, value }));
-      const indicator = { id: 'indicator-1', tenantId: 'tenant-123', type: assetType === AssetType.IP_ADDRESS ? IndicatorType.IP_ADDRESS : IndicatorType.DOMAIN, value, source: 'feed', confidence: 80, severity: IndicatorSeverity.MEDIUM, status: IndicatorStatus.ACTIVE, tags: [], description: null, expiresAt: null, createdById: null, intelligenceSourceId: null, intelligenceEntityId: null, createdAt: new Date(), updatedAt: new Date() };
+      const indicator = { id: 'indicator-1', tenantId: 'tenant-123', type: assetType === AssetType.IP_ADDRESS ? IndicatorType.IP_ADDRESS : IndicatorType.DOMAIN, value, source: 'feed', confidence: 80, severity: IndicatorSeverity.MEDIUM, status: IndicatorStatus.ACTIVE, suppressionKind: null, tags: [], description: null, expiresAt: null, createdById: null, intelligenceSourceId: null, intelligenceEntityId: null, createdAt: new Date(), updatedAt: new Date() };
       jest.spyOn(prisma.indicator, 'findMany').mockResolvedValueOnce([indicator]);
       const result = await service.threatIntelligence(adminUser, 'a1');
       expect(result.matches).toHaveLength(1);

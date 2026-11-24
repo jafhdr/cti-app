@@ -1,0 +1,164 @@
+/* The five approved reference routes share the existing Dashboard palette. */
+.ux-reference {
+  grid-template-columns: minmax(250px, 24%) minmax(0, 1fr);
+  gap: 8px;
+  padding: 24px 28px;
+  background: var(--db-canvas);
+}
+.ux-reference .sidebar { top: 24px; min-height: calc(100vh - 48px); max-height: calc(100vh - 48px); border-radius: 26px; }
+.ux-reference .main { min-width: 0; overflow: visible; border: 0; border-radius: 0; background: transparent; }
+.ux-reference .topbar { min-height: 92px; justify-content: flex-end; margin-bottom: 18px; padding: 16px 32px; border: 0; border-radius: 18px; background: var(--soc-surface); box-shadow: var(--db-shadow); }
+.ux-reference .content { min-width: 0; padding: 0 28px 32px; background: transparent; }
+.ux-reference .source-eyebrow { color: var(--db-blue); }
+.ux-reference .header { margin-bottom: 14px; }
+.ux-reference .header h1,
+.ux-reference .editorial-heading h1,
+.ux-reference .source-heading h1 { max-width: 900px; margin: 8px 0 5px; font: 700 clamp(29px, 2.5vw, 38px)/1.12 var(--db-display); letter-spacing: -.035em; }
+.ux-reference .header p,
+.ux-reference .editorial-heading p,
+.ux-reference .source-heading p { max-width: 700px; color: var(--soc-muted); font-size: 15px; line-height: 1.45; }
+.ux-reference .source-heading { align-items: center; gap: 20px; margin-bottom: 20px; }
+.ux-reference .editorial-section-heading { margin-bottom: 16px; }
+.ux-reference .editorial-section-heading h2 { margin: 3px 0; font-size: 23px; line-height: 1.25; }
+.ux-reference .editorial-metrics { gap: 18px; margin: 18px 0 22px; border: 0; }
+.ux-reference .editorial-metrics > div { min-width: 0; min-height: 124px; padding: 24px; border: 1px solid var(--soc-border); border-radius: 17px; background: var(--soc-surface); box-shadow: var(--db-shadow); }
+.ux-reference .editorial-metrics span { color: var(--soc-body); font-size: 13px; }
+.ux-reference .editorial-metrics strong { margin-top: 15px; font-size: 39px; letter-spacing: -.04em; }
+.ux-reference .editorial-metrics .editorial-text-metric { font-size: 27px; }
+.ux-reference .case-metrics > div:not(:first-child) strong { font-size: clamp(17px, 1.8vw, 23px); line-height: 1.15; overflow-wrap: normal; }
+.ux-reference .editorial-feature,
+.ux-reference .case-activity { margin-bottom: 18px; padding: 28px; border: 1px solid var(--soc-border); border-radius: 17px; background: var(--soc-surface); box-shadow: var(--db-shadow); }
+.ux-reference .editorial-feature h2,
+.ux-reference .case-activity h2 { font-size: 25px; }
+.ux-reference .ti-entity-list { gap: 16px; }
+.ux-reference .ti-entity-card { min-width: 0; border-radius: 17px; box-shadow: var(--db-shadow); }
+.ux-reference .ti-entity-card p { color: var(--soc-body); line-height: 1.45; overflow-wrap: anywhere; }
+.ux-reference .ti-entity-meta { padding-top: 12px; border-top: 1px solid var(--soc-border-muted); }
+.ux-reference .ti-workflows a { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 12px; padding: 18px 22px; border-radius: 15px; }
+.ux-reference .ti-workflows a strong { color: var(--soc-ink); }
+.ux-reference .ti-workflows a small { grid-column: 1; color: var(--soc-muted); }
+.ux-reference .ti-workflows a > span { grid-column: 2; grid-row: 1 / 3; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--db-blue-tint); color: var(--db-blue); }
+.ux-reference .case-heading-row { align-items: center; }
+.ux-reference .case-heading-row .editorial-heading { margin-bottom: 0; }
+.ux-reference .case-activity { display: block; }
+.ux-reference .case-activity-items a { grid-template-columns: 130px minmax(0, 1fr) auto; background: var(--soc-elevated); }
+.ux-reference .case-activity-items small { padding: 4px 9px; border-radius: 999px; font-size: 12px; }
+.ux-reference .case-activity-items small.case-status-open { color: var(--soc-blue); }
+.ux-reference .case-activity-items small.case-status-in_progress { color: var(--soc-yellow); }
+.ux-reference .case-activity-items small.case-status-resolved { color: var(--soc-green); }
+.ux-reference .case-activity-items small.case-status-closed { color: var(--soc-muted); }
+.ux-reference .case-inventory { padding: 0 !important; border-radius: 17px; box-shadow: var(--db-shadow); }
+.ux-reference .case-inventory .case-table-wrap { overflow-x: auto; }
+.ux-reference .case-filters,
+.ux-reference .source-table-card .ioc-filters { margin: 0; padding: 20px 24px; border-bottom: 1px solid var(--soc-border); }
+.ux-reference .case-filters input,
+.ux-reference .case-filters select,
+.ux-reference .source-table-card .ioc-filters input,
+.ux-reference .source-table-card .ioc-filters select { min-height: 44px; border-radius: 10px; }
+.ux-reference .case-table th,
+.ux-reference .cti-table th { background: var(--soc-elevated); color: var(--soc-muted); font-size: 11px; letter-spacing: .06em; }
+.ux-reference .case-table td,
+.ux-reference .cti-table td { color: var(--soc-body); font-size: 13px; }
+.ux-reference .case-pagination,
+.ux-reference .source-pagination,
+.ux-reference .ux-candidate-count { margin: 0; padding: 16px 24px; border-top: 1px solid var(--soc-border-muted); background: var(--soc-elevated); color: var(--soc-body); font-size: 13px; }
+.ux-reference .ux-candidate-workspace .cti-table-wrap { overflow-x: auto; border: 1px solid var(--soc-border); border-radius: 17px; background: var(--soc-surface); }
+.ux-reference .ux-candidate-workspace .cti-table { min-width: 780px; }
+.ux-reference .candidate-type { border-radius: 8px; }
+.ux-reference .ux-actor-directory { padding: 0; }
+.ux-reference .ux-actor-directory .cti-table-wrap { overflow-x: auto; }
+.ux-reference .ux-actor-directory .cti-table { min-width: 960px; }
+.ux-reference .ux-actor-directory .ux-actor-aliases { overflow-wrap: anywhere; }
+.ux-reference .ux-actor-directory .ioc-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.ux-reference .ux-actor-workspace .editorial-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.ux-reference .ux-actor-workspace .editorial-metrics > div { min-width: 0; }
+.ux-reference .source-table-card { border-radius: 17px; box-shadow: var(--db-shadow); }
+.ux-reference .source-table-card .cti-table-wrap { max-width: 100%; }
+.ux-reference .source-heading .soc-button-primary { min-height: 44px; border-radius: 999px; }
+.ux-reference .ux-account-area { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.ux-reference .ux-account-area > select { max-width: 210px; }
+.ux-reference .ux-account-divider { width: 1px; height: 28px; flex: none; background: var(--soc-border); }
+.ux-reference .ux-account { position: relative; min-width: 0; color: var(--soc-ink); }
+.ux-reference .ux-account summary { display: flex; align-items: center; gap: 10px; list-style: none; cursor: pointer; }
+.ux-reference .ux-account summary::-webkit-details-marker { display: none; }
+.ux-reference .ux-avatar { display: grid; place-items: center; width: 40px; height: 40px; flex: none; border-radius: 50%; background: var(--db-blue); color: #fff; font-weight: 750; }
+.ux-reference .ux-account-copy { display: grid; min-width: 0; }
+.ux-reference .ux-account-copy strong { color: var(--soc-ink); font-size: 14px; }
+.ux-reference .ux-account-copy small { max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--soc-muted); font-size: 12px; }
+.ux-reference .ux-account-menu { position: absolute; z-index: 20; top: calc(100% + 10px); right: 0; min-width: 165px; padding: 7px; border: 1px solid var(--soc-border); border-radius: 12px; background: var(--soc-surface); box-shadow: var(--db-shadow); }
+.ux-reference .ux-account-menu button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 9px; border: 0; border-radius: 7px; background: transparent; color: var(--soc-ink); text-align: left; cursor: pointer; }
+.ux-reference .ux-account-menu button:hover,
+.ux-reference .ux-account-menu button:focus-visible { background: var(--soc-elevated); }
+@media(max-width:1400px) {
+  .ux-reference .campaign-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ux-reference .campaign-filters > * { min-width: 0; width: 100%; }
+  .ux-reference .campaign-filters input:first-child { grid-column: span 2; }
+  .ux-reference .ux-actor-directory .actor-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ux-reference .ux-actor-directory .actor-filters > * { min-width: 0; width: 100%; }
+  .ux-reference .ux-actor-directory .actor-filters input:first-child { grid-column: span 2; }
+  .ux-reference .ux-actor-directory .cti-table-wrap { overflow: visible; border: 0; }
+  .ux-reference .ux-actor-directory .cti-table { min-width: 0; }
+  .ux-reference .ux-actor-directory .cti-table thead { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+  .ux-reference .ux-actor-directory .cti-table tbody { display: grid; gap: 12px; padding: 16px; }
+  .ux-reference .ux-actor-directory .cti-table tbody tr { display: grid; min-width: 0; padding: 12px 18px; border: 1px solid var(--soc-border); border-radius: 16px; background: var(--soc-surface); }
+  .ux-reference .ux-actor-directory .cti-table tbody td { display: grid; grid-template-columns: minmax(110px, 24%) minmax(0, 1fr); gap: 10px; min-width: 0; padding: 9px 0; border-bottom: 1px solid var(--soc-border-muted); overflow-wrap: anywhere; }
+  .ux-reference .ux-actor-directory .cti-table tbody td::before { content: attr(data-label); color: var(--soc-muted); font-size: 11px; font-weight: 700; }
+  .ux-reference .ux-actor-directory .cti-table tbody td:last-child { border-bottom: 0; }
+  .ux-reference .ux-actor-directory .cti-table tbody td[data-label="Actions"] { grid-template-columns: 1fr; }
+  .ux-reference .ux-actor-directory .cti-table tbody td[data-label="Actions"]::before { display: none; }
+  .ux-reference .ux-actor-directory .cti-table tbody td .ioc-severity,
+  .ux-reference .ux-actor-directory .cti-table tbody td .cti-status { justify-self: start; }
+}
+@media(max-width:1000px) {
+  .ux-reference { grid-template-columns: 220px minmax(0, 1fr); padding: 14px; }
+  .ux-reference .content { padding: 0 16px 24px; }
+  .ux-reference .editorial-metrics,
+  .ux-reference .ux-actor-workspace .editorial-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media(max-width:900px) {
+  .ux-reference { display: block; }
+  .ux-reference .sidebar { position: relative; top: 0; min-height: 0; max-height: none; margin-bottom: 12px; }
+  .ux-reference .topbar { min-height: 60px; }
+  .ux-reference .campaign-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ux-reference .ux-actor-directory .actor-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ux-reference .ux-candidate-workspace .cti-table-wrap { overflow: visible; border: 0; background: transparent; }
+  .ux-reference .ux-candidate-workspace .cti-table { min-width: 0; }
+  .ux-reference .ux-candidate-workspace .cti-table thead { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+  .ux-reference .ux-candidate-workspace .cti-table tbody { display: grid; gap: 12px; }
+  .ux-reference .ux-candidate-workspace .cti-table tbody tr { display: grid; min-width: 0; padding: 12px 18px; border: 1px solid var(--soc-border); border-radius: 16px; background: var(--soc-surface); }
+  .ux-reference .ux-candidate-workspace .cti-table tbody td { display: grid; grid-template-columns: minmax(110px, 24%) minmax(0, 1fr); gap: 10px; min-width: 0; padding: 9px 0; border-bottom: 1px solid var(--soc-border-muted); overflow-wrap: anywhere; }
+  .ux-reference .ux-candidate-workspace .cti-table tbody td::before { content: attr(data-label); color: var(--soc-muted); font-size: 11px; font-weight: 700; }
+  .ux-reference .ux-candidate-workspace .cti-table tbody td:last-child { border-bottom: 0; }
+  .ux-reference .ux-candidate-workspace .cti-table tbody td[data-label="Actions"] { grid-template-columns: 1fr; }
+  .ux-reference .ux-candidate-workspace .cti-table tbody td[data-label="Actions"]::before { display: none; }
+  .ux-reference .case-table-wrap { display: none; }
+  .ux-reference .case-mobile-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 18px; }
+  .ux-reference .case-mobile-card { min-width: 0; padding: 18px; border: 1px solid var(--soc-border); border-radius: 16px; background: var(--soc-surface); }
+  .ux-reference .case-mobile-card h3 { margin: 8px 0 14px; overflow-wrap: anywhere; }
+  .ux-reference .case-mobile-card > div { display: flex; flex-wrap: wrap; gap: 8px; }
+  .ux-reference .case-mobile-card dl { display: grid; gap: 9px; margin: 18px 0; }
+  .ux-reference .case-mobile-card dl div { display: flex; justify-content: space-between; gap: 12px; }
+  .ux-reference .case-mobile-card dt { color: var(--soc-muted); }
+  .ux-reference .case-mobile-card dd { color: var(--soc-ink); overflow-wrap: anywhere; text-align: right; }
+}
+@media(max-width:600px) {
+  .ux-reference { padding: 8px; }
+  .ux-reference .content { padding: 0 10px 24px; }
+  .ux-reference .source-heading,
+  .ux-reference .case-heading-row { align-items: flex-start; flex-direction: column; }
+  .ux-reference .editorial-metrics { gap: 8px; }
+  .ux-reference .editorial-metrics > div { min-height: 100px; padding: 16px; }
+  .ux-reference .editorial-metrics strong { font-size: 30px; }
+  .ux-reference .editorial-feature { grid-template-columns: 1fr; }
+  .ux-reference .ti-entity-list,
+  .ux-reference .ti-workflows { grid-template-columns: 1fr; }
+  .ux-reference .case-activity-items a { grid-template-columns: 1fr auto; }
+  .ux-reference .case-activity-items a span { grid-column: 1 / -1; }
+  .ux-reference .ux-account-copy small { max-width: 110px; }
+  .ux-reference .topbar { padding: 12px; }
+  .ux-reference .campaign-filters { grid-template-columns: 1fr; }
+  .ux-reference .campaign-filters input:first-child { grid-column: auto; }
+  .ux-reference .ux-actor-directory .actor-filters { grid-template-columns: 1fr; }
+  .ux-reference .ux-actor-directory .actor-filters input:first-child { grid-column: auto; }
+  .ux-reference .case-mobile-list { grid-template-columns: 1fr; }
+}

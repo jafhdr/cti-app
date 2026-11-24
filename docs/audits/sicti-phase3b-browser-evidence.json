@@ -1,0 +1,29 @@
+{
+  "runId": "cmwbiwsgg0007gpys9wfdfx90",
+  "alertId": "cmwbiwocj0010gp7k3p6kvfz9",
+  "status": "ROLLED_BACK",
+  "jobs": [
+    {
+      "operation": "BLOCK_DOMAIN",
+      "status": "SUCCEEDED",
+      "attempts": 1,
+      "events": [
+        "QUEUED",
+        "ACKNOWLEDGED",
+        "STATE_VERIFIED"
+      ]
+    },
+    {
+      "operation": "UNBLOCK_DOMAIN",
+      "status": "SUCCEEDED",
+      "attempts": 1,
+      "events": [
+        "QUEUED",
+        "ACKNOWLEDGED",
+        "STATE_VERIFIED"
+      ]
+    }
+  ],
+  "authenticated": true,
+  "screenshotCount": 3
+}

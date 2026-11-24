@@ -1,0 +1,22 @@
+{
+  "database": "cti_corr_qa_sict45",
+  "status": 200,
+  "correlationId": "cmwkb18um002cgp98z0vamrv1",
+  "caseId": "cmwkb18qm001cgp98y2qbv5yi",
+  "captures": [
+    {
+      "width": 390,
+      "file": "correlation-390.png",
+      "innerWidth": 390,
+      "scrollWidth": 390,
+      "score": "90/100"
+    },
+    {
+      "width": 1280,
+      "file": "correlation-1280.png",
+      "innerWidth": 1280,
+      "scrollWidth": 1280,
+      "score": "90/100"
+    }
+  ]
+}

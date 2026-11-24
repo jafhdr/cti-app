@@ -4,6 +4,7 @@ const { randomUUID } = require('node:crypto');
 const { PrismaClient } = require('@prisma/client');
 const { DiscoveryRunsService } = require('../../dist/src/attack-surface-management/discovery-runs.service');
 const { VulnerabilityCorrelationsService } = require('../../dist/src/attack-surface-management/vulnerability-correlations.service');
+const { AsmV2EvidenceService } = require('../../dist/src/attack-surface-management/asm-v2-evidence.service');
 const { FindingsService } = require('../../dist/src/attack-surface-management/findings.service');
 const { AsmAlertsService } = require('../../dist/src/attack-surface-management/alerts.service');
 const { RiskPostureService } = require('../../dist/src/attack-surface-management/risk-posture.service');
@@ -28,7 +29,7 @@ test('ASM run snapshots preserve history and suppress negatives after partial sc
       return { target: asset.value, scanned: 2, open: stage === 2 ? 2 : 1, closed: stage === 4 ? 1 : 0, timeout: stage === 3 ? 1 : 0, failed: 0, results: stage === 4 ? [{ protocol: 'TCP', port: 22, status: 'closed' }] : [] };
     } };
     const alerts = new AsmAlertsService(prisma);
-    const correlations = new VulnerabilityCorrelationsService(prisma, alerts);
+    const correlations = new VulnerabilityCorrelationsService(prisma, alerts, new AsmV2EvidenceService(prisma));
     const runner = new DiscoveryRunsService(prisma, {}, portDiscovery, correlations, new RiskPostureService(prisma));
     const findings = new FindingsService(prisma, alerts);
     const first = await runner.run(user, asset.id);
@@ -73,5 +74,5 @@ test('ASM run snapshots preserve history and suppress negatives after partial sc
     assert.equal((await prisma.asmDiscoveryRun.findFirst({ where: { assetId: asset.id }, orderBy: { startedAt: 'desc' } })).source, 'SCHEDULED');
     await scheduler.tick();
     assert.equal((await prisma.asmDiscoveryRun.count({ where: { assetId: asset.id } })), beforeCount + 1);
-  } finally { if (tenantId) await prisma.tenant.delete({ where: { id: tenantId } }); await prisma.$disconnect(); }
+  } finally { if (tenantId) { await prisma.user.deleteMany({ where: { tenantId } }); await prisma.tenant.delete({ where: { id: tenantId } }); } await prisma.$disconnect(); }
 });

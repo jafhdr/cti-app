@@ -242,7 +242,7 @@ export function CampaignsWorkspace({ role }: { readonly role: Role }) {
     <div className="ti-phase2a">
       <div className="source-heading ti-workspace-heading">
         <div>
-          <span className="source-eyebrow">CAMPAIGNS / INTELLIGENCE WORKSPACE</span>
+          <span className="source-eyebrow">CAMPAIGNS</span>
           <h1>Track coordinated threat activity.</h1>
           <p>
             Track operations and database-backed relationships to threat actors
@@ -277,6 +277,7 @@ export function CampaignsWorkspace({ role }: { readonly role: Role }) {
       )}
       {panel !== "closed" && (
         <CampaignPanel
+          role={role}
           campaign={selected}
           form={form}
           actors={actors}

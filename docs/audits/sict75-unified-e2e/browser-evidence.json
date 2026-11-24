@@ -1,0 +1,119 @@
+{
+  "sourceRevision": "29d0eca04b0b57409128ff912aae4ccf8845a5cd",
+  "database": "cti_unified_qa_sict75",
+  "tenantId": "cmwu0iypy0007gpecfoqd2sn3",
+  "alertId": "cmwu0izaq001sgpecdagd1e5c",
+  "caseId": "cmwu0iytq001ggpech6bp4b2m",
+  "assetId": "cmwu0ufwa000pgp4oiam5ha5r",
+  "findingId": "cmwu0uvsa000vgpv44ox2pxqu",
+  "captures": [
+    "correlation-1280.png",
+    "soar-1280.png",
+    "monitoring-1280.png",
+    "asm-1280.png",
+    "appsec-1280.png",
+    "case-1280.png",
+    "correlation-390.png",
+    "soar-390.png",
+    "monitoring-390.png",
+    "asm-390.png",
+    "appsec-390.png",
+    "case-390.png",
+    "soar-reader-denied-1280.png"
+  ],
+  "captureMetrics": [
+    {
+      "file": "correlation-1280.png",
+      "width": 1280,
+      "viewportHeight": 900,
+      "scrollHeight": 1108,
+      "readyText": "bad-024c653c-af1e-46d2-a0f1-321f7a98eb0c.qa.test"
+    },
+    {
+      "file": "soar-1280.png",
+      "width": 1280,
+      "viewportHeight": 900,
+      "scrollHeight": 3649,
+      "readyText": "bad-024c653c-af1e-46d2-a0f1-321f7a98eb0c.qa.test"
+    },
+    {
+      "file": "monitoring-1280.png",
+      "width": 1280,
+      "viewportHeight": 900,
+      "scrollHeight": 1584,
+      "readyText": "bad-024c653c-af1e-46d2-a0f1-321f7a98eb0c.qa.test"
+    },
+    {
+      "file": "asm-1280.png",
+      "width": 1280,
+      "viewportHeight": 900,
+      "scrollHeight": 1716,
+      "readyText": "SICT75 shared monitored asset"
+    },
+    {
+      "file": "appsec-1280.png",
+      "width": 1280,
+      "viewportHeight": 900,
+      "scrollHeight": 1099,
+      "readyText": "SICT75 shared AppSec finding"
+    },
+    {
+      "file": "case-1280.png",
+      "width": 1280,
+      "viewportHeight": 900,
+      "scrollHeight": 4930,
+      "readyText": "Linked correlation alerts"
+    },
+    {
+      "file": "correlation-390.png",
+      "width": 390,
+      "viewportHeight": 844,
+      "scrollHeight": 1826,
+      "readyText": "bad-024c653c-af1e-46d2-a0f1-321f7a98eb0c.qa.test"
+    },
+    {
+      "file": "soar-390.png",
+      "width": 390,
+      "viewportHeight": 844,
+      "scrollHeight": 5364,
+      "readyText": "bad-024c653c-af1e-46d2-a0f1-321f7a98eb0c.qa.test"
+    },
+    {
+      "file": "monitoring-390.png",
+      "width": 390,
+      "viewportHeight": 844,
+      "scrollHeight": 1978,
+      "readyText": "bad-024c653c-af1e-46d2-a0f1-321f7a98eb0c.qa.test"
+    },
+    {
+      "file": "asm-390.png",
+      "width": 390,
+      "viewportHeight": 844,
+      "scrollHeight": 2646,
+      "readyText": "SICT75 shared monitored asset"
+    },
+    {
+      "file": "appsec-390.png",
+      "width": 390,
+      "viewportHeight": 844,
+      "scrollHeight": 1625,
+      "readyText": "SICT75 shared AppSec finding"
+    },
+    {
+      "file": "case-390.png",
+      "width": 390,
+      "viewportHeight": 844,
+      "scrollHeight": 5727,
+      "readyText": "Linked correlation alerts"
+    },
+    {
+      "file": "soar-reader-denied-1280.png",
+      "width": 1280,
+      "viewportHeight": 900,
+      "scrollHeight": 3335,
+      "readyText": "bad-024c653c-af1e-46d2-a0f1-321f7a98eb0c.qa.test"
+    }
+  ],
+  "httpFailures": [],
+  "consoleErrors": []
+}

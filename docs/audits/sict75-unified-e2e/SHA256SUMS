@@ -1,0 +1,37 @@
+# SHA-256 of the 35 staged Git blobs reviewed in SICT78.
+# Recorded after the SICT75 browser capture.
+d106e683edd0c6696a97f830c056419e7174bb9dc68d1fedaba506a248ba2f20  frontend/e2e/qa-database-guard.cjs
+307db81124ead3152c6dd2c1db8302d1b1b6380a64be47265274c2b232f77707  frontend/e2e/qa-database-guard.test.cjs
+eb4979c12a2d97f20ad02960ad618dacdd4d266217f6447362dedfb125f82d87  frontend/e2e/sict75-unified-browser.cjs
+9873b74dbe2b25d016018562c3b39485b17b39c818446d264123c8bc4a5eb73d  frontend/e2e/asm-v2-p1a-live.spec.cjs
+a4fd8ed5d52d7fd78899b04cba0ac6575e2a3cafe6756c3ff96ff0c3383babf9  frontend/e2e/asm-v2-p1b-live.spec.cjs
+2dcefd15b98eb9db342ce7fe29e96f070517adce4ec4f3b1b7684934b851c1cb  frontend/e2e/asm-v2-p1c-live.spec.cjs
+826da0fa3acb1121073f46ee185ecd877042f39a85863e089d36e1b8c5810a02  frontend/e2e/asm-v2-p1d-live.spec.cjs
+ea4b77db957786c0998dbc201257832b3b3e04f4d66f8c7700aca244dfa1b3a1  frontend/e2e/appsec-p1a-live.spec.js
+072c5dad20c51561bbd808c14745984842cf4cde75ef5405cee7973ef4b445aa  frontend/e2e/appsec-p1b-live.spec.js
+4e0b9f2de7e13f6d793176fa1d6d206d31e75b4d4ae8bf7df6c0b669467df99d  frontend/e2e/appsec-p1c-live.spec.js
+72dca1b3ac14bf8feda11f463bce49efd9df7a8570b04cb01c70528f54c0211f  frontend/e2e/appsec-p1d-live.spec.js
+99d16e4336b152cb32bd028161bccd0a93d4a0a4be9ed6bb43f5b8881471d0b5  frontend/app/globals.css
+889821b6e1bda243a28dee5b70535bc9a95758f7fbd8f9d60f5c71ac2b7ef24c  frontend/app/editorial.css
+a8997dd37bae1a36aee6745e742bf8ddaa68fd379d93a3e6837ff8b6ce548c0d  frontend/app/cases/[id]/page.tsx
+3163b47bc49c2f818d73e148046145f918b7ea892a47278802a91b9608b3a04b  backend/prepare-sict75-soar-fixture.cjs
+fded1f55aa910b0aacbb5f28bbe56b8bb67ab84f05e35e84720433d61f907a3a  backend/qa-phase3b-mock-tool.cjs
+3ecac17eb36128401c33351177ac14097682fd31f24d8ab60482fa804b9e211e  backend/src/unified-qa-runtime.integration.spec.cjs
+ad1d5a094356e4fae2ffec1264075ddbb7fb8ebda5ab9388ab15aab8876f3202  backend/src/correlation/correlation-case.http.integration.spec.cjs
+3ff5cafdbddd3f87f4b12ab11aa1d9de1c85536917151d42b82e183049f47213  backend/src/intelligence/monitoring-case-concurrency.integration.spec.cjs
+6b93cf26ff74cc292aeef620780aa6ae58daf99e3d5d26c0bd4dbf6aa0f967b7  backend/src/playbooks/sandbox-connector.integration.spec.cjs
+47e397be792fe09f4387dce608f26016a75e0fe0c7ed7aa3608ce1e7759a24aa  docs/audits/sicti-pr7-phase5e-unified-staging-e2e-closure.md
+123e5fb405722d6d4f639ff9dc05e5302c1ad82cf382c6009775ddbd6c213f00  docs/audits/sict75-unified-e2e/browser-evidence.json
+0a5f09ca4c9668f477046a17d1b10b968a98e33c8279a4267f521acbb2bfd5f3  docs/audits/sict75-unified-e2e/appsec-1280.png
+29a5583bbe354882ba07339379e0a34e7ec4191db6828b5e7a0f2a0fc6590923  docs/audits/sict75-unified-e2e/appsec-390.png
+1eeebea0b2981b95b23af4b9046747280b0844211e76b71da2e3d2d52fb0905c  docs/audits/sict75-unified-e2e/asm-1280.png
+4f9a5d13b60b40601c1c7ad9b403b551c238158e0170467bedaea480eed1165c  docs/audits/sict75-unified-e2e/asm-390.png
+be5ebe3bf4b898a440a479eb57b21f1f7848ab5480fd6f0a1fc133bd07e432f7  docs/audits/sict75-unified-e2e/case-1280.png
+9cf8784f4fadbe6066abcbb7a67b775a68d9bf393b1b372d0a96ad4451058ba0  docs/audits/sict75-unified-e2e/case-390.png
+1f467428770763778e283e6a55239fd479df52d9b4ea9672c7e622dbe776336a  docs/audits/sict75-unified-e2e/correlation-1280.png
+0124b17e6aac90fb2846363e6c984c91769726da277fe26db11cb85418e91744  docs/audits/sict75-unified-e2e/correlation-390.png
+06a5236d185739abc89fd945f26253b60527badcd99c59acb744bfaaa62dbd8e  docs/audits/sict75-unified-e2e/monitoring-1280.png
+6d80eac886eb2ac0ee694ac065bf5d17e54c7259eca257a2e32570e4c8ae6689  docs/audits/sict75-unified-e2e/monitoring-390.png
+cecbaee054b7a2c1ed7ead61059ddcb1c9ed4571c9807e3ed00814586b3643a2  docs/audits/sict75-unified-e2e/soar-1280.png
+747f8a6fba6db84268f572974155e3c13c06d61e42da4ac8c5e5d82d3821a9e8  docs/audits/sict75-unified-e2e/soar-390.png
+9b2ac50f0a430512a78169e43ae51d0c5d39d5a5f19cb2ade78c9c9a71c4c4ff  docs/audits/sict75-unified-e2e/soar-reader-denied-1280.png

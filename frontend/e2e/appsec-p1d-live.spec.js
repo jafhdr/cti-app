@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const { assertQaDatabase } = require('./qa-database-guard.cjs');
 const { createRequire } = require('node:module');
 const { randomUUID } = require('node:crypto');
 const fs = require('node:fs/promises');
@@ -23,7 +24,7 @@ test.setTimeout(120000);
 
 test.beforeAll(async () => {
   const qa = process.env.APPSEC_P1D_QA_DB_NAME;
-  if (!/^stake48_p1d_[0-9a-f]{10}$/.test(qa ?? '') || new URL(process.env.DATABASE_URL).pathname !== `/${qa}`) throw new Error('Expected isolated P1-D QA database');
+  assertQaDatabase({ databaseUrl: process.env.DATABASE_URL, declaredDatabase: qa, legacyDatabase: /^stake48_p1d_[0-9a-f]{10}$/, requireDeclaredDatabase: true });
   prisma = new PrismaClient();
   const nest = await Test.createTestingModule({ imports: [ConfigModule.forRoot({ isGlobal: true }), AuthModule, UsersModule, ModulesModule, AppSecModule] }).compile();
   app = nest.createNestApplication({ logger: false });

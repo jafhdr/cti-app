@@ -2,7 +2,10 @@ const http = require('node:http');
 const { createHmac, timingSafeEqual } = require('node:crypto');
 const { createStore } = require('./qa-phase3c-mock-store.cjs');
 
-if (process.env.SICTI_ISOLATED_QA !== 'true' || !/^\/cti_soar_qa_[a-z0-9_]+$/.test(new URL(process.env.DATABASE_URL || '').pathname)) throw new Error('Disposable SOAR QA database required');
+const database = new URL(process.env.DATABASE_URL || '').pathname;
+const historicalQa = /^\/cti_soar_qa_[a-z0-9_]+$/.test(database);
+const unifiedQa = process.env.SICTI_UNIFIED_QA_ENABLED === 'true' && /^\/cti_unified_qa_[a-z0-9]+$/.test(database);
+if (process.env.SICTI_ISOLATED_QA !== 'true' || (!historicalQa && !unifiedQa)) throw new Error('Disposable SOAR QA database required');
 const secret = process.env.SICTI_SOAR_SANDBOX_SECRET || '';
 if (secret.length < 32) throw new Error('Sandbox secret required');
 const store = createStore();

@@ -8,7 +8,7 @@ const { MonitoringService } = require('../dist/src/intelligence/monitoring.servi
 const { PlaybookService } = require('../dist/src/playbooks/playbook.service');
 
 test('Given one unified QA database, when the full application starts, then Correlation, SOAR, and Monitoring initialize together', { timeout: 90000 }, async () => {
-  assert.equal(new URL(process.env.DATABASE_URL).pathname, '/cti_unified_qa_sict72');
+  assert.match(new URL(process.env.DATABASE_URL).pathname, /^\/cti_unified_qa_[a-z0-9]+$/);
   assert.equal(process.env.SICTI_ISOLATED_QA, 'true');
   assert.equal(process.env.SICTI_UNIFIED_QA_ENABLED, 'true');
   assert.equal(process.env.THREAT_CORRELATION_PILOT_ENABLED, 'true');

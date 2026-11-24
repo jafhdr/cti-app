@@ -1,4 +1,5 @@
 const assert = require('node:assert/strict');
+const { assertQaDatabase } = require('./qa-database-guard.cjs');
 const { randomUUID } = require('node:crypto');
 const { evidencePath } = require('./asm-v2-evidence-path.cjs');
 const { chromium } = require('@playwright/test');
@@ -6,7 +7,7 @@ const { PrismaClient } = require('../../backend/node_modules/@prisma/client');
 const bcrypt = require('../../backend/node_modules/bcrypt');
 
 async function main() {
-  assert.match(new URL(process.env.DATABASE_URL || 'postgresql://invalid/cti').pathname.slice(1), /^cti_asm(59|60)_qa_/);
+  assertQaDatabase({ databaseUrl: process.env.DATABASE_URL, legacyDatabase: /^cti_asm(59|60)_qa_/ });
   const prisma = new PrismaClient();
   const marker = randomUUID();
   const tenantIds = [];

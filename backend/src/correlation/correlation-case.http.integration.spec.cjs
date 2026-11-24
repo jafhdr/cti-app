@@ -15,7 +15,9 @@ const { CorrelationCaseService } = require('../../dist/src/correlation/correlati
 const { createAccessToken } = require('../auth/integration-session.cjs');
 
 test('worker correlation alert links atomically to a case and survives restart', { timeout: 120000 }, async () => {
-  assert.match(new URL(process.env.DATABASE_URL).pathname, /^\/cti_corr_qa_/);
+  const database = new URL(process.env.DATABASE_URL).pathname;
+  assert.ok(/^\/cti_corr_qa_/.test(database)
+    || (process.env.SICTI_ISOLATED_QA === 'true' && process.env.SICTI_UNIFIED_QA_ENABLED === 'true' && /^\/cti_unified_qa_[a-z0-9]+$/.test(database)));
   const prisma = new PrismaClient();
   const marker = randomUUID();
   async function start() {

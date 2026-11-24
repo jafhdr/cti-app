@@ -225,7 +225,7 @@ html.light select:not([multiple]){
 .appsec-finding-metrics{grid-template-columns:repeat(3,minmax(0,1fr));border-block:0}
 .editorial-metrics.appsec-finding-metrics>div:first-child{padding-left:var(--appsec-space-l)}
 @media(max-width:900px){.editorial-metrics.appsec-finding-metrics>div:nth-child(-n+2){border-bottom:0}.editorial-metrics.appsec-finding-metrics>div:nth-child(2){border-right:1px solid var(--soc-border)}}
-@media(max-width:900px){
+@media(max-width:1350px){
   .appsec-findings-list .cti-table-wrap{overflow:visible;border:0}
   .appsec-findings-list .cti-table{min-width:0!important}
   .appsec-findings-list .cti-table thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}

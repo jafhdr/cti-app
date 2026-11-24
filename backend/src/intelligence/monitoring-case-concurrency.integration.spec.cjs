@@ -17,7 +17,7 @@ const { createAccessToken } = require('../auth/integration-session.cjs');
 test('Given a confirmed finding, when two authenticated requests create a Case concurrently, then exactly one Case and link commit', { timeout: 90000 }, async () => {
   const database = new URL(process.env.DATABASE_URL).pathname;
   assert.ok(/^\/cti_phase4a_qa_sict36[a-z0-9]+$/.test(database)
-    || (process.env.SICTI_UNIFIED_QA_ENABLED === 'true' && database === '/cti_unified_qa_sict72'));
+    || (process.env.SICTI_ISOLATED_QA === 'true' && process.env.SICTI_UNIFIED_QA_ENABLED === 'true' && /^\/cti_unified_qa_[a-z0-9]+$/.test(database)));
   assert.equal(process.env.SICTI_ISOLATED_QA, 'true');
   assert.equal(process.env.SICTI_MONITORING_QA_ENABLED, 'true');
   const db = new PrismaClient();
@@ -52,8 +52,11 @@ test('Given a confirmed finding, when two authenticated requests create a Case c
   }
   try {
     const domain = `atomic-${marker}.example.test`;
-    const watch = await call('watchlists', admin, { kind: 'DOMAIN', value: domain });
+    const asset = await db.asset.create({ data: { tenantId: own.id, name: `ASM monitored ${marker}`, type: 'DOMAIN', value: domain } });
+    const watch = await call('watchlists', admin, { kind: 'DOMAIN', value: domain, assetId: asset.id });
     assert.equal(watch.status, 201);
+    assert.equal(watch.body.assetId, asset.id);
+    assert.equal((await db.monitoringWatchlist.findUniqueOrThrow({ where: { id: watch.body.id } })).assetId, asset.id);
     const authorized = await call('sources', admin, { catalogSourceId: source.id, providerKey: `qa-fixture-${marker}`, retentionDays: 30 });
     assert.equal(authorized.status, 201);
     const observation = await call('observations', admin, { sourceId: authorized.body.id, providerEventKey: marker, kind: 'PHISHING_DOMAIN', domain, metadataCategory: 'PHISHING_SIGNAL', evidenceRef: `qa://atomic/${marker}`, evidenceDigest: createHash('sha256').update(marker).digest('hex'), observedAt: new Date().toISOString(), tlp: 'AMBER' });

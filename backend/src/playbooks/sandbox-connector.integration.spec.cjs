@@ -13,7 +13,9 @@ const { SandboxWorker } = require('../../dist/src/playbooks/sandbox-worker');
 const { createAccessToken } = require('../auth/integration-session.cjs');
 
 test('Given two analyst approval, when a synthetic action is queued, then independent tool state and rollback are recorded', { timeout: 90000 }, async () => {
-  assert.match(new URL(process.env.DATABASE_URL).pathname, /^\/cti_soar_qa_/);
+  const database = new URL(process.env.DATABASE_URL).pathname;
+  assert.ok(/^\/cti_soar_qa_/.test(database)
+    || (process.env.SICTI_ISOLATED_QA === 'true' && process.env.SICTI_UNIFIED_QA_ENABLED === 'true' && /^\/cti_unified_qa_[a-z0-9]+$/.test(database)));
   const fixture = JSON.parse(readFileSync('../.omo/evidence/sicti-phase3b-qa-fixture.json', 'utf8'));
   process.env.SICTI_SOAR_QA_ENABLED = 'true';
   process.env.SICTI_ISOLATED_QA = 'true';

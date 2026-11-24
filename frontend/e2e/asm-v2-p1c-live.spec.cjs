@@ -1,4 +1,5 @@
 const assert = require('node:assert/strict');
+const { assertQaDatabase } = require('./qa-database-guard.cjs');
 const { randomUUID } = require('node:crypto');
 const { evidencePath } = require('./asm-v2-evidence-path.cjs');
 const { chromium } = require('@playwright/test');
@@ -6,7 +7,7 @@ const { PrismaClient } = require('../../backend/node_modules/@prisma/client');
 const bcrypt = require('../../backend/node_modules/bcrypt');
 
 async function main() {
-  assert.equal(new URL(process.env.DATABASE_URL).pathname.slice(1), 'cti_asm61_qa_20261028_2145');
+  assertQaDatabase({ databaseUrl: process.env.DATABASE_URL, legacyDatabase: /^cti_asm61_qa_20261028_2145$/ });
   const prisma = new PrismaClient();
   const marker = randomUUID();
   const tenants = [];
